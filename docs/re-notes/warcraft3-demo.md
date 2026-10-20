@@ -2756,3 +2756,70 @@ and ring-update bytes. The cooperative scheduler has a 4 ms background
 budget when audio is active; threaded scheduling has no equivalent cap.
 Neither cache lookups nor that policy alone establishes excess mixing or
 starvation. Preserve audio behavior while investigating the remaining gap.
+
+### Matching audio workloads before comparing schedulers (2026-10-20)
+
+The follow-up captures `20261020-wc3-audio-output-threads` and
+`20261020-wc3-audio-output-coop-retry` instrument the existing voice manager,
+worklet progress and per-thread execution hooks on `80fc118a4`/`c15f6f7a`.
+Both modes used two 44100 Hz stereo 16-bit AudioWorklet rings. Over about
+20 seconds, each ring consumed 3,536,384 bytes in threads and 3,538,944
+bytes in coop, matching elapsed audio time. The 136704-byte music ring had
+changing nonzero PCM in all 82 samples in each run; the 65536-byte ring was
+silent and had no refresh calls. Subjective audio quality was not checked.
+
+Music refresh counts were 2486 threaded versus 2484 cooperative, and T4
+retired 54.069 million versus 53.933 million blocks. The previous large
+audio-work disparity was therefore not reproduced. The older cooperative
+capture had no voice/output diagnostics and must not be assumed silent,
+starved, or equivalent to these captures. A buffer refresh's length is the
+whole ring extent, not newly produced PCM bytes; no production-throughput
+claim can be derived by multiplying refresh count by ring length.
+
+T4 slice elapsed time was 7.241 seconds threaded and 5.264 seconds coop,
+with 1399 versus 5936 slices. Threaded elapsed time can include synchronous
+RPC waits; it is not a CPU-time comparison. Observed FPS was 17.94 versus
+14.50, reversing the prior ordering under different busy-host conditions.
+These remain diagnostic samples, not a controlled speedup benchmark.
+There is no evidence here supporting an audio pacing or quantum change.
+Future comparisons should verify active music, advancing worklet progress,
+ring refreshes and changing PCM before treating workloads as equivalent.
+
+The first cooperative attempt (`20261020-wc3-audio-output-coop`) failed
+profile creation before timing. Its screenshot shows the entered name and
+an empty profile list. The retry verifies profile creation before Select;
+the failed attempt is retained as a harness error, not a gameplay failure.
+
+The following isolated-fixture capture, `20261020-wc3-rpc-timing-retry`,
+times each synchronous `waitForResponse` by import name and labels CPU
+profiles with the actual worker slot. The main and audio diagnostic
+snapshots are asserted before timing. An initial attempt queried a retired
+worker and failed before sampling; that harness error is retained in
+`20261020-wc3-rpc-timing`. The timing instrumentation was removed from the
+fixture after capture; tracked runtime files were never changed.
+
+Over the approximately 20-second window:
+
+| Worker | Synchronous wait | Calls | Elapsed time |
+| --- | --- | ---: | ---: |
+| Main 0 | GL batch | 1008 | 3266.2 ms |
+| Main 0 | All synchronous imports/batches | — | 3611.5 ms |
+| Audio 4 | wait_single | 3571 | 172.8 ms |
+| Audio 4 | set_event | 1985 | 138.2 ms |
+
+Audio retired 53.4 million blocks, made 2483 music-ring refreshes and
+maintained real-time worklet progress. Its total slice elapsed time was
+5.548 seconds in this capture, so the earlier 7.241-second measurement
+does not establish a stable two-second threaded penalty. Only 0.311
+seconds here were spent inside measured synchronous RPC waits. This
+does not support changing audio scheduling to address the main bottleneck.
+
+About 90% of main's measured synchronous wait time was GL submission and
+completion. Earlier command inspection already established a `glFinish`
+after each frame; keep that explicit completion barrier. Profiled main
+interpreter self samples remain largest in `uop_fast` (2627 ms),
+`branch_end_at` (1167 ms) and `th_load32_rop` (1001 ms). Render-worker
+non-idle samples total about 2.65 seconds, with uniform setup and draw
+replay prominent. Next targets are rendering submission/replay cost and
+main interpreter execution, not speculative audio throttling. Sampled
+`waitForResponse` time includes blocked elapsed time, not active CPU.
