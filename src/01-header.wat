@@ -1411,7 +1411,7 @@
   ;; offset never needs bit 14 and the marker is free.
   ;;
   ;; 9KB each. The main thread keeps 512 slots (4.5MB; 128 until 2026-09-28); each of the fifteen
-  ;; workers gets 16 (128KB), because a worker compiles the one routine it was
+  ;; workers gets 16 (144KiB), because a worker compiles the one routine it was
   ;; spawned for. $PAGE_INDEX_SLOTS is therefore per-instance, set alongside
   ;; $PAGE_INDEX in $init_thread, and the defaults here are the main thread's.
   (global $PAGE_INDEX_ARENA i32 (region.addr $PAGE_INDEX_ARENA 0))
@@ -1425,6 +1425,12 @@
   (global $PAGE_INDEX_MAIN_BYTES (mut i32) (i32.const 0x00480000))
   (global $PAGE_INDEX_STRIDE (mut i32) (i32.const 0x00024000))
   (global $PAGE_INDEX_BYTES  i32 (i32.const 0x2400))
+  ;; Experimental layout 2 keeps the default arena split and adds sixteen
+  ;; worker indexes at the tail of that worker's code partition. This base is
+  ;; stable across temporary spill arenas; zero means all indexes are in the
+  ;; ordinary arena (including main in every layout).
+  (global $PAGE_INDEX_EXTRA (mut i32) (i32.const 0))
+  (global $PAGE_INDEX_WORKER_EXTRA_BYTES (mut i32) (i32.const 0))
   ;; Block-executor round 13 (docs/block-executor-design.md section 22). The
   ;; threaded stream is not self-describing: an op is (handler, operand) plus
   ;; however many inline words that handler takes, so nothing downstream of the

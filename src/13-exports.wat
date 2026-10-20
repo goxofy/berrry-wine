@@ -1624,10 +1624,17 @@
   ;; created afterwards ($init_thread) agrees with the one that chose it.
   ;;   0  default: main 512 slots (0x480000), fifteen workers 16 (0x24000)
   ;;   1  worker-heavy: main 256 (0x240000), fifteen workers 32 (0x48000)
-  ;; Both fit the one $PAGE_INDEX_ARENA (1: 0x240000 + 15*0x48000 = 0x678000).
-  ;; 32 worker slots stay inside a worker's 768KB code partition (16KB chunk
-  ;; per compiled page). Applies the stored mode to this instance's globals.
+  ;;   2  preserve main 512 and worker arena 16, add 16 worker indexes in
+  ;;      the last 0x24000 bytes of each worker's own code partition.
+  ;; Modes 0/1 fit $PAGE_INDEX_ARENA (1: 0x240000 + 15*0x48000 = 0x678000).
+  ;; Mode 2 retains mode 0's arena split and reduces worker code capacity from
+  ;; 768KiB to 624KiB, including its existing 16KiB reserve. Index capacity
+  ;; does not guarantee every indexed page's compiled chunks fit simultaneously.
+  ;; Applies the stored mode to this instance's globals.
   (func $page_index_layout_apply
+    ;; Reset on every application, including a Worker instance reused as main.
+    (global.set $PAGE_INDEX_EXTRA (i32.const 0))
+    (global.set $PAGE_INDEX_WORKER_EXTRA_BYTES (i32.const 0))
     (if (i32.eq (i32.atomic.load offset=40 (global.get $SHARED_COUNTERS)) (i32.const 1))
       (then
         (global.set $PAGE_INDEX_MAIN_BYTES (i32.const 0x00240000))
@@ -1636,16 +1643,23 @@
       (else
         (global.set $PAGE_INDEX_MAIN_BYTES (i32.const 0x00480000))
         (global.set $PAGE_INDEX_STRIDE (i32.const 0x00024000))
-        (global.set $PAGE_INDEX_WORKER_SLOTS (i32.const 16)))))
+        (global.set $PAGE_INDEX_WORKER_SLOTS (i32.const 16))
+        (if (i32.eq (i32.atomic.load offset=40 (global.get $SHARED_COUNTERS)) (i32.const 2))
+          (then
+            (global.set $PAGE_INDEX_WORKER_SLOTS (i32.const 32))
+            (global.set $PAGE_INDEX_WORKER_EXTRA_BYTES (i32.const 0x24000)))))))
 
-  ;; Host-side opt-in (lib/apps.js `workerHeavyCodeCache`). Call on the first
+  ;; Host-side opt-in (lib/apps.js `workerHeavyCodeCache` or
+  ;; `expandedWorkerCodeCache`). Call on the first
   ;; instance before anything is decoded and before any worker is spawned. The
   ;; calling instance is the main thread here (a CLI or page main never runs
   ;; $init_thread), so its own slot count is set too; workers and a Worker-
   ;; hosted main pick the mode up in $init_thread. Returns the mode in force.
   (func (export "set_page_index_layout") (param $mode i32) (result i32)
     (i32.atomic.store offset=40 (global.get $SHARED_COUNTERS)
-      (select (i32.const 1) (i32.const 0) (i32.eq (local.get $mode) (i32.const 1))))
+      (select (local.get $mode) (i32.const 0)
+        (i32.or (i32.eq (local.get $mode) (i32.const 1))
+          (i32.eq (local.get $mode) (i32.const 2)))))
     (call $page_index_layout_apply)
     (global.set $PAGE_INDEX_SLOTS
       (i32.div_u (global.get $PAGE_INDEX_MAIN_BYTES) (global.get $PAGE_INDEX_BYTES)))
@@ -1675,8 +1689,11 @@
           (i32.add (global.get $THREAD_CACHE_MAIN_BYTES)
             (i32.mul (i32.sub (local.get $tid) (i32.const 1))
                      (global.get $THREAD_CACHE_STRIDE)))))
-        (global.set $THREAD_END (i32.add (global.get $THREAD_BASE)
-          (global.get $THREAD_CACHE_STRIDE)))
+        (global.set $THREAD_END (i32.sub
+          (i32.add (global.get $THREAD_BASE) (global.get $THREAD_CACHE_STRIDE))
+          (global.get $PAGE_INDEX_WORKER_EXTRA_BYTES)))
+        (if (global.get $PAGE_INDEX_WORKER_EXTRA_BYTES)
+          (then (global.set $PAGE_INDEX_EXTRA (global.get $THREAD_END))))
         ;; This worker's micro-op arena (07d), split the same way.
         (call $uop_set_arena
           (i32.add (global.get $UOP_THREAD_ARENAS)
@@ -1696,6 +1713,7 @@
         (global.set $spill_base (region.addr $THREAD_SPILL 0))
         (global.set $spill_end (region.addr $THREAD_SPILL 0x80000))))
     (global.set $spill_active (i32.const 0))
+    (global.set $spill_saved_end (global.get $THREAD_END))
     (global.set $thread_alloc (global.get $THREAD_BASE))
     ;; The register file IS strided, unlike the three arenas above: every
     ;; thread needs exactly eight slots, so tid*64 with no special case for the

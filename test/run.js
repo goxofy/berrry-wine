@@ -4802,16 +4802,22 @@ async function main() {
   // were logged (and so counted twice, by h.log and by $api_calls) and a
   // --trace-api-paused run printed them before it was switched on.
   if (apiLogOff && instance.exports.set_api_log) instance.exports.set_api_log(0);
-  // An app whose game loop runs on a worker thread opts into the worker-heavy
-  // page-index split (lib/apps.js `workerHeavyCodeCache`), before anything is
-  // decoded and before any thread instance is created. --worker-heavy-code-cache
-  // forces it for any exe, --no-worker-heavy-code-cache turns the app's off.
+  // Apply the app's page-index layout before decoding or creating threads.
+  // Positive CLI flags override app defaults (expanded wins if both are set).
+  // Each --no-* flag disables that app default; an explicit positive wins
+  // over its matching negative, as with the existing worker-heavy option.
   {
+    const forceHeavy = hasFlag('worker-heavy-code-cache');
+    const wantExpanded = hasFlag('expanded-worker-code-cache')
+      || (!forceHeavy && !hasFlag('no-expanded-worker-code-cache') &&
+        APP_ENTRY && APP_ENTRY.expandedWorkerCodeCache === true);
     const wantHeavy = hasFlag('worker-heavy-code-cache')
       || (!hasFlag('no-worker-heavy-code-cache') && APP_ENTRY && APP_ENTRY.workerHeavyCodeCache === true);
-    if (wantHeavy && instance.exports.set_page_index_layout) {
-      instance.exports.set_page_index_layout(1);
-      console.log('[cache] worker-heavy page-index layout: main 256 slots, workers 32');
+    if ((wantExpanded || wantHeavy) && instance.exports.set_page_index_layout) {
+      instance.exports.set_page_index_layout(wantExpanded ? 2 : 1);
+      console.log(wantExpanded
+        ? '[cache] expanded-worker page-index layout: main 512 slots, workers 32 (624KiB code)'
+        : '[cache] worker-heavy page-index layout: main 256 slots, workers 32');
     }
   }
   if (D3D_WORKER) {

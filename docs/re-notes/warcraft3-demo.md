@@ -2690,3 +2690,69 @@ publication/descriptor replacement and must not be called self-modification.
 Main recorded 573 capacity evictions and 1105 directory collisions. A future
 worker-index capacity experiment should therefore preserve main's existing
 512 slots, rather than using the existing worker-heavy split that shrinks it.
+
+### Expanded worker indexes (2026-10-20)
+
+WC3 opts into page-index layout 2 through `expandedWorkerCodeCache`. Main
+retains 512 indexes. Each worker retains its original 16 indexes and uses
+144 KiB at the tail of its own code partition for another 16. Its compiled
+code limit drops from 768 to 624 KiB; the allocator's existing 16 KiB reserve
+still applies. The memory map, thread count and other apps' defaults do not
+change. Existing worker-heavy layout 1 remains available for Hype.
+
+Sequential 30-second Prologue gameplay captures:
+
+| Audio-worker counter | 16 indexes | 32 indexes |
+| --- | ---: | ---: |
+| Index-capacity evictions | 39,652 | 4,462 |
+| Decoded-block stores | 995,709 | 140,979 |
+| Stores per million page hits + misses | 27,100 | 4,107 |
+| Full cache clears | 0 | 1 |
+| Unpublished blocks | 58 | 144 |
+
+The normalized redecoding count fell about 85%. Main's normalized stores
+were similar, 432 versus 429. This is a capacity tradeoff, not elimination
+of all cache pressure: the candidate incurred one full clear and more
+unpublished blocks. Sampled FPS was 6.90 versus 10.53, but host load fell
+from approximately 113–130 to 15–13 between runs, so those rates establish
+no causal FPS improvement. Selection, movement and final gameplay were
+visually reviewed; subjective audio quality was not verified.
+
+Evidence: `scratch/runs/20261020-wc3-cache32-control`,
+`scratch/runs/20261020-wc3-cache32-candidate`, and
+`scratch/runs/20261020-wc3-cache32-native`. Candidate WASM:
+`c15f6f7a199a2bc09dae6376cd7091e6e60eefc779081df8cae47bd810e70b1d`.
+Full build and real-WASM allocator tests pass, covering all 15 worker
+owners, both index segments, sentinel isolation, free-list reuse, clock
+eviction, spill and instance reuse. Matching ARM64 Ion/TurboFan inspection
+shows a register-only selection branch in fresh index allocation and
+unchanged dispatch structure; no x86-64 measurement was made.
+
+The CLI honors the app default; `--no-expanded-worker-code-cache` restores
+the ordinary layout, and `--expanded-worker-code-cache` forces layout 2.
+An explicit `--worker-heavy-code-cache` overrides WC3's default with layout 1;
+if both positive flags are supplied, expanded wins.
+
+The final app-config path also passed cooperative Prologue gameplay in
+`scratch/runs/20261020-wc3-cache32-coop`: 32.36 FPS over 30 seconds, with
+audio-worker arena size asserted before timing. Audio recorded 2,298,609
+page hits and zero misses, decoded stores, index evictions or full clears
+during that window. The threaded candidate executed many more audio page
+lookups (34,142,673 hits), so the two audio workloads are not interchangeable.
+Without audio production/consumption measurements, that difference does
+not establish either threaded busy-waiting or cooperative starvation.
+
+A final threaded run through the real app-config path, after host load
+subsided, measured 26.80 FPS (p95 47.42 ms), versus the preceding cooperative
+32.36 FPS (p95 39.66 ms). Load was approximately 6.17→4.96 for threads and
+7.84→6.03 for coop; these remain single sequential windows, not a controlled
+speedup measurement. Threads were still slower in this comparison. Audio
+recorded 4,966 capacity evictions, 154,121 decoded stores, and one full clear.
+Evidence: `scratch/runs/20261020-wc3-cache32-threads-final`.
+
+Next, measure audio work per output second: T4 execution and scheduling
+delay together with active voices, AudioContext state, cursor advancement
+and ring-update bytes. The cooperative scheduler has a 4 ms background
+budget when audio is active; threaded scheduling has no equivalent cap.
+Neither cache lookups nor that policy alone establishes excess mixing or
+starvation. Preserve audio behavior while investigating the remaining gap.
