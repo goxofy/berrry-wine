@@ -4,6 +4,58 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { WorkerLink, GuestThreadHost } = require('../lib/guest-thread-host');
+const { SharedPacketPool } = require('../lib/render-worker');
+
+function testSharedPacketPool() {
+  const pool = new SharedPacketPool(), buffer = new SharedArrayBuffer(256);
+  const starts = [0, 32, 64];
+  pool.register('gl', buffer, starts, 32);
+  starts[0] = 128; // caller cannot change the registered layout
+  assert.strictEqual(pool.register('gl', buffer, [64, 0, 32], 32), pool);
+  assert.throws(() => pool.register('gl', buffer, [128], 32), /retire/);
+  assert.throws(() => pool.register('d3d', buffer, [16], 32), /another owner/);
+  pool.register('d3d', buffer, [96], 32); // touching boundaries do not overlap
+  for (const offsets of [[0, 16], [0, 0]])
+    assert.throws(() => new SharedPacketPool().register(1, buffer, offsets, 32), /overlapping/);
+  for (const offsets of [[-1], [225], [0.5], [NaN], [Number.MAX_SAFE_INTEGER], []])
+    assert.throws(() => new SharedPacketPool().register(1, buffer, offsets, 32));
+  for (const capacity of [0, -1, NaN, 1.5, Number.MAX_SAFE_INTEGER])
+    assert.throws(() => new SharedPacketPool().register(1, buffer, [0], capacity));
+  assert.throws(() => pool.register(2, new ArrayBuffer(256), [0], 32), /shared/);
+  assert.throws(() => pool.claim('missing', 0, 1), /unregistered/);
+  for (const [offset, bytes] of [[1, 1], [128, 1], [0, 33], [0, -1], [0, 0.5], [0, NaN]])
+    assert.throws(() => pool.claim('gl', offset, bytes), /invalid/);
+  const leases = [0, 32, 64].map(offset => pool.claim('gl', offset, 32));
+  for (const offset of [0, 32, 64]) assert.throws(() => pool.claim('gl', offset, 1), /busy/);
+  assert.throws(() => pool.unregister('gl'), /active/);
+  assert(Object.isFrozen(leases[0]));
+  assert.strictEqual(leases[0].buffer, buffer, 'lease does not copy shared storage');
+  new Uint8Array(buffer)[3] = 91;
+  assert.equal(new Uint8Array(leases[0].buffer, leases[0].byteOffset, leases[0].bytes)[3], 91);
+  assert.throws(() => pool.release({ ...leases[0] }), /invalid/);
+  assert.throws(() => new SharedPacketPool().release(leases[0]), /invalid/);
+  pool.release(leases[0]);
+  const next = pool.claim('gl', 0, 8);
+  assert.throws(() => pool.release(leases[0]), /stale/);
+  assert.throws(() => pool.claim('gl', 0, 1), /busy/, 'old release cannot free a newer lease');
+  pool.release(next);
+  pool.release(leases[1]); pool.release(leases[2]);
+  pool.unregister('gl');
+  pool.register('gl', buffer, [128], 32);
+  assert.throws(() => pool.release(leases[0]), /stale/);
+  assert.throws(() => pool.claim('gl', 0, 1), /invalid/);
+  const empty = pool.claim('gl', 128, 0);
+  pool.release(empty); pool.unregister('gl');
+  pool.unregister('d3d');
+  assert.throws(() => pool.unregister('d3d'), /unregistered/);
+  // Distinct shared allocations may use the same byte offsets.
+  pool.register(1, buffer, [0], 32);
+  pool.register(2, new SharedArrayBuffer(256), [0], 32);
+  // Failed overlap registration is atomic; its unused span was not retained.
+  assert.throws(() => pool.register(3, buffer, [0, 192], 32), /another owner/);
+  pool.register(3, buffer, [192], 32);
+}
+testSharedPacketPool();
 const sandbox = { console, URLSearchParams, setTimeout, clearTimeout };
 vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'host.js'), 'utf8') +
   '\n;globalThis.WineAssembly = WineAssembly;', sandbox);

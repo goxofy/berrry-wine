@@ -2878,3 +2878,35 @@ timing instrumentation (its `performance` reference is absent in the test VM).
 Exact batch-grouping pressure parity was not claimed for the changed grouping.
 The experimental source, module, trace and native captures are retained in
 the run folder. No production runtime change is selected from this pair.
+
+## Shared GL packet slots (2026-10-20)
+
+The next implementation keeps the original 2 MiB dispatch boundaries and
+encodes into three WASM-resident slots. The host leases published slots until
+renderer replay has flushed retained geometry; its existing two-pending limit
+protects rotation. This removes command-stream snapshot and Worker clone copies
+without relaxing queries, borrowed-input barriers or `glFinish`.
+
+Sequential Chrome 155 threaded Prologue captures are preserved in
+`20261020-wc3-packets-copy` and `20261020-wc3-packets-shared`. Both use module
+`cd3b43cf9718fd63b3ca56d54e0b3e112acd0f8dfb997dd21cdbc58f19b73ce6`.
+The copied control uses `?gl-copy`; shared publication uses offset descriptors
+into process memory. Exact source identities are recorded per run.
+
+| Measurement | Copied | Shared slots |
+| --- | ---: | ---: |
+| 20-second presentation rate | 25.85/s | 27.03/s |
+| p95 presentation interval | 53.22 ms | 48.78 ms |
+| Whole-launch copied batches | 3,469 | 0 |
+| Whole-launch copied bytes | 4,230,062,784 | 0 |
+| Whole-launch leased batches | 0 | 3,304 |
+| Audio-thread blocks during sample | 53,006,349 | 53,914,529 |
+| Music refreshes during sample | 2,480 | 2,483 |
+
+Both final images show Prologue gameplay and the Thrall HUD. Whole-launch
+counters include navigation and warmup, so they are not timed-window bandwidth.
+Host load differed (copied 5.73→6.04, shared 4.96→4.97); one pair establishes
+copy removal and functional rendering, not a causal FPS improvement or parity
+with cooperative mode. Matching ARM64 V8 TurboFan and SpiderMonkey Ion native
+listings are reviewed in `20261020-wc3-shared-packets-native`: init frames grow
+16 bytes in both engines and Ion flush grows 16 bytes. No x86-64 claim.

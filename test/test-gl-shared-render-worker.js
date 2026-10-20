@@ -34,7 +34,7 @@ function vectorBatch(buffer,at,name,args,values){
   return Stream.memoryBatch(buffer,at,bytes);
 }
 async function queuedFixture(options={}){
-  const memory=new SharedArrayBuffer(8192),requests=[],flags=[],events={};
+  const memory=new SharedArrayBuffer(options.memoryBytes||8192),requests=[],flags=[],events={};
   const renderer={windows:{8:{hwnd:8,w:2,h:2,clientRect:{left:0,top:0,right:2,bottom:2}}}};
   const port={ready:Promise.resolve(),addEventListener(type,fn){events[type]=fn;},
     request(message){const gate=deferred();requests.push({message,...gate});return gate.promise;},
@@ -74,6 +74,36 @@ async function queuedSnapshotsAndOrder(){
   assert.strictEqual(requests[4].message.commandBuffer,undefined,'query retains shared output-memory lease');
   f.complete(4,1280);assert.strictEqual(await query,1280);
   await bridge.drain();await bridge.close();assert(f.port.stopped);
+}
+async function sharedPacketRotation(){
+  const cap=Stream.DEFAULT_BYTES,offsets=[128,128+cap,128+cap*2];
+  const f=await queuedFixture({memoryBytes:128+cap*3});
+  const packet=(i,value)=>Object.assign(scalarBatch(f.memory,offsets[i],'glClear',[value]),
+    {pool:{version:1,capacity:cap,offsets}});
+  await f.bridge.replay(packet(0,0x4000),1);await tick();
+  assert.strictEqual(f.requests[1].message.commandBuffer,undefined,'only a range in already-shared process memory is sent');
+  assert.strictEqual(f.requests[1].message.memoryOffset,offsets[0]);
+  await f.bridge.replay(packet(1,0x100),1);
+  let thirdAck=false;
+  const third=f.bridge.replay(packet(2,0x400),1).then(()=>{thirdAck=true;});
+  await tick();assert(!thirdAck,'third publication cannot release writer until oldest slot consumed');
+  assert.strictEqual(new DataView(f.memory).getUint32(offsets[0]+36,true),0x4000,'writing slots one/two preserves oldest payload');
+  f.complete(1);await tick();await third;
+  assert.strictEqual(f.requests[2].message.commandBuffer,undefined);
+  const fourth=f.bridge.replay(packet(0,0x800),1);
+  await tick();f.complete(2);await tick();await fourth;
+  assert.strictEqual(new DataView(f.memory).getUint32(offsets[2]+36,true),0x400,'reused oldest slot does not corrupt pending third');
+  f.complete(3);await tick();f.complete(4);await f.bridge.drain();
+  assert.deepStrictEqual(f.bridge.packetStats,{leasedBatches:4,copiedBatches:0,copiedBytes:0});
+  // Same owner may not change backing allocation while the encoder is live.
+  const malformed=packet(0,0x4000);malformed.pool={version:1,capacity:cap,offsets:[128,128,128+cap*2]};
+  await assert.rejects(f.bridge.replay(malformed,1),/overlapping/);
+  await f.bridge.close();
+  const copied=await queuedFixture({memoryBytes:128+cap*3,sharedPackets:false});
+  const input=Object.assign(scalarBatch(copied.memory,128,'glClear',[0x4000]),{pool:{version:1,capacity:cap,offsets}});
+  await copied.bridge.replay(input,1);await tick();
+  assert(copied.requests[1].message.commandBuffer instanceof ArrayBuffer,'comparison switch retains copy transport');
+  copied.complete(1);await copied.bridge.close();
 }
 async function queuedBarriersAndFallbacks(){
   const f=await queuedFixture(),{bridge,memory,requests}=f;
@@ -445,6 +475,7 @@ const watchdog=setTimeout(()=>{console.error('GL shared render worker protocol t
   await queuedSynchronization();await queuedOwnerInvalidation();await queuedPackedPayload();await queuedWindowLifetime();
   await queuedCopiedVectors();await queuedMalformedVectors();
   await queuedSmallTextureUploads();
+  await sharedPacketRotation();
   workerOwnedCommandReplay();workerCapturedGeometry();
   await legacyProxy();legacyWorkerCleanup();legacyUnavailableFallback();
   console.log('GL shared render worker protocol PASS');})().catch(error=>{console.error(error);process.exitCode=1;})

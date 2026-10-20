@@ -7,6 +7,14 @@
   ;; does not permanently enlarge every instance's static memory map.
 
   (global $gl_stream_wa (mut i32) (i32.const 0))
+  ;; Opt-in leased transport: host admission keeps at most two published
+  ;; buffers live before acknowledging a submission. The third is the writer.
+  ;; Once initialized these allocations and the rotation survive encoder reset.
+  (global $gl_stream_pool_enabled (mut i32) (i32.const 0))
+  (global $gl_stream_pool_0 (mut i32) (i32.const 0))
+  (global $gl_stream_pool_1 (mut i32) (i32.const 0))
+  (global $gl_stream_pool_2 (mut i32) (i32.const 0))
+  (global $gl_stream_pool_index (mut i32) (i32.const 0))
   (global $gl_stream_used_bytes (mut i32) (i32.const 0))
   (global $gl_stream_command_count (mut i32) (i32.const 0))
   (global $gl_wat_stat_calls (mut i64) (i64.const 0))
@@ -78,12 +86,13 @@
     (local.get $guest))
 
   (func $gl_wat_init (result i32)
-    (local $guest i32)
+    (local $guest i32) (local $extra1 i32) (local $extra2 i32)
     (if (i32.eqz (global.get $gl_stream_wa))
       (then
         (local.set $guest (call $gl_alloc_affine (i32.const 0x00200000)))
         (if (i32.eqz (local.get $guest)) (then (return (i32.const 0))))
-        (global.set $gl_stream_wa (call $g2w (local.get $guest)))))
+        (global.set $gl_stream_wa (call $g2w (local.get $guest)))
+        (global.set $gl_stream_pool_0 (global.get $gl_stream_wa))))
     (if (i32.eqz (global.get $gl_immediate_wa))
       (then
         (local.set $guest (call $gl_alloc_affine (i32.const 0x00000E00)))
@@ -91,7 +100,35 @@
         (global.set $gl_immediate_guest (local.get $guest))
         (global.set $gl_immediate_wa (call $g2w (local.get $guest)))
         (global.set $gl_immediate_capacity (i32.const 0x00000E00))))
+    (if (i32.and (i32.ne (global.get $gl_stream_pool_enabled) (i32.const 0))
+        (i32.eqz (global.get $gl_stream_pool_1)))
+      (then
+        (local.set $extra1 (call $gl_alloc_affine (i32.const 0x00200000)))
+        (if (local.get $extra1)
+          (then (local.set $extra2 (call $gl_alloc_affine (i32.const 0x00200000)))))
+        (if (i32.eqz (local.get $extra2))
+          (then
+            ;; Never publish a partial pool. Keep the original synchronous
+            ;; buffer, free any unpublished extra and do not retry each call.
+            (if (local.get $extra1) (then (call $heap_free (local.get $extra1))))
+            (global.set $gl_stream_pool_enabled (i32.const 0)))
+          (else
+            (global.set $gl_stream_pool_1 (call $g2w (local.get $extra1)))
+            (global.set $gl_stream_pool_2 (call $g2w (local.get $extra2)))))))
     (i32.const 1))
+
+  (func $gl_wat_stream_pool_enable (param $enable i32) (result i32)
+    ;; Configuration only before first allocation, including after reset/OOM.
+    (if (i32.or (i32.ne (global.get $gl_stream_wa) (i32.const 0))
+        (i32.gt_u (local.get $enable) (i32.const 1))) (then (return (i32.const 0))))
+    (global.set $gl_stream_pool_enabled (local.get $enable))
+    (i32.const 1))
+
+  (func $gl_wat_stream_pool_base (param $index i32) (result i32)
+    (if (i32.eqz (local.get $index)) (then (return (global.get $gl_stream_pool_0))))
+    (if (i32.eq (local.get $index) (i32.const 1)) (then (return (global.get $gl_stream_pool_1))))
+    (if (i32.eq (local.get $index) (i32.const 2)) (then (return (global.get $gl_stream_pool_2))))
+    (i32.const 0))
 
   (func $gl_wat_stream_flush (result i32)
     (local $result i32)
@@ -101,6 +138,11 @@
     (global.set $gl_wat_stat_flushes (i64.add (global.get $gl_wat_stat_flushes) (i64.const 1)))
     (global.set $gl_stream_used_bytes (i32.const 0))
     (global.set $gl_stream_command_count (i32.const 0))
+    (if (global.get $gl_stream_pool_2)
+      (then
+        (global.set $gl_stream_pool_index (i32.rem_u
+          (i32.add (global.get $gl_stream_pool_index) (i32.const 1)) (i32.const 3)))
+        (global.set $gl_stream_wa (call $gl_wat_stream_pool_base (global.get $gl_stream_pool_index)))))
     (local.get $result))
 
   ;; $len bytes of guest memory at $ga into wasm $dst. One $g2w is good for

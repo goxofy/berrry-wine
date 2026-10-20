@@ -18,7 +18,7 @@ const STREAM_CALL = 0x10001;
 const sectionArg = process.argv.find(arg => arg.startsWith('--section='));
 const SECTION = sectionArg ? sectionArg.slice('--section='.length) : 'all';
 const SECTIONS = new Set(['all', 'primitive', 'state', 'arrays', 'generic',
-  'pressure', 'context', 'isolation', 'hardening', 'errors', 'boundary']);
+  'pressure', 'context', 'isolation', 'hardening', 'errors', 'boundary', 'pool']);
 if (!SECTIONS.has(SECTION)) throw new Error(`unknown parity section: ${SECTION}`);
 const sectionEnabled = name => SECTION === 'all' || SECTION === name;
 
@@ -143,6 +143,27 @@ function compareSubmissions(label, expected, actual) {
 
 async function main() {
   const binary = compileSrcWasm((file, source) => {
+    if (file === '09a8c-gl-encoder.wat') {
+      // Fault only an allocation call, not allocator internals: exercise the
+      // production rollback path after either extra affine buffer fails.
+      return source.replaceAll('(call $gl_alloc_affine', '(call $test_gl_pool_alloc')
+        .replaceAll('(call $heap_free', '(call $test_gl_pool_free') + `
+        (global $test_pool_allocs (mut i32) (i32.const 0))
+        (global $test_pool_fail (mut i32) (i32.const 0))
+        (global $test_pool_frees (mut i32) (i32.const 0))
+        (func $test_gl_pool_alloc (param $bytes i32) (result i32)
+          (global.set $test_pool_allocs (i32.add (global.get $test_pool_allocs) (i32.const 1)))
+          (if (i32.eq (global.get $test_pool_allocs) (global.get $test_pool_fail))
+            (then (return (i32.const 0))))
+          (call $gl_alloc_affine (local.get $bytes)))
+        (func $test_gl_pool_free (param $guest i32)
+          (global.set $test_pool_frees (i32.add (global.get $test_pool_frees) (i32.const 1)))
+          (call $heap_free (local.get $guest)))
+        (func (export "test_pool_fail_at") (param i32) (global.set $test_pool_fail (local.get 0)))
+        (func (export "test_pool_alloc_count") (result i32) (global.get $test_pool_allocs))
+        (func (export "test_pool_free_count") (result i32) (global.get $test_pool_frees))
+      `;
+    }
     if (file !== '09a8e-gl-state.wat') return source;
     // Test-only translator sentinels place vector inputs at the actual end of
     // linear memory. The production state functions remain otherwise exact;
@@ -660,6 +681,70 @@ async function main() {
   activeSubmissions = []; emitDefaultPoint(resetNative);
   compareSubmissions('reset restores default isolated state', resetExpected, activeSubmissions);
   console.log('PASS reset plus shared-memory instance isolation');
+  }
+  if (sectionEnabled('pool')) {
+    for (const failAt of [0, 3, 4, -1]) {
+      const poolMemory = new WebAssembly.Memory({ initial: 8192, maximum: 8192, shared: true });
+      const published = [], poolImports = { host: { ...imports.host, memory: poolMemory } };
+      let rejectNext = false;
+      poolImports.host.gpu_gl_call = (opcode, base, length) => {
+        assert.strictEqual(opcode, STREAM_CALL);
+        if (rejectNext) { rejectNext = false; throw new Error('test rejected publication'); }
+        published.push({ base, length, bytes: Buffer.from(new Uint8Array(poolMemory.buffer, base, length)) });
+        return 700 + published.length;
+      };
+      const e = new WebAssembly.Instance(module_, poolImports).exports;
+      e.init_thread(0, 0x400000, 0, 0, 0, 0, 0); e.heap_init(0x420000);
+      assert.strictEqual(e.gl_wat_stream_pool_version(), 1);
+      assert.strictEqual(e.gl_wat_stream_pool_enable(2), 0);
+      assert.strictEqual(e.gl_wat_stream_pool_enable(-1), 0);
+      assert.strictEqual(e.gl_wat_stream_pool_base(0), 0);
+      assert.strictEqual(e.gl_wat_stream_pool_base(3), 0);
+      assert.strictEqual(e.gl_wat_stream_pool_base(-1), 0);
+      if (failAt !== -1) assert.strictEqual(e.gl_wat_stream_pool_enable(1), 1);
+      e.test_pool_fail_at(Math.max(0, failAt));
+      const gl = watRunner(poolMemory, e);
+      gl.call(10, [0x0BE2]);
+      const bases = [0, 1, 2].map(i => e.gl_wat_stream_pool_base(i) >>> 0);
+      const pooled = failAt === 0;
+      assert(bases[0]);
+      assert.strictEqual(new Set(bases.filter(Boolean)).size, pooled ? 3 : 1);
+      assert.strictEqual(e.gl_wat_stream_pool_enable(0), 0, 'cannot disable a live pool');
+      assert.strictEqual(e.gl_wat_stream_pool_enable(1), 0, 'cannot reconfigure after allocation');
+      if (pooled) {
+        const sorted = bases.slice().sort((x, y) => x - y);
+        for (let i = 1; i < sorted.length; i++) assert(sorted[i - 1] + capacity <= sorted[i], 'pool buffers disjoint');
+      } else assert.deepStrictEqual(bases.slice(1), [0, 0], 'partial pool is never published');
+      const allocations = e.test_pool_alloc_count();
+      assert.strictEqual(allocations, failAt === -1 ? 2 : failAt || 4);
+      assert.strictEqual(e.test_pool_free_count(), failAt === 4 ? 1 : 0, 'failed second extra frees the first');
+      for (let i = 0; i < 4; i++) {
+        if (i) gl.call(10, [0x0BE2 + i]);
+        if (pooled && i === 2) {
+          for (const previous of published) assert.deepStrictEqual(
+            Buffer.from(new Uint8Array(poolMemory.buffer, previous.base, previous.length)), previous.bytes,
+            'two published buffers remain intact while writing the third');
+        }
+        assert.strictEqual(gl.flush(), 701 + i, 'flush preserves host result');
+        assert.strictEqual(published[i].base, bases[pooled ? i % 3 : 0]);
+        assert.strictEqual(e.gl_wat_stream_base() >>> 0, bases[pooled ? (i + 1) % 3 : 0]);
+        const next = e.gl_wat_stream_base();
+        assert.strictEqual(gl.flush(), 0, 'empty flush does not publish or rotate');
+        assert.strictEqual(e.gl_wat_stream_base(), next);
+      }
+      const next = e.gl_wat_stream_base();
+      e.gl_wat_encoder_reset();
+      assert.strictEqual(e.gl_wat_stream_base(), next, 'reset does not rewind to a possibly leased buffer');
+      assert.deepStrictEqual([0, 1, 2].map(i => e.gl_wat_stream_pool_base(i) >>> 0), bases);
+      gl.call(10, [0x0B71]); rejectNext = true;
+      assert.throws(() => gl.flush(), /rejected publication/);
+      assert.strictEqual(e.gl_wat_stream_base(), next, 'failed publication does not rotate');
+      assert(e.gl_wat_stream_used() > 0, 'failed publication retains pending bytes');
+      gl.flush();
+      assert.strictEqual(e.test_pool_alloc_count(), allocations, 'OOM fallback and reset do not retry allocations');
+      assert.strictEqual(e.test_pool_free_count(), failAt === 4 ? 1 : 0, 'published allocations are not freed');
+    }
+    console.log('PASS triple stream pool rotation, retained bytes, strict configuration, OOM rollback, reset and rejected publication');
   }
 }
 
