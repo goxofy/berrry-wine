@@ -2910,3 +2910,50 @@ copy removal and functional rendering, not a causal FPS improvement or parity
 with cooperative mode. Matching ARM64 V8 TurboFan and SpiderMonkey Ion native
 listings are reviewed in `20261020-wc3-shared-packets-native`: init frames grow
 16 bytes in both engines and Ion flush grows 16 bytes. No x86-64 claim.
+
+### Earlier dispatch with shared slots (2026-10-20)
+
+Retested the same 512 KiB watermark on top of the shared packet pool. Control
+is `fccc344c7` / module `cd3b43cf…`; candidate module is
+`5812db90568d7f7569751296ab43ae21cd0df1b18fd180ca72f7d41a04c2510d`.
+The experiment changes only generic pre-record crossing and completed packed
+draw submission after software consumption. Storage remains three 2 MiB slots;
+queries and explicit `glFinish` retain their barriers.
+
+Sequential, fresh headful Chrome runs used the same Prologue select/move/return
+route and 30-second samples, with no concurrent test browser or CPU profiler.
+Actual downloaded module hashes match each recorded variant. All final gameplay
+images were reviewed. Evidence is in `20261020-wc3-pool-dispatch-` folders
+`control-a`, `512k`, `control-b`, and `native`.
+
+| Measurement | Control A | 512 KiB | Control B |
+| --- | ---: | ---: | ---: |
+| Presentation rate | 19.30/s | 26.72/s | 23.66/s |
+| p95 presentation interval | 67.54 ms | 69.00 ms | 75.32 ms |
+| Submitted batches during sample | 1,252 | 4,106 | 1,517 |
+| Batch-copy bytes | 0 | 0 | 0 |
+| Audio-thread blocks | 77,963,888 | 77,604,934 | 77,608,674 |
+| Music refreshes | 3,721 | 3,721 | 3,725 |
+| Music bytes consumed | 5,298,688 | 5,297,664 | 5,304,320 |
+| Host load before → after | 10.68→8.89 | 7.37→8.11 | 4.96→4.79 |
+
+Every music sample was nonzero (122/122 per run). The candidate's higher FPS
+therefore does not come from omitted audio work, but host load remains unequal.
+Its 13% lead over the better control is smaller than the controls' 23% spread;
+these samples do not establish a repeatable causal gain. Smaller batches also
+increase submissions per presented frame from about 2.1 to 5.1. Timing the
+first GPU submission/finish overlap was not repeated in this experiment.
+
+Generic ownership/query, primitive and triple-pool tests pass. Matching ARM64
+Ion/TurboFan captures show added integer threshold checks; V8 packed-finish
+grows from 736 to 1,024 bytes and its local frame from 48 to 64 bytes. No new
+FP-state or translation helper was introduced. The isolated full-build command
+stopped at stale fixture census metadata; explicit concatenation and compilation
+passed with unchanged layout `eb58be38f5ebb837`. This is an experimental module,
+not a newly approved production build. Exact sources, logs and native captures
+are retained. The fixture was restored afterward.
+
+Keep the existing dispatch default. Before selecting this candidate, repeat on
+a quieter host until controls are stable; evaluate submission/geometry flush
+overhead separately from buffer-copy removal. No threaded-versus-cooperative
+performance claim is made from this comparison.
