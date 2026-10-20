@@ -2649,3 +2649,44 @@ The root local build now byte-matches the tested `ee91eb43` WASM with layout
 `binaries/dlls/msvcrt.dll`; a fixture without that directory reproduces the
 reported `_clearfp` failure. Restore the fixture assets rather than adding
 a silent CRT stub.
+
+### Committed-build profiling and retry coalescing (2026-10-20)
+
+The 30-second Worker capture of `829f2ae3f` is retained in
+`scratch/runs/20261020-wc3-committed-worker-profile`. Main-worker self samples
+are dominated by interpreter execution: `uop_fast` 3657 ms, `branch_end_at`
+1652 ms, and `th_load32_rop` 1430 ms. Its 4597 ms in `waitForResponse` is
+blocked elapsed time, not CPU consumption. The page and render Worker were
+approximately 87% idle. Profiling overhead and a busy host make the recorded
+20.89 guest presents/s unsuitable as an unprofiled performance comparison.
+
+Due yield-9 retries previously issued a separate `clear_yield` export request
+before every slice. The retry flag now travels with the slice. The Worker
+checks it after incoming-send guards and only clears a live yield 9. If the
+live yield changed to another nonzero wait, it reports the current state
+without executing guest code, resuming the wait, or consuming sleep flags.
+A skipped callback-owned slice retains its original retry metadata. Other
+wait, render and query protocols are unchanged. Scheduler/protocol, API
+batching, vblank and callback-census tests pass; evidence is in
+`scratch/runs/20261020-wc3-retry-slice`.
+
+Sequential 30-second unprofiled gameplay samples measured 25.49 FPS for the
+control and 25.79 FPS for the candidate, with approximately 53.3 ms p95
+presentation intervals in both. These single windows had unequal busy-host
+load, so there is no reliable FPS improvement claim. The confirmed transport
+change is 8960 -> 1 separate clear requests and 36689 -> 27674 total requests,
+while slice counts were similar (22103 -> 22124). Selection and movement
+were visually reviewed. Runs:
+`scratch/runs/20261020-wc3-cache-cause` and
+`scratch/runs/20261020-wc3-retry-coalesce`.
+
+The control's expanded cache snapshot failed because `readExports` coerces
+results to uint32 and one getter returned i64. The candidate uses 31 verified
+i32 getters and asserts main/audio counter availability before timing. Its
+audio thread recorded 59597 evictions, all from page-index capacity, zero
+directory collisions, and 1392253 decoded-block stores. It made no guest
+code-write invalidation calls; the 120765 retirement count includes code
+publication/descriptor replacement and must not be called self-modification.
+Main recorded 573 capacity evictions and 1105 directory collisions. A future
+worker-index capacity experiment should therefore preserve main's existing
+512 slots, rather than using the existing worker-heavy split that shrinks it.

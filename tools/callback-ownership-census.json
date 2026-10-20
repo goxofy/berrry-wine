@@ -258,17 +258,17 @@
     {
       "file": "lib/guest-thread-host.js",
       "name": "host-file",
-      "sha256": "c466efb44b2163f9608004e1f695a1babf1f437676b34a03ee0718f7f7416af9",
+      "sha256": "78942dbf96bb8259923800cc12b7a60948a90130e02ee4eda4402f7a263414a2",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Retry-yield review: WorkerLink carries an explicit scheduler retry flag on the existing slice request; no new callback, context restore or export request is introduced.",
       "ownership": "pending"
     },
     {
       "file": "lib/guest-worker.js",
       "name": "host-file",
-      "sha256": "183504743d9813ef1029d698c986832fc259b8c52e88d979aa20cde463a595eb",
+      "sha256": "167fa4074f3c735f8c932632db75c6f0c36166fed9ec0fd5799edad9384b83b3",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. CS park-EIP reporting reads an existing diagnostic export after a slice; it creates no guest context or continuation.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. CS park-EIP reporting reads an existing diagnostic export after a slice; it creates no guest context or continuation. Retry-yield review: clear_yield runs only for the explicit slice retry flag and live yield 9, after both incoming-send guards. A changed nonzero yield returns its normal diagnostic snapshot without sync callbacks, wait resume, guest execution, sleep flag consumption or detach callbacks; incoming-send skipped slices retain their owned frames.",
       "ownership": "pending"
     },
     {
@@ -346,9 +346,9 @@
     {
       "file": "lib/thread-manager.js",
       "name": "host-file",
-      "sha256": "3e2d48066645cbab519a9a23d09cb90810b172d9c44a60f533a3f90adb69caf9",
+      "sha256": "ec31579b2a93417a29721cb6091c8e23dd86963e0a75d4a46b33fe338f533644",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Import retry review: retain the existing parked thunk frame until host deadline or qualified CS owner change; clear_yield resumes that same frame, with preparation guarded against nested dispatch and cleanup in finally. No context restore or new guest callback is introduced; acquisition remains in WAT.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Import retry review: retain the existing parked thunk frame until host deadline or qualified CS owner change; its clear now rides the next slice and is guarded by the Worker live yield. Parking metadata survives an incoming-send skipped slice, preparation blocks nested dispatch, and finally releases the guard on success or failure. Render/query and other wait clears are unchanged. No context restore or new guest callback is introduced; acquisition remains in WAT.",
       "ownership": "pending"
     },
     {
