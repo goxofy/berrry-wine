@@ -422,6 +422,58 @@ async function main() {
       'query output is visible before its barrier returns');
   });
 
+  parity('generic: small texture snapshots survive mutation and remain ordered', (gl,mem)=>{
+    const pixels=new Uint8Array(mem.buffer,translateGuest(DATA+0x1000),65536);
+    for(const [w,h,format] of [[16,16,0x1908],[128,128,0x80E1],[3,1,0x1908]]){
+      pixels.fill(0x37);
+      gl.call(47,[0x0DE1,0,0,0,w,h,format,0x1401,DATA+0x1000]);
+      pixels.fill(0xA9);
+      gl.call(10,[0x0BE2]);
+    }
+    for(const alignment of [1,2,4,8]){
+      gl.call(73,[0x0CF5,alignment]);
+      gl.call(47,[0x0DE1,0,0,0,16,16,0x1908,0x1401,DATA+0x1000]);
+    }
+    gl.call(73,[0x0CF5,4]);
+    gl.call(47,[0x0DE1,0,0,0,0,16,0x1908,0x1401,DATA+0x1000]);
+    gl.call(47,[0x0DE1,0,0,0,16,16,0x1908,0x1401,0]);
+    gl.call(11);
+  });
+
+  if(sectionEnabled('generic')){
+    a.gl_wat_encoder_reset();activeSubmissions=[];
+    const native=watRunner(memory,a),pointer=DATA+0x1000;
+    new Uint8Array(memory.buffer,translateGuest(pointer),65536).fill(0x37);
+    for(let i=0;i<22;i++)native.call(47,[0x0DE1,0,0,0,16,16,0x1908,0x1401,pointer]);
+    assert.strictEqual(activeSubmissions.length,0,'22 small uploads do not force 22 RPC submissions');
+    new Uint8Array(memory.buffer,translateGuest(pointer),1024).fill(0xA9);
+    native.call(11);
+    assert.strictEqual(activeSubmissions.length,1,'explicit finish submits all small uploads together');
+    let updates=0;
+    Stream.replay({buffer:activeSubmissions[0].buffer,byteOffset:activeSubmissions[0].byteOffset,
+      bytes:activeSubmissions[0].length},(opcode,aux,capture)=>{
+      if(opcode===47){
+        updates++;assert(!capture.pointerBorrowed);
+        assert.strictEqual(capture.pointerLength,1024);
+        assert(new Uint8Array(capture.buffer,capture.pointerOffset,1024).every(v=>v===0x37),
+          'upload snapshot retains bytes from call time');
+      }
+      return 0;
+    });
+    assert.strictEqual(updates,22);
+    for(const [w,h,format,type] of [[128,128,0x1908,0x1401],[3,1,0x80E1,0x1401]]){
+      activeSubmissions=[];native.call(47,[0x0DE1,0,0,0,w,h,format,type,pointer]);
+      assert.strictEqual(activeSubmissions.length,0,'threshold/single-row updates copy');
+      native.call(11);
+    }
+    for(const [w,h,format,type] of [[128,129,0x1908,0x1401],[3,2,0x1908,0x1401],
+      [16,16,0x1907,0x1401],[16,16,0x1908,0x8033]]){
+      activeSubmissions=[];native.call(47,[0x0DE1,0,0,0,w,h,format,type,pointer]);
+      assert.strictEqual(activeSubmissions.length,1,'large/padded/unsupported uploads remain synchronous');
+    }
+    console.log('PASS small texture upload ownership, threshold and submission-count regressions');
+  }
+
   parity('pressure: generic capacity preserves complete ordered records', gl => {
     const records = Math.floor(capacity / 40) + 17;
     for (let i = 0; i < records; i++) gl.call(10, [0x0B00 + (i & 31)]);

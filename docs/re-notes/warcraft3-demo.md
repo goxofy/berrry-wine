@@ -2535,3 +2535,117 @@ the cinematic, not gameplay, while `20261019-wc3-fix-gameplay` timed out at
 briefing because direct renderer keyboard calls targeted HWND0. The final
 driver uses `agent-remote.runCommands`, the same DOM-event path as `ctl.js`,
 and waits for the visible gameplay HUD before moving and sampling.
+
+### Queued GL transport and mapped scratch candidates (2026-10-19)
+
+The next Worker bottleneck is architectural: each native GL stream flush
+parks its producer until the page broker and render Worker have replayed it.
+The producer cannot prepare the next frame while that rendering runs.
+
+The candidate retains synchronous local/cooperative rendering, but lets the
+Worker producer resume after the page takes an immutable copy of eligible
+GL commands. Admission and replay remain ordered across owners, with at most
+two owned buffers of 2 MiB each. The next submission waits for space.
+Only reviewed scalar commands, copied matrices, and packed vertex records
+qualify. Queries, context operations, borrowed pointers, bitmap contexts,
+software rendering, and unknown commands retain synchronous completion.
+`?gl-sync` disables early acknowledgment for comparison with the same code.
+
+Early SwapBuffers/glFlush acknowledgment also requires a known current
+top-level drawable and the existing shared pre-GDI ownership flag. The flag
+is set before releasing the producer. The actual pre-GDI host import drains
+earlier GL work, resolves canonical pixels, and clears ownership within the
+ordered admission queue; later submissions cannot lose their ownership flag
+to an older readback. Frames retain the original window identity and captured
+WAT client dimensions, so destroyed/reused HWNDs reject stale frames and a
+later resize does not change an older batch's drawable. Context ownership is
+replaced from the render Worker's complete authoritative owner map. Async
+errors remain sticky; teardown drains accepted work before endpoint retirement.
+
+Focused protocol tests cover buffer reuse, embedded vertices, bounded queue
+pressure, cross-owner query ordering, borrowed/software fallbacks, failures,
+teardown, context deletion, stale HWNDs, and captured geometry. The real
+`createHostImports`/`Win98Renderer` integration test verifies delayed red GL
+terrain followed by green GDI pixels through the actual pre-GDI import.
+The separate existing WAT Worker test stops before GL assertions because its
+harness does not handle the `beep_process_begin` startup RPC; this is not
+evidence of a rendering regression.
+
+The independent encoder candidate uses the already verified affine
+`gl_immediate_wa` allocation for internal vertex append/copy. Arbitrary guest
+arrays keep sparse-safe translation. Full isolated build gates, the complete
+encoder byte-oracle suite, and sparse-array tests pass. On ARM64, inspected
+SpiderMonkey 155 Ion append/copy code shrank from 1208/288 to 744/156 bytes;
+V8 15.4.49 TurboFan from 6144/1408 to 4608/448 bytes. Internal copy now uses
+direct loads/stores, and append removes nineteen per-vertex translation calls.
+Candidate WASM SHA256 is
+`a55ff0505fb749d3e5597c424d5fc10ef6df41319cdf7f4025285408d0b5632f`.
+Reviewed build/test/native evidence is retained in
+`scratch/runs/20261019-wc3-gl-scratch`.
+These are code-generation and correctness results, not an FPS claim.
+Gameplay comparisons remain required before declaring either candidate faster.
+
+### Concurrent completion queue and GL admission (2026-10-20)
+
+The actual shared-WASM IOCP stress test demonstrated a queue race: two
+consumers received 385 completions from 256 posts, with 129 duplicates and
+an underflowed count. The serial control delivered 256 unique completions.
+Queue headers, associations, creation and closure now use the existing
+owner-aware lock in the unused IOCP region tail. Dequeue snapshots the packet
+before releasing the lock and writing guest outputs. Completion publication
+checks a slot generation after guest writes, preventing a reentrant close and
+reuse from receiving an old completion. Concurrent creation, producers,
+consumers, wraparound, timeout, and close/reuse regression tests pass.
+Reviewed proof and fixed-build evidence:
+`scratch/runs/20261020-wc3-iocp-race`. This proves a correctness fix, not
+that this race caused a particular loading stall or a measured FPS improvement.
+
+The first gameplay queue comparison admitted zero owned batches and therefore
+did not measure asynchronous rendering. Live command inspection found copied
+light/material/fog vectors missing from the admission whitelist. These now
+require matching pointer arguments and exact copied payload lengths. The
+sample also shows a `glFinish` after each frame, which remains an explicit
+completion barrier. Roughly 22 small borrowed texture uploads per frame also
+force synchronous flushes. A live follow-up captured 16x16 RGBA unsigned-byte
+uploads, motivating a separate bounded texture-copy candidate.
+
+The bounded copy candidate captures only `glTexSubImage2D` RGBA/BGRA
+unsigned-byte updates up to 64 KiB whose rows need no padding for any
+supported alignment (even width, or a single row). Other layouts and larger
+uploads remain borrowed. The existing sparse-safe copy path owns the pixels
+at call time; the host validates the corresponding captured pointer and
+extent before asynchronous admission. Tests verify 22 uploads submit once at
+the explicit finish barrier, source mutation cannot change the captured
+pixels, and sparse-page crossings preserve bytes. Encoder parity, protocol,
+sparse-array tests and the full build pass. Reviewed ARM64 V8/SpiderMonkey
+code shows the added bounded predicate, without a new translation path.
+Evidence: `scratch/runs/20261020-wc3-small-texture-snapshots`.
+The combined IOCP/scratch/texture WASM is
+`ee91eb437aa0405dffb5d1cb53904d8ac275f346c110f3de92635d5acaa43665`.
+
+Sequential Chrome gameplay runs of this same build, using the original
+Prologue select/move/return route and three unprofiled 25-second samples:
+
+| Mode | Sample 1 | Sample 2 | Sample 3 |
+| --- | ---: | ---: | ---: |
+| Threads, queued GL | 23.92 FPS | 29.56 FPS | 29.20 FPS |
+| Cooperative | 20.64 FPS | 23.76 FPS | 23.07 FPS |
+
+Only one test browser ran at a time. Both modes reached gameplay and visibly
+selected and moved Thrall. Threaded submissions fell from approximately
+25 per guest frame in the prior candidate to 2.1; one batch per frame was
+owned asynchronously and queue depth stayed at two. Threads were faster in
+these local samples, but the host was busy (final load approximately 4.03
+for threads, 5.48–5.60 for coop), so this is not a controlled causal speedup
+measurement or a guarantee for other scenes/devices. The earlier paired
+queued/synchronous comparison alone was mixed and establishes no reliable
+speedup. Evidence:
+`scratch/runs/20261020-wc3-texture-threads`,
+`scratch/runs/20261020-wc3-texture-coop`, and
+`scratch/runs/20261020-wc3-iocp-async`.
+
+The root local build now byte-matches the tested `ee91eb43` WASM with layout
+`eb58be38f5ebb837`. The local server serves the real 278581-byte
+`binaries/dlls/msvcrt.dll`; a fixture without that directory reproduces the
+reported `_clearfp` failure. Restore the fixture assets rather than adding
+a silent CRT stub.
