@@ -2823,3 +2823,58 @@ non-idle samples total about 2.65 seconds, with uniform setup and draw
 replay prominent. Next targets are rendering submission/replay cost and
 main interpreter execution, not speculative audio throttling. Sampled
 `waitForResponse` time includes blocked elapsed time, not active CPU.
+
+### Earlier GL dispatch experiment (2026-10-20)
+
+The next pair traces host receipt, opcode counts, render-worker dispatch,
+renderer replay start/end and producer release. Evidence is in
+`20261020-wc3-gl-dispatch-control` and `20261020-wc3-gl-dispatch-512k`.
+Both use the same Prologue select/move/return route, active music, one Chrome
+browser at a time and no CPU profiler. Control is the `c15f6f7a` WASM.
+
+The encoder normally accumulates up to 2 MiB or an explicit barrier. WC3's
+typical frame fits: about 1.7 MiB arrives with `gpuPresent`, followed almost
+immediately by a separate 36-byte `glFinish`. The median frame has one draw
+batch and one finish batch. Thus asynchronous admission alone does not give
+useful overlap: median renderer replay starts 0.185 ms *after* the host
+receives the finish request. About 89% of captured draw records are in
+presentation batches. The backend really calls WebGL `gl.finish()`.
+
+The isolated experiment retains 2 MiB storage and all explicit barriers,
+but submits existing records before a new generic record would cross
+512 KiB, and submits completed packed draws at that watermark after
+software consumption. Generic records must not be flushed indiscriminately
+after encoding: doing so could consume query/context return values before
+the existing barrier reads them. Large individual packed draws may still
+exceed the soft watermark. Existing immutable batch ownership and bounded
+two-buffer admission are unchanged.
+
+| Per-frame median | Control | 512 KiB dispatch |
+| --- | ---: | ---: |
+| Batches | 2 | 5 |
+| First renderer replay before finish receipt | -0.185 ms | 15.958 ms |
+| Finish request to producer release | 4.400 ms | 1.157 ms |
+| All host submission waits | 5.390 ms | 2.185 ms |
+| Renderer replay elapsed, summed | 3.955 ms | 5.405 ms |
+
+Earlier dispatch therefore establishes substantial overlap without weakening
+`glFinish`. These are host/renderer JavaScript timestamps, not GPU execution
+timestamps. WebGL draw submission occurs during replay; GPU scheduling was
+not measured. Summed replay elapsed is not isolated CPU time.
+
+Observed presentation rate was 27.93 versus 26.49 FPS over 20 seconds.
+Host load was unequal (control approximately 4.74 to 4.89, candidate 5.31
+to 4.98), and tracing adds overhead. This pair establishes no FPS benefit;
+do not infer that smaller batches improve throughput merely because finish
+waits shrink. Audio work remained comparable: 53.916 versus 53.857 million
+blocks, with 2482 versus 2486 music refreshes. Both gameplay images were
+reviewed. Renderer replay flushes pending geometry at every batch boundary,
+so extra dispatches also change where geometry can be combined; that and
+concurrent CPU contention remain follow-up hypotheses, not measured causes.
+
+Focused real-WASM context, generic ownership/query, client-array and primitive
+tests passed, as did shared-render queue/fence tests after removing browser
+timing instrumentation (its `performance` reference is absent in the test VM).
+Exact batch-grouping pressure parity was not claimed for the changed grouping.
+The experimental source, module, trace and native captures are retained in
+the run folder. No production runtime change is selected from this pair.
