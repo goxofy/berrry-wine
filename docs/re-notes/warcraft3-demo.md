@@ -3272,3 +3272,15 @@ failures reviewed/published; evidence checker has only the preexisting Zuma
 outside-path error, with no missing/invalid records. Fixture restored to root
 runtime and production WASM after testing; test browsers closed. No production
 threshold change or deployment.
+
+### Promote 512 KiB default (2026-10-21)
+
+User chose to adopt the active-movement candidate. The production GL encoder
+now uses the same 512 KiB soft threshold with unchanged 2 MiB storage and
+explicit barriers. Full build passes and its WASM SHA-256 is exactly
+`5812db90568d7f7569751296ab43ae21cd0df1b18fd180ca72f7d41a04c2510d`, matching
+the measured and ARM64 V8/SpiderMonkey native-reviewed candidate above.
+The full encoder parity suite passes; pressure cases now compare complete
+ordered records independently of packet boundaries and check early dispatch.
+Shared-worker protocol and lifecycle tests pass. This is a default selection
+based on the recorded workload, not a claim of a general 22.7% speedup.

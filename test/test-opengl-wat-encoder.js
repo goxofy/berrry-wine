@@ -141,6 +141,27 @@ function compareSubmissions(label, expected, actual) {
   }
 }
 
+// Pressure tests retain the independent 2 MiB oracle. Compare complete
+// records across packet boundaries, rebasing only the packet-relative payload.
+function orderedRecords(submissions) {
+  return submissions.flatMap(bytes => {
+    const records = [];
+    for (let at = 0; at < bytes.length;) {
+      const length = bytes.readUInt32LE(at);
+      assert(length >= Stream.HEADER_BYTES && at + length <= bytes.length);
+      const record = Buffer.from(bytes.subarray(at, at + length));
+      const pointer = record.readUInt32LE(24);
+      if (pointer) {
+        assert(pointer >= at + Stream.HEADER_BYTES && pointer < at + length);
+        record.writeUInt32LE(pointer - at, 24);
+      }
+      records.push(record);
+      at += length;
+    }
+    return records;
+  });
+}
+
 async function main() {
   const binary = compileSrcWasm((file, source) => {
     if (file === '09a8c-gl-encoder.wat') {
@@ -247,7 +268,15 @@ async function main() {
     const native = watRunner(memory, a);
     sequence(native, memory);
     native.flush();
-    compareSubmissions(label, expected, activeSubmissions);
+    if (section === 'pressure') {
+      assert.deepStrictEqual(orderedRecords(activeSubmissions), orderedRecords(expected),
+        `${label}: smaller batches preserve every complete record in order`);
+      if (!label.includes('partially occupied tail')) {
+        assert(activeSubmissions.length > expected.length, 'dispatch starts before capacity');
+        assert(Math.abs(activeSubmissions[0].length - 512 * 1024) < 300,
+          'small generic/packed records submit at the 512 KiB watermark');
+      }
+    } else compareSubmissions(label, expected, activeSubmissions);
     console.log(`PASS ${label}`);
   }
 

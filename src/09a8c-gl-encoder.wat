@@ -175,6 +175,9 @@
       (then (return (i32.const 0))))
     (if (i32.gt_u (i32.add (global.get $gl_stream_used_bytes) (local.get $record_bytes))
         (i32.const 0x00200000)) (then (drop (call $gl_wat_stream_flush))))
+    ;; Start renderer work at 512 KiB; retain 2 MiB capacity for large records.
+    (if (i32.gt_u (i32.add (global.get $gl_stream_used_bytes) (local.get $record_bytes))
+        (i32.const 0x00080000)) (then (drop (call $gl_wat_stream_flush))))
     (local.set $start (i32.add (global.get $gl_stream_wa) (global.get $gl_stream_used_bytes)))
     (local.set $ptr_off (select
       (i32.add (global.get $gl_stream_used_bytes) (i32.add (i32.const 32) (local.get $stack_bytes)))
@@ -338,7 +341,10 @@
     ;; through, and the record is complete here -- so it is where the WAT
     ;; software rasterizer reads a draw (src/09a8g-gl-raster.wat). Inert
     ;; unless a host enabled it.
-    (call $gl_sw_consume (local.get $start) (local.get $vertices)))
+    (call $gl_sw_consume (local.get $start) (local.get $vertices))
+    ;; Submit only complete draws, after the software consumer has read them.
+    (if (i32.ge_u (global.get $gl_stream_used_bytes) (i32.const 0x00080000))
+      (then (drop (call $gl_wat_stream_flush)))))
 
   (func $gl_finish_immediate (result i32)
     (local $count i32) (local $mode i32) (local $out_mode i32)

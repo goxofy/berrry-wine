@@ -21,7 +21,8 @@ OpenGL retains two pending packets and its ordered GDI/query barriers. Glide
 retains three slots and exclusive oversized packets, including the synchronous
 fast acknowledgement used by pipelined draws/swaps. Legacy atomic producers
 retain three slots and their existing 75%-full/idle-consumer batching. Packet
-sizes, command formats, WASM and dispatch thresholds are unchanged.
+sizes, command formats, WASM and dispatch thresholds were unchanged by that
+queue refactor. The subsequent default GL dispatch threshold is 512 KiB (below).
 
 D3D8/9's neutral resource/receipt queue remains a separate higher-level layer
 on the common process transport. Its resident texture ownership and generation
@@ -55,6 +56,13 @@ paths retain their barriers. Worker replies follow pending-geometry flush, so
 slot release does not invalidate deferred vertex views. Publication carries
 offset/length into the already-shared memory, not the entire memory buffer.
 `?gl-copy` retains the copied transport for comparisons.
+
+As of 2026-10-21, the GL encoder submits at a soft 512 KiB watermark while
+retaining 2 MiB slots. Generic records flush preceding work before crossing
+the watermark; packed draws submit after the complete record and software
+consumption. Large records can exceed the watermark. Query/finish barriers and
+lease ownership are unchanged. This promotes the exact WC3 active-movement
+candidate (`5812db90…`); see the gameplay notes for measured FPS and limitations.
 
 Legacy D3D uses the same helper around its existing three shared buffers and
 atomic replay acknowledgements. Glide uses three 1 MiB shared snapshot slots:
