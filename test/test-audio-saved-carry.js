@@ -49,6 +49,11 @@ if (process.env.AUDIO_SAVED_CARRY_MUTATION) {
   functions[name] = functions[name].replace(from, to);
 }
 const bodies = Object.values(functions);
+const cache = read('src/04-cache.wat'), handlers = read('src/09a-handlers.wat');
+const ownership = cache.slice(cache.indexOf(';; BEGIN CALLBACK INVOCATION OWNERSHIP'),
+  cache.indexOf(';; END CALLBACK INVOCATION OWNERSHIP'));
+bodies.push(handlers.slice(handlers.indexOf(';; BEGIN MM CALLBACK OWNERSHIP'),
+  handlers.indexOf(';; END MM CALLBACK OWNERSHIP')));
 for (const name of ['fire_audio_callback_bound', 'fire_wave_out_callback_bound',
   'fire_midi_out_callback_bound', 'wave_callback_restore_wait']) {
   bodies.push(form(exportsSource, `(func $${name}`));
@@ -57,10 +62,18 @@ for (const name of ['fire_audio_callback_bound', 'fire_wave_out_callback_bound',
 bodies.push(`(func $finish (export "finish") (param $name_rva i32)
   ${form(dispatch, '(if (i32.eq (local.get $name_rva) (i32.const 0xCACA000A))')})`);
 const globals = [...new Set([...bodies.join('\n').matchAll(/\(global\.(?:get|set) \$(\w+)/g)].map(m => m[1]))];
+const declared = new Set([...(`${ownership}\n${bodies.join('\n')}`).matchAll(/\(global \$(\w+)/g)].map(m => m[1]));
 const source = `
- (memory 1) (export "memory" (memory 0))
- ${globals.map(g => `(global $${g} (mut i32) (i32.const ${g === 'reg_base' ? 64 : 0}))
-   (export "${g}" (global $${g}))`).join('\n')}
+ (memory 2 2 shared) (export "memory" (memory 0))
+ (region.declare-fixed $CALLBACK_OWNERSHIP (base 0x9000) (size 0x2110) (align 16))
+ (region.declare-fixed $MM_CALLBACK_CONTEXTS (base 0x10000) (size 0x8000) (align 16))
+ (global $current_thread_id (mut i32) (i32.const 1))
+ (func $host_beep_process_begin (param i32 i32) (result i32) (i32.const 1))
+ (func $host_beep_thread_begin (param i32 i32 i32 i32 i32) (result i32) (i32.const 1))
+ ${ownership}
+ ${globals.filter(g => !declared.has(g)).map(g => `(global $${g} (mut i32) (i32.const ${g === 'reg_base' ? 64 : 0}))`).join('\n')}
+ ${globals.map(g => `(export "${g}" (global $${g}))`).join('\n')}
+ (export "beginProcess" (func $invocation_process_begin))
  (func $gl32 (param $p i32) (result i32) (i32.load (local.get $p)))
  (func $gs32 (param $p i32) (param $v i32) (i32.store (local.get $p) (local.get $v)))
  ${bodies.join('\n')}
@@ -78,7 +91,9 @@ const snapshot = () => ({esp: sp(), regs: [64, 68, 72].map(get),
   state: stateNames.map(n => e[n].value), flags: flags()});
 function setup(kind, carry, shift) {
   memory.fill(0xa5);
-  for (const g of globals) e[g].value = g === 'reg_base' ? 64 : 0;
+  for (const g of globals) if (!declared.has(g)) e[g].value = g === 'reg_base' ? 64 : 0;
+  memory.fill(0, 0x9000, 0xb110);
+  e.beginProcess();
   put(80, initialSP);
   [64, 68, 72, 76, 84, 88, 92].forEach((p, i) => put(p, 0x11223300 + i));
   e.eip.value = 0x401234;

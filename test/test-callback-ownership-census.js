@@ -17,6 +17,11 @@ assert(check(scanSources([...sources, { file: 'src/new.wat', src: '(func $new (g
 assert(check(scanSources([...sources, { file: 'src/new.wat', src: '(func $reset (global.set $invocation_root (i64.const 0)))' }]), baseline)
   .some(e => e.includes('unknown producer')), 'bare private identity reset is inventoried');
 assert(check([], baseline).some(e => e.includes('stale producer')));
+for (const name of ['mm_callback_owner', 'mm_callback_depth']) {
+  assert(check(scanSources([...sources, {file: 'src/new.wat',
+    src: `(func $reset (global.set $${name} (${name.endsWith('owner') ? 'i64' : 'i32'}.const 0)))`}]), baseline)
+    .some(e => e.includes('unknown producer')), 'retained timer resets are inventoried');
+}
 assert(check(scanSources([...sources, { file: 'src/new.wat', src: '(func $reset (global.set $crt_callback_depth (i32.const 0)))' }]), baseline)
   .some(e => e.includes('unknown producer')), 'bare retained CRT frame reset is inventoried');
 assert(check(scanSources([...sources, { file: 'src/new.wat', src: '(func $reset (global.set $bsearch_depth (i32.const 0)))' }]), baseline)

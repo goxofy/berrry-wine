@@ -101,6 +101,13 @@
     (local $resource_pins i64) (local $return_eip i32) (local $entry_eip i32)
     (local $resource_pin i32) (local $resource_base i32) (local $resource_rva i32)
     (local $resource_size i32) (local $resource_stride i32)
+    ;; Reject an unauthenticated CACA000A return before resource scope, thunk
+    ;; hooks, diagnostics or wait bookkeeping can mutate the interrupted state.
+    (if (i32.eq (i32.load (call $thunk_metadata_addr (local.get $thunk_idx))) (i32.const 0xCACA000A))
+      (then (drop (call $mm_callback_check)))
+      (else
+        (if (i32.eq (i32.load (call $thunk_metadata_addr (local.get $thunk_idx))) (i32.const 0xCACA003B))
+          (then (call $mm_timer_thread_check)))))
     ;; Cached/direct calls must honor a hook installed since decoding.
     (if (call $thunk_patch_changed (local.get $thunk_idx)) (then
       (global.set $eip (i32.add (global.get $thunk_guest_base) (i32.shl (local.get $thunk_idx) (i32.const 3))))
@@ -1591,17 +1598,7 @@
     ;; mm_timer callback returned — restore caller-saved regs + flags
     (if (i32.eq (local.get $name_rva) (i32.const 0xCACA000A))
       (then
-        ;; This dedicated continuation is the authoritative completion event.
-        ;; Inferring completion later from ESP fails when the interrupted code
-        ;; returns from the callback and immediately enters a deeper call.
-        (global.set $mm_timer_in_cb (i32.const 0))
-        (call $restore_caller_regs)
-        (call $wave_callback_restore_wait)
-        (if (global.get $mm_timer_resume_yield)
-          (then
-            (global.set $yield_reason (global.get $mm_timer_resume_yield))
-            (global.set $mm_timer_resume_yield (i32.const 0))
-            (global.set $steps (i32.const 0))))
+        (call $mm_callback_finish)
         (return)))
 
     ;; Unresolved ordinal import from a system DLL (marker "ORD\0")
