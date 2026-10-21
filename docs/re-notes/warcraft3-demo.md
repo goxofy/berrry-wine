@@ -3014,3 +3014,81 @@ the 512 KiB variant, while Ion frames remain unchanged. No x86-64 claim.
 Experimental concat/compile passed with unchanged layout; the known stale
 fixture census prevents treating this as a full production build. Fixture
 runtime instrumentation, encoder and build were restored after capture.
+
+### Repeated software/WebGL CPU and three-thread overlap (2026-10-21 UTC)
+
+Eight fresh, sequential 30-second Prologue gameplay captures compare the same
+1 MiB and 512 KiB experimental modules above. Order: GL 1 MiB, GL 512 KiB,
+software 1 MiB, software 512 KiB, software 512 KiB, software 1 MiB,
+GL 512 KiB, GL 1 MiB. Only one test browser runs at a time. Each successful
+capture executes the select/move/return route and retains matching module
+hashes, backend checks, screenshots, audio diagnostics and raw timelines.
+Software checkpoint references differ from WebGL; three text-mask failures
+and one highlighted-but-unactivated Campaign click are retained separately,
+with no timing sample. Software-specific references and a longer Campaign
+click resolve the harness failures. Final gameplay images were reviewed.
+
+| Backend / watermark / repeat | FPS | Renderer CPU/frame | Main CPU/frame | Main/render overlap | Main/audio overlap |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| WebGL / 1 MiB / A | 33.76 | 4.21 ms | 25.39 ms | 41.6% | 87.9% |
+| WebGL / 512 KiB / A | 27.52 | 5.69 ms | 30.25 ms | 76.3% | 86.4% |
+| Software / 1 MiB / A | 7.13 | 102.67 ms | 40.80 ms | 21.8% | 42.6% |
+| Software / 512 KiB / A | 7.66 | 101.96 ms | 38.97 ms | 20.8% | 42.5% |
+| Software / 512 KiB / B | 7.23 | 103.48 ms | 40.10 ms | 20.9% | 42.4% |
+| Software / 1 MiB / B | 7.03 | 104.25 ms | 41.17 ms | 21.3% | 40.9% |
+| WebGL / 512 KiB / B | 29.19 | 5.35 ms | 29.14 ms | 76.3% | 87.3% |
+| WebGL / 1 MiB / B | 27.79 | 4.99 ms | 29.00 ms | 42.1% | 83.9% |
+
+Overlap still means calibrated, nonblocked **wall** intervals, not exact CPU
+execution overlap. Main/render percentages use renderer replay as denominator;
+main/audio percentages use audio-worker nonblocked execution as denominator.
+Audio/render overlap is 12.0–17.6% of renderer time for WebGL 1 MiB,
+30.3–30.7% for WebGL 512 KiB, and 13.2–17.9% for software. All three lanes
+and clock uncertainty bounds are retained in `analysis-repeat.json`.
+
+CPU measurements are separate Chrome `RunTask.tdur` totals for the correctly
+identified worker thread, divided by presented frames. Unique performance
+marks and their returned epoch timestamps align Chrome events to the capture
+window; only complete tasks inside conservative bounds count. Missing/invalid
+durations and boundary tasks are excluded explicitly, not treated as zero.
+Valid CPU durations cover 99.88–100% of complete renderer task wall time.
+Renderer CPU/task-wall ratios are 88.1–97.7% for WebGL and 96.4–97.4% for
+software. Independent review found no meaningful missing render-task time.
+Thread CPU includes renderer task bookkeeping; unlike replay wall time it
+excludes descheduling, but still depends on core assignment/frequency and
+contention. It cannot locate exact simultaneous CPU execution within tasks.
+
+The WebGL workload remains about 382 draw calls/frame for both watermarks.
+The old near-doubling of replay wall time does not reproduce as doubled CPU
+work: 512 KiB costs 5.35–5.69 ms/frame versus 4.21–4.99 at 1 MiB here. More
+overlap is repeatable, but FPS ordering reverses between the two pairs. Thus
+neither a stable FPS winner nor a batching-only cause for all CPU differences
+is established; host load remains unequal. Keep the production default.
+
+Software is a different queue: `?gl-renderer=software` enables WAT rasterization
+and offloads snapshots through legacy `D3DCommandStream` RECORD_GL packets.
+That encoder has its own 2 MiB slots and 75%-full/idle-consumer submission
+policy. The experimental GL watermark does not resize that raster queue;
+software generic GL batches remain synchronous. Timing only `gl-batch` would
+miss most software work, so this capture unions GL and legacy replay spans.
+Actual software exports report enabled=1, increasing presents, nonzero front,
+and zero unsupported texture uploads; WebGL has enabled=0 and actual WebGL
+draw calls. Software issues about 406–407 legacy commands/frame and spends
+102–104 ms of CPU/frame on its render worker. Its bottleneck is rasterization,
+not a large hidden scheduler delay. Optimize that path independently of the
+WebGL dispatch watermark.
+
+Audio remains active: 122/122 nonzero music samples in every capture,
+5.298–5.306 MB consumed per sample window, and 75.87–78.48 million audio-thread
+blocks. These checks rule out omitted audio, not all scheduling differences.
+No new runtime optimization or native variant was introduced. Reused native
+evidence is the preceding 1 MiB/512 KiB ARM64 Ion/TurboFan comparison.
+
+Evidence: `20261021-wc3-repeat-` folders `gl-1m-a`, `gl-512k-a`,
+`sw-1m-a-verified`, `sw-512k-a-retry`, `sw-512k-b`, `sw-1m-b`, `gl-512k-b`,
+`gl-1m-b`. Harness failures use `sw-1m-a`, `sw-1m-a-retry`,
+`sw-1m-a-retry2`, `sw-512k-a`. Instrumentation, analyzers, aggregate JSON and
+measurement review are in `20261021-wc3-render-repeat-tools`. Matching
+800×600 software/WebGL captures were opened in Preview for visual comparison.
+Fixture runtime/build restored after capture; production and unrelated
+brightness work remain unchanged.
