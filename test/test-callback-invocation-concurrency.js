@@ -118,7 +118,7 @@ function workerMain() {
   });
 }
 
-async function pool(mode, body) {
+async function pool(mode, body, lifecycle = {}) {
   const mod = compile(mode), memory = new WebAssembly.Memory({ initial: 1, maximum: 1, shared: true });
   assert(memory.buffer instanceof SharedArrayBuffer);
   const control = new SharedArrayBuffer(32), c = new Int32Array(control);
@@ -154,17 +154,44 @@ async function pool(mode, body) {
   try { await body({ round, memory, c, main: instance(mod, memory, 1) }); }
   finally {
     // terminate() interrupts even a worker trapped in synchronous WASM/Atomics.
+    const started = performance.now();
     let timer;
     try { await Promise.race([Promise.all(workers.map(w => w.terminate())),
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('termination timeout')), TIMEOUT); })]); }
     finally { clearTimeout(timer); }
+    assert(workers.every(w => w.threadId === -1), 'all OS workers exited');
+    lifecycle.terminated = workers.length;
+    lifecycle.terminationMs = performance.now() - started;
   }
 }
 
-async function main() {
+async function production(control = {}, lifecycle = {}) {
   let issued = 0;
   await pool('production', async ({ round, memory, main }) => {
     const seen = new Set(), view = new BigUint64Array(memory.buffer);
+    let injected = false;
+    // Called only around all-rejected rounds, with every owner parked before
+    // the copy and again before comparison. Mixed successful/rejected rounds
+    // retain their per-owner checks: another owner may advance the header.
+    const preserved = async (phase, calls) => {
+      const before = control.alias ? Buffer.from(memory.buffer) :
+        Buffer.from(new Uint8Array(memory.buffer));
+      await calls();
+      const inject = control.phase === phase && !injected;
+      const serial = Atomics.load(view, 0);
+      if (inject) {
+        injected = true;
+        Atomics.store(view, 0, serial ^ 1n);
+        assert.notStrictEqual(Atomics.load(view, 0), serial, 'control changed shared header');
+      }
+      try {
+        assert.deepStrictEqual(Buffer.from(memory.buffer), before, `${phase}: changed shared state`);
+      } finally {
+        // Restore fixture corruption only after the real comparison. This lets
+        // the broken alias control continue without contaminating later phases.
+        if (inject) Atomics.store(view, 0, serial);
+      }
+    };
     const accept = results => {
       assert.strictEqual(new Set(results.map(r => r.threadId)).size, N, 'distinct OS workers');
       const ids = results.flatMap(r => r.ids);
@@ -178,9 +205,9 @@ async function main() {
     assert(epoch > 0n && !seen.has(epoch)); seen.add(epoch);
     for (let wave = 0; wave < 8; wave++) {
       accept(await round('enter', 63)); // keep every child live until the barrier
-      const before = Buffer.from(memory.buffer);
-      await round('overflow'); await round('mismatch');
-      assert.deepStrictEqual(Buffer.from(memory.buffer), before, 'all-rejection phase changed shared state');
+      await preserved('overflow/mismatch', async () => {
+        await round('overflow'); await round('mismatch');
+      });
       await round('drain');
     }
     accept(await round('replace')); // each old owner is parked before replacement
@@ -190,9 +217,7 @@ async function main() {
     for (const id of [unsigned(main.epoch()), unsigned(main.root())]) {
       assert(!seen.has(id)); seen.add(id);
     }
-    const before = Buffer.from(memory.buffer);
-    await round('stale');
-    assert.deepStrictEqual(Buffer.from(memory.buffer), before);
+    await preserved('stale', () => round('stale'));
     accept(await round('replace'));
     // Fixture-only boundary injection, with all owners quiescent. There are
     // exactly seven legal serials remaining across all four OS workers.
@@ -202,14 +227,28 @@ async function main() {
     assert.strictEqual(results.reduce((n, r) => n + r.rejected, 0), N * 8 - 7);
     console.log(`terminal contention: ${results.map(r => `${r.ids.length} allocated/${r.rejected} rejected`).join('; ')}`);
     assert.strictEqual(Atomics.load(view, 0), MAX);
-    const terminalBytes = Buffer.from(memory.buffer);
-    results = await round('exhaust', 1);
-    exhausted(results);
-    assert.deepStrictEqual(Buffer.from(memory.buffer), terminalBytes);
+    await preserved('all-exhausted', async () => exhausted(await round('exhaust', 1)));
     await round('drain'); // leaving live tokens remains legal at exhaustion
     results = await round('exhaust', 1);
     exhausted(results); // retirement cannot recycle serials
-  });
+    if (control.phase) assert(injected, 'requested preservation control reached');
+  }, lifecycle);
+  return issued;
+}
+
+async function main() {
+  const issued = await production();
+  for (const phase of ['overflow/mismatch', 'stale', 'all-exhausted']) {
+    const lifecycle = {};
+    await assert.rejects(() => production({ phase }, lifecycle), e =>
+      e instanceof assert.AssertionError && e.operator === 'deepStrictEqual' &&
+      e.message.startsWith(`${phase}: changed shared state\n`));
+    assert.strictEqual(lifecycle.terminated, N, 'injected failure terminated every worker');
+    assert(lifecycle.terminationMs < TIMEOUT, 'bounded failure cleanup');
+    console.log(`REJECTED preservation control: ${phase}; ${N} workers exited in ${lifecycle.terminationMs.toFixed(2)}ms`);
+    assert.strictEqual(await production({ phase, alias: true }), issued);
+    console.log(`FALSE ACCEPT baseline alias control: ${phase}; identical shared-header mutation`);
+  }
   await pool('lost-update', async ({ round, c }) => {
     await round('init');
     Atomics.store(c, 2, 1);
@@ -225,7 +264,7 @@ async function main() {
     assert(results.some(r => r.ids.includes(0n)), 'wrap control reaches forbidden zero');
     console.log('REJECTED control: missing exhaustion guard wraps through zero');
   });
-  console.log(`callback invocation concurrency PASS: ${N} OS workers, ${issued} unique roots/children, 8 x 63 live-depth waves, quiescent retirement, terminal contention, 2 rejecting controls`);
+  console.log(`callback invocation concurrency PASS: ${N} OS workers, ${issued} unique roots/children, 8 x 63 live-depth waves, quiescent retirement, terminal contention, 2 allocator + 3 preservation rejecting controls, 3 alias false accepts, bounded failure cleanup`);
 }
 
 if (isMainThread) main().catch(e => { console.error(e); process.exitCode = 1; });

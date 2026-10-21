@@ -1,5 +1,37 @@
 # Callback token allocator concurrency — 2026-10-21
 
+## Snapshot correction (supersedes original preservation claims)
+
+Independent review `4b0dbb5d25e9ac6710bd9ba822cac1000261ac0a` rejected
+candidate `f8f9785c99cf121cca22ca7c1560903a5e403005`: its three whole-memory
+before snapshots aliased shared memory. The original PASS runs below did **not**
+establish whole-memory preservation. The per-owner copied snapshots and the
+accepted extraction/ownership findings remain valid.
+
+The corrected test copies bytes at all three sites through one `preserved`
+helper. New controls run the actual production scenario and comparison at
+overflow/mismatched leave, stale-owner rejection, and all-exhausted barriers.
+Each flips the shared serial after the rejected rounds: the copied snapshot
+rejects it, while switching only the snapshot to the original alias incorrectly
+accepts the identical mutation. Restoration occurs after comparison. Whole-memory
+checks remain confined to quiescent/all-rejected phases; mixed contention keeps
+the original per-owner checks so legitimate other-owner writes are allowed.
+
+Corrected validation passes the four-worker production case (2,035 unique
+roots/children, seven terminal allocations and 25 rejections), the original
+CAS/overflow controls, all three preservation controls and their alias false
+accepts, and the existing token regression. Each injected preservation failure
+unwinds through pool cleanup; all four thread IDs are -1 after termination,
+observed in 1.95–3.76 ms against the 15-second bound. This demonstrates cleanup
+for these parent assertion failures, not every possible worker hang/failure.
+
+Commands, logs, admission and correction details are in
+`scratch/runs/20261021-callback-concurrency-snapshot-fix/`. Original rejection
+evidence remains unchanged. No production allocator/API/SEH or jump-lock change;
+no Windows/gameplay claim. The correction branch awaits independent acceptance
+and is not merged to main. The remainder records the original scope and results,
+with preservation claims and validation counts superseded by this section.
+
 For NEW-GAME-CIRCUS-LINUX-20261018 / NEW-GAMES-PIPELINE, the previously
 unexercised OS-worker allocator prerequisite now has a source-only regression:
 `test/test-callback-invocation-concurrency.js`. No production correction was
