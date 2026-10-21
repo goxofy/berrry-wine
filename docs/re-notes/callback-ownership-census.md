@@ -181,7 +181,9 @@ candidate/compat wasm and logs separately: Git only backs up source and this
 recipe. The completed task checkout was narrowed again to its changed files
 to recover disk for the next worker.
 
-Remaining limits: allocator concurrency was not exercised by OS workers;
-process/slot resets still require host quiescence. Deferred/JS/timer/wave/APC
+Allocator concurrency was subsequently exercised by distinct Node OS workers
+using the extracted production routines and shared memory; see
+[the bounded concurrency qualification](callback-token-concurrency-20261021.md).
+Remaining limits: process/slot resets still require host quiescence. Deferred/JS/timer/wave/APC
 ownership, matched retained expected tokens, actual dual-dispatch x86 jumps,
 SEH and saved-buffer validation remain outstanding. The API review lock stays.
