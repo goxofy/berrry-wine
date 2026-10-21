@@ -3134,3 +3134,76 @@ runtime/build restored after testing. A useful next isolation experiment is
 fixed-command replay with different packet boundaries, followed by a quiet
 gameplay control/candidate comparison; more noisy whole-game averages alone
 will not identify the source of the extra CPU time.
+
+### Common submission queue FPS comparison (2026-10-21)
+
+Compared parent `d0220545a` against queue refactor `485e2c9f8` in the isolated
+fixture. All captured runtime identities match except the four intended files:
+`render-worker.js`, `gl-render-host.js`, `glide-host.js`, and
+`d3d-command-stream.js`. Both use unchanged production WASM `cd3b43cf…`, the
+2 MiB GL watermark and existing software batching. No new interpreter/native
+variant. Fresh Chrome profiles, one browser at a time, identical Prologue menu
+route, HUD checks and Thrall select/move/return input. The timed scene is the
+animated opening area with Thrall standing, not a large battle or an identical
+recorded command stream. No overlap tracing or CPU sampling was enabled;
+lightweight audio checks and the existing presentation/liveness hooks remain.
+
+The initial four WebGL captures used 60-second windows: old 24.76/27.13 FPS,
+new 26.50/32.98. The first control's host load rose 5.89→18.53 and its halves
+were 28.93/20.60 FPS. Inspection after the user's warm-up question confirmed
+`--warmup=2` runs **before** the navigation driver. Although loading/cinematics
+were excluded and the movement route provided roughly 15 seconds of gameplay,
+there was no dedicated steady-state settling period. These exploratory samples
+remain separate from the corrected series below.
+
+Corrected protocol: verify gameplay and complete movement, then wait **60 seconds
+uncounted**, then measure **180 seconds**, retaining six 30-second windows.
+Run old/new/new/old sequentially for WebGL, then the same order for software.
+FPS counts host game-frame presentation callbacks using `performance.now()`;
+it is not the page's approximately 60 Hz requestAnimationFrame rate, GPU
+execution duration, or proof of distinct monitor scanouts. The presentation
+source tag `gpu` also names native-software output through this compositor;
+backend selection is independently checked with producer exports.
+
+| Backend / queue / repeat | FPS | First / second 90s FPS | Present interval p95 |
+| --- | ---: | --- | ---: |
+| WebGL / old / A | 27.50 | 27.92 / 27.08 | 46.78 ms |
+| WebGL / new / A | 28.77 | 28.88 / 28.67 | 44.32 ms |
+| WebGL / new / B | 29.64 | 28.14 / 31.13 | 45.03 ms |
+| WebGL / old / B | 33.69 | 33.74 / 33.63 | 37.74 ms |
+| Software / old / A | 7.64 | 7.54 / 7.74 | 137.62 ms |
+| Software / new / A | 7.47 | 7.28 / 7.65 | 137.92 ms |
+| Software / new / B | 7.67 | 7.65 / 7.68 | 138.25 ms |
+| Software / old / B | 7.74 | 7.76 / 7.72 | 139.20 ms |
+
+WebGL descriptive means are 30.595 old versus 29.205 new (−4.54%). This is
+not an established regression: unchanged controls differ by 22.5%, and pairwise
+direction reverses. Candidate B's six windows are 28.73, 28.20, 27.50, 27.03,
+33.03, 33.33 FPS, followed by a steady 33.69 FPS old control. Longer settling
+does not eliminate between-session performance shifts or this within-session
+step. Load averages do not explain all variation: the fast closing control
+starts at 3.53 and ends at 8.97. No causal FPS gain is demonstrated.
+
+Software descriptive means are 7.69 old versus 7.57 new (−1.56%). Both pairs
+are slightly lower with the new queue, but run ranges overlap and the candidate's
+own spread is 2.7%. A small software slowdown remains possible; two fresh
+sessions per variant are insufficient to establish it. Do not report either
+an FPS improvement or proven equivalence. Software host load stays roughly
+2.3–2.65. A quieter controlled replay would be more useful for isolating queue
+overhead than repeatedly averaging this whole game scene.
+
+All eight long samples have 722/722 nonzero music checks and approximately
+31.76 MB of music consumed. WebGL audio-thread work is 437.76–438.50 million
+blocks; software is 353.77–362.59 million, so software audio workload is not
+perfectly matched even with equal audible progress. Actual fetched WASM hashes,
+source manifests, native-software enablement/presents/front/unsupported-texture
+checks, live canvas checks, and final scene/HUD images were reviewed. No capture
+failed. Frames/windows are correlated observations, not independent repeats.
+
+Evidence: `20261021-wc3-queue-gl-{before,after}-{a,b}` for the short series;
+`20261021-wc3-queue-long-{gl,sw}-{before,after}-{a,b}` for the corrected series.
+Drivers, analyzers, per-window results and full source snapshots accompany the
+runs; aggregate tools are in `20261021-wc3-queue-fps-tools` and
+`20261021-wc3-queue-long-tools`. Fixture queue sources restored to the root's
+current files after capture; all test browsers closed. No further runtime
+change, push or deployment follows from these measurements.
