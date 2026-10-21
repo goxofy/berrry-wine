@@ -3207,3 +3207,68 @@ runs; aggregate tools are in `20261021-wc3-queue-fps-tools` and
 `20261021-wc3-queue-long-tools`. Fixture queue sources restored to the root's
 current files after capture; all test browsers closed. No further runtime
 change, push or deployment follows from these measurements.
+
+### Active unit movement / dispatch threshold (2026-10-21 UTC)
+
+Accepted common queue commit `485e2c9f8` as the fixed cleanup baseline, then
+varied only the WebGL soft dispatch threshold. Storage remains three 2 MiB
+slots; completion fences and queue machinery are unchanged. Reused exact
+native-reviewed artifacts: production `cd3b43cf…` (2 MiB), `c650a6b1…`
+(1 MiB, `20261020-wc3-1m-overlap-native`), and `5812db90…` (512 KiB,
+`20261020-wc3-pool-dispatch-native`). No new native optimization variant.
+
+Fresh threaded Chrome sessions, sequentially and one browser at a time:
+2 MiB / 1 MiB / 512 KiB / 512 KiB / 1 MiB / 2 MiB. Verify the Prologue HUD,
+select/move/return Thrall, settle for 60 seconds, then count guest presentation
+callbacks for 180 seconds. **During** that measurement, issue 30 right-click
+orders at six-second intervals, cycling four nearby destinations. Seven
+world-canvas captures at approximately 3/9/15/21/63/123/171 seconds show the
+route; red-unit centroid checks agree across runs, and manual review confirms
+movement and intact final HUDs. Command scheduling deviations are below 500 ms.
+This is fixed-camera single-unit movement, not an army battle or a deterministic
+graphics-command replay. Page rAF remains around 60 Hz and is not the FPS metric.
+
+| Threshold / repeat | FPS | First / second 90s | Present interval p95 | Submissions/frame | Load before / after |
+| --- | ---: | --- | ---: | ---: | --- |
+| 2 MiB / A | 29.30 | 28.43 / 30.18 | 46.12 ms | 2.107 | 4.27 / 4.48 |
+| 1 MiB / A | 28.56 | 27.77 / 29.36 | 47.82 ms | 3.110 | 5.27 / 4.98 |
+| 512 KiB / A retry | 38.02 | 37.91 / 38.12 | 33.69 ms | 5.084 | 3.19 / 2.20 |
+| 512 KiB / B retry | 32.47 | 32.53 / 32.41 | 42.00 ms | 5.098 | 6.43 / 4.26 |
+| 1 MiB / B | 29.78 | 29.38 / 30.18 | 46.60 ms | 3.106 | 5.72 / 5.50 |
+| 2 MiB / B | 28.13 | 27.30 / 28.97 | 50.36 ms | 2.112 | 5.09 / 5.31 |
+
+Descriptive means: 28.715 / 29.170 / 35.245 FPS for 2 MiB / 1 MiB /
+512 KiB. Both successful 512 KiB runs exceed both controls; it is the strongest
+candidate in this series. The descriptive mean difference is +22.7% versus
+2 MiB, but not an established general speedup: the fastest session has much
+lower host load, the two 512 KiB sessions differ by 17.1%, there are only two
+successful independent sessions per setting, and earlier shorter/instrumented
+tests did not establish this ranking. Keep the production default at 2 MiB
+pending broader/quiet-host validation; prioritize 512 KiB for that validation.
+1 MiB has no clear advantage here. This pass has no CPU/overlap tracing and
+does not measure GPU start time. The threshold controls submission to the
+renderer worker, not a GPU scheduling guarantee.
+
+Payload volume stays about 1.586 MiB/frame across settings while submissions
+rise from approximately 2.1 to 3.1 to 5.1/frame. Largest packets are 1,726,928 /
+1,057,164 / 531,592 bytes respectively; soft thresholds may be exceeded by a
+completed packed record. Actual fetched module hashes and WebGL enablement
+were checked. Runtime JS/harness source hashes match across all six sessions;
+only the WASM identity differs. Every sample has 722/722 nonzero music checks,
+31.781–31.789 MB consumed, and 443.93–444.80 million audio-thread blocks.
+Six 30-second FPS windows and raw presentation timestamps are retained.
+
+Two failed attempts remain visible in the evidence: `512k-a` did not advance
+the main-menu click to the profile list (timeout screenshot reviewed), and
+`512k-b` failed before briefing with a detached-frame error (no final capture;
+underlying cause unknown). Neither contributed an FPS sample. Each was retried
+once in a fresh browser; successful retries are identified explicitly above.
+
+Evidence: `20261021-wc3-active-{2m-a,1m-a,512k-a-retry,512k-b-retry,1m-b,2m-b}`
+plus the two failed folders. Drivers, source snapshots, movement checks, raw
+metrics and aggregate tools are in those bundles and
+`20261021-wc3-active-threshold-tools`. All six successful bundles and both
+failures reviewed/published; evidence checker has only the preexisting Zuma
+outside-path error, with no missing/invalid records. Fixture restored to root
+runtime and production WASM after testing; test browsers closed. No production
+threshold change or deployment.
