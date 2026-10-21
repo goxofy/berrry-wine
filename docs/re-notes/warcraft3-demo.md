@@ -2957,3 +2957,60 @@ Keep the existing dispatch default. Before selecting this candidate, repeat on
 a quieter host until controls are stable; evaluate submission/geometry flush
 overhead separately from buffer-copy removal. No threaded-versus-cooperative
 performance claim is made from this comparison.
+
+### 1 MiB dispatch and measured execution overlap (2026-10-20)
+
+Compared shared-pool 2 MiB control `cd3b43cf…`, 1 MiB candidate
+`c650a6b1774c820d432fc340e291c8f75000e35e00aa3726745c846d59fdb431`,
+and the previous 512 KiB candidate `5812db90…`. Storage remains three 2 MiB
+slots; only the dispatch watermark changes. Sequential fresh Chrome 155
+threaded runs use the same Prologue select/move/return route, 30-second samples,
+and identical fixture-only timing instrumentation. One test browser at a time.
+
+| Measurement | 2 MiB | 1 MiB | 512 KiB |
+| --- | ---: | ---: | ---: |
+| Presentation rate | 26.02/s | 27.93/s | 18.60/s |
+| p95 presentation interval | 57.71 ms | 46.87 ms | 75.75 ms |
+| Median batches/frame | 2 | 3 | 5 |
+| Median first WebGL draw lead before guest finish RPC | -0.15 ms | 10.19 ms | 21.04 ms |
+| Median guest finish RPC wait | 4.66 ms | 2.89 ms | 1.65 ms |
+| Median total GL submission wait/frame | 5.19 ms | 3.46 ms | 2.77 ms |
+| Median replay time/frame, excluding WebGL finish | 4.37 ms | 4.73 ms | 8.65 ms |
+| Main/replay overlap during sample | 0.51 ms | 1,812.11 ms | 3,842.79 ms |
+| Fraction of replay overlapping non-blocked main execution | 0.013% | 42.03% | 77.25% |
+| Conservative clock-only overlap bounds | 0.22–9.94 ms | 1,796.82–1,829.44 ms | 3,764.22–3,932.17 ms |
+| Host load before → after | 4.91→6.75 | 4.96→5.55 | 6.19→6.31 |
+
+Overlap is the intersection of render-worker `bridge.replay` wall intervals
+with actual main-worker `ex.run` intervals, after subtracting the union of JS
+RPC and Atomics waits. WebGL `finish` call time is excluded from the replay
+denominator. Worker clock ping bounds before/after sampling calibrate epoch
+timestamps; relative uncertainty is 0.055/0.057/0.065 ms. Interval arithmetic
+self-tests and an independent agent review passed. All host batches associate
+with main RPC records, and no trace buffer overflowed. The first draw lead is
+a separate measurement; it alone does not demonstrate overlap.
+
+These are wall-time overlap measurements, not CPU cycles or GPU execution.
+OS descheduling, lock spin, WASM-internal waits and driver blocking can remain.
+Replay excludes descriptor setup and post-replay bookkeeping. Individual draw
+intervals were not retained. Frame association assumes this single main GL
+stream. Tracing adds overhead, and the host was busy: 512 KiB's higher overlap
+coincides with much more replay wall time per frame and lower FPS. This does
+not establish that the watermark alone caused the regression. 1 MiB is the
+better candidate for a repeated, stable-control comparison; production keeps
+the existing default until that evidence exists.
+
+All final screenshots show intact Thrall Prologue gameplay. Downloaded WASM
+hashes match the intended variants, batch-copy bytes are zero, and audio work
+is comparable: 77.62/77.64/77.48 million audio-thread blocks,
+3,724/3,722/3,724 music refreshes, and 5,304,320/5,301,760/5,305,344 consumed
+music bytes. All 122 music samples per run are nonzero.
+
+Reviewed captures: `20261020-wc3-overlap-{2m,1m,512k}`. Timing source snapshots,
+analyzer and measurement review: `20261020-wc3-overlap-tools`. Matching ARM64
+Ion/TurboFan and generic/primitive/pool tests for 1 MiB are reviewed in
+`20261020-wc3-1m-overlap-native`; the packed V8 frame grows 48→64 bytes as in
+the 512 KiB variant, while Ion frames remain unchanged. No x86-64 claim.
+Experimental concat/compile passed with unchanged layout; the known stale
+fixture census prevents treating this as a full production build. Fixture
+runtime instrumentation, encoder and build were restored after capture.
