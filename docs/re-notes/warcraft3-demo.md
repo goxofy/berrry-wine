@@ -3092,3 +3092,45 @@ measurement review are in `20261021-wc3-render-repeat-tools`. Matching
 800×600 software/WebGL captures were opened in Preview for visual comparison.
 Fixture runtime/build restored after capture; production and unrelated
 brightness work remain unchanged.
+
+### Six additional 60-second WebGL captures (2026-10-21 UTC)
+
+Retested the existing native-reviewed modules with the preceding three-worker
+clock/CPU instrumentation and fresh Prologue route. Order is 2 MiB, 1 MiB,
+512 KiB, 512 KiB, 1 MiB, 2 MiB; one browser at a time. Each timed window is
+60 seconds. All six final gameplay images were reviewed and actual downloaded
+WASM/backend checks pass. No new runtime variant was introduced.
+
+| Watermark / repeat | FPS | First / second half FPS | Renderer CPU/frame | Main CPU/frame | Main/render overlap |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2 MiB / A | 32.83 | 32.26 / 33.39 | 3.98 ms | 24.82 ms | ~0% |
+| 1 MiB / A | 27.05 | 24.67 / 29.43 | 5.15 ms | 29.34 ms | 42.7% |
+| 512 KiB / A | 31.19 | 30.73 / 31.66 | 5.12 ms | 27.65 ms | 76.4% |
+| 512 KiB / B | 28.53 | 27.87 / 29.20 | 5.57 ms | 29.44 ms | 76.2% |
+| 1 MiB / B | 30.35 | 29.30 / 31.40 | 4.72 ms | 27.16 ms | 42.0% |
+| 2 MiB / B | 24.98 | 27.76 / 22.20 | 4.83 ms | 29.87 ms | ~0% |
+
+The unchanged control spans 24.98–32.83 FPS, a 31% high/low spread, larger
+than the candidate differences. Closing control host load rose 3.59→9.19;
+its second half drops to 22.20 FPS. In the first 1 MiB run, load rose
+4.46→7.28 while FPS increased between halves, so load averages alone do not
+explain individual frame times. These are noisy session measurements, not a
+causal FPS ranking or independent per-frame statistical trials. Keep the
+production 2 MiB default. The repeatable finding is earlier dispatch and
+nonblocked wall overlap, not improved throughput. CPU time remains sensitive
+to core assignment/frequency and contention; there is no new attribution of
+the CPU differences to one batching mechanism.
+
+Draw counts are 379.4–380.0/frame. Audio-thread work is 151.50–152.27 million
+blocks, music consumption 10.596–10.605 MB, and every run has 242/242 nonzero
+music samples. Valid renderer thread CPU covers 99.88–99.98% of complete task
+wall time. The prior clock bounds, boundary-task exclusions and distinction
+between wall overlap, thread CPU and GPU execution still apply.
+
+Evidence: `20261021-wc3-confirm-{2m-a,1m-a,512k-a,512k-b,1m-b,2m-b}`;
+capture tools, source snapshots and aggregate metrics are retained in
+`20261021-wc3-webgl-confirm-tools`. No capture failure in this series. Fixture
+runtime/build restored after testing. A useful next isolation experiment is
+fixed-command replay with different packet boundaries, followed by a quiet
+gameplay control/candidate comparison; more noisy whole-game averages alone
+will not identify the source of the extra CPU time.
