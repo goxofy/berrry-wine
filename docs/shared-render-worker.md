@@ -1,12 +1,49 @@
 # Shared graphics render Worker
 
+## Common submission queue (2026-10-21)
+
+`RenderWorker.SubmissionQueue` now owns packet admission credits, FIFO waiting,
+ordered asynchronous execution, draining and sticky execution failures for
+OpenGL and Glide. Legacy D3D/software GL uses its synchronous reservation and
+completion interface around the existing atomic acknowledgements. All paths
+continue through the same process Manager and globally ordered render Worker.
+There is one queue implementation, with per-producer capacity accounts; guest
+Workers cannot share JavaScript queue objects with the page broker.
+
+Admission happens before copying or leasing input. The queue distinguishes the
+value returned at acceptance from the promise that retires payload readers.
+Failed execution retains its capacity ticket and storage lease; a successful
+acknowledgement releases capacity only after any readback copy-back. Explicit
+GPU fences remain API operations. Closing rejects new admissions and drains
+existing waiters. Waiting metadata is bounded to 1,024 entries per queue.
+
+OpenGL retains two pending packets and its ordered GDI/query barriers. Glide
+retains three slots and exclusive oversized packets, including the synchronous
+fast acknowledgement used by pipelined draws/swaps. Legacy atomic producers
+retain three slots and their existing 75%-full/idle-consumer batching. Packet
+sizes, command formats, WASM and dispatch thresholds are unchanged.
+
+D3D8/9's neutral resource/receipt queue remains a separate higher-level layer
+on the common process transport. Its resident texture ownership and generation
+rules are not replaced by transient packet credits. This change unifies packet
+submission machinery; it does not claim a single binary encoding or an FPS gain.
+
+Validation covers FIFO/exclusive admission, capacity before snapshot, rollback
+before publication, failure quarantine, stale tickets, bounded waiters, draining
+close and ordered readbacks. Existing GL, Glide, legacy readiness, software GL,
+D3D9 and process lifecycle regressions pass. Actual Chrome mixed-backend testing
+passes with one Worker, one heap adoption, and both Glide WebGL/native software
+routes wrapping all three slots with readbacks. This is functional validation,
+not a new WC3 gameplay performance measurement.
+
 ## Shared packet ownership (2026-10-20)
 
 The first migration implements common packet ownership, not a common opcode
 format or a replacement scheduler. `RenderWorker.SharedPacketPool` registers
 bounded shared spans and provides immutable identity leases. It rejects overlap,
 double claims, stale releases and retirement with live leases. API adapters
-still own admission, publication, completion and error handling. Registration
+originally owned admission, publication, completion and error handling; the
+common submission queue above now supplies the reusable lifecycle. Registration
 uses the canonical shared buffer, not independently cloned SAB wrappers.
 
 OpenGL now optionally encodes directly into three allocator-owned 2 MiB WASM

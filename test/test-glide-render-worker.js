@@ -119,7 +119,7 @@ function fixture(memoryBytes = 4096) {
   await new Promise(resolve => setImmediate(resolve));
   assert.strictEqual(admitted, false);
   assert.strictEqual(bounded.bridge.workerPacketFree.length, 0);
-  assert.strictEqual(bounded.bridge.workerPacketWaiters.length, 1);
+  assert.strictEqual(bounded.bridge.workerSubmissions.waiters.length, 1);
   assert.strictEqual(bounded.calls.length, 2, 'only open and first serialized draw reached the endpoint');
   assert.deepStrictEqual(Array.from(bounded.calls[1].rawBytes), [1, 1, 1, 1]);
   const drain = bounded.bridge.close();

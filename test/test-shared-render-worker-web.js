@@ -95,7 +95,7 @@ const {startStaticServer,closeServer}=require('./static-server');
           }
           words([3,12,0xffffff,255,65535]);
           const blocked=bridge.submit(0,pointer,20);
-          if(!(blocked instanceof Promise)||bridge.workerPacketWaiters.length!==1)
+          if(!(blocked instanceof Promise)||bridge.workerSubmissions.waiters.length!==1)
             throw new Error('Glide fourth packet did not wait for bounded pool credit');
           await blocked;words([0xffffffff,0xffffffff,0,0,0]);await barrier();
           await read(0xffff);

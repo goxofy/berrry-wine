@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { WorkerLink, GuestThreadHost } = require('../lib/guest-thread-host');
-const { SharedPacketPool } = require('../lib/render-worker');
+const { SharedPacketPool, SubmissionQueue } = require('../lib/render-worker');
 
 function testSharedPacketPool() {
   const pool = new SharedPacketPool(), buffer = new SharedArrayBuffer(256);
@@ -65,6 +65,66 @@ const deferred = () => {
 };
 
 (async () => {
+  // One contract for atomic producers and asynchronous page brokers. No
+  // snapshot may run while credits are exhausted, even for a smaller packet
+  // behind an exclusive oversized packet.
+  const queue = new SubmissionQueue(3), first = deferred(), exclusive = deferred(), last = deferred();
+  const snapshots = [];
+  const packet = (name, done) => () => { snapshots.push(name); return {value: 1, done}; };
+  assert.equal(queue.admit(packet('gl', first.promise), 2), 1);
+  const large = queue.admit(packet('glide-large', exclusive.promise), 3);
+  const small = queue.admit(packet('software', last.promise));
+  assert.deepEqual(snapshots, ['gl']);
+  const closing = queue.close(); let closed = false; closing.then(() => { closed = true; });
+  await assert.rejects(queue.admit(packet('late', Promise.resolve())), /closed/);
+  first.resolve(); assert.equal(await large, 1);
+  assert.deepEqual(snapshots, ['gl', 'glide-large']); assert(!closed);
+  exclusive.resolve(); assert.equal(await small, 1);
+  assert.deepEqual(snapshots, ['gl', 'glide-large', 'software']); assert(!closed);
+  last.resolve(); await closing; assert.equal(queue.used, 0);
+
+  const atomic = new SubmissionQueue(1), ticket = atomic.reserve();
+  assert.throws(() => atomic.reserve(), /full/);
+  atomic.complete(ticket); const next = atomic.reserve();
+  assert.throws(() => atomic.complete(ticket), /stale/);
+  assert.equal(atomic.used, 1); atomic.complete(next);
+  assert.throws(() => atomic.admit(() => { throw new Error('snapshot failed'); }), /snapshot failed/);
+  assert.equal(atomic.used, 0, 'validation before publication returns credit');
+
+  const failed = new SubmissionQueue(1), error = new Error('consumer failed');
+  let reject;
+  const execution = new Promise((_, no) => { reject = no; });
+  assert.equal(failed.admit(packet('failed', execution)), 1);
+  const waiting = failed.admit(() => { throw new Error('must not snapshot'); });
+  reject(error); await assert.rejects(waiting, /consumer failed/);
+  assert.equal(failed.used, 1, 'failure does not prove reader retirement');
+  await assert.rejects(failed.close(), /consumer failed/);
+  await assert.rejects(failed.admit(() => {}), /closed|consumer failed/);
+
+  const bounded = new SubmissionQueue(1, 1), held = deferred();
+  bounded.admit(packet('held', held.promise));
+  const blocked = bounded.admit(packet('blocked', Promise.resolve()));
+  await assert.rejects(bounded.admit(() => {}), /waiter limit/);
+  held.resolve(); await blocked; await bounded.close();
+
+  const ordered = new SubmissionQueue(2), fenceGate = deferred(), eventsInOrder = [];
+  const before = ordered.ordered(() => ordered.execute(() => { eventsInOrder.push('draw'); }));
+  const fence = ordered.ordered(() => ordered.execute(async () => {
+    eventsInOrder.push('readback'); await fenceGate.promise; eventsInOrder.push('copied');
+  }));
+  const after = ordered.ordered(() => ordered.execute(() => { eventsInOrder.push('next'); }));
+  await before; await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(eventsInOrder, ['draw', 'readback']);
+  fenceGate.resolve(); await fence; await after;
+  assert.deepEqual(eventsInOrder, ['draw', 'readback', 'copied', 'next']);
+
+  const opening = new SubmissionQueue(1), openGate = deferred();
+  const open = opening.execute(async () => { await openGate.promise; throw new Error('open failed'); });
+  const closeDuringOpen = opening.close();
+  openGate.resolve();
+  await assert.rejects(open, /open failed/);
+  await assert.rejects(closeDuringOpen, /open failed/, 'close also observes operations without packet tickets');
+
   const original = Object.fromEntries(['start', 'initGuestThread', 'callExport'].map(k => [k, WorkerLink.prototype[k]]));
   const initializing = deferred(), initGate = deferred(), settings = [];
   try {

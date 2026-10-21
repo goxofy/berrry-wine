@@ -2,7 +2,7 @@
 const assert = require('assert');
 const { Worker } = require('worker_threads');
 const { CTRL, Encoder } = require('../lib/d3d-command-stream');
-const { SharedPacketPool } = require('../lib/render-worker');
+const { SharedPacketPool, SubmissionQueue } = require('../lib/render-worker');
 
 function packetOwnership(EncoderClass = Encoder) {
   const messages = [];
@@ -55,7 +55,7 @@ function browserDependencyOrder() {
     DataView, Atomics, performance });
   vm.runInContext(fs.readFileSync(require.resolve('../lib/d3d-command-stream'), 'utf8'), context);
   assert(context.D3DCommandStream, 'stream module loads before RenderWorker');
-  context.RenderWorker = { SharedPacketPool };
+  context.RenderWorker = { SharedPacketPool, SubmissionQueue };
   packetOwnership(context.D3DCommandStream.Encoder);
 }
 
