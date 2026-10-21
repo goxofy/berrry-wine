@@ -1122,7 +1122,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
   accepted: 2026-10-04T02:11:10.446Z
   accepted-by: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  Next: RichEdit edit_stream_call source3c01665c was delivered by edit-stream-owner-oct20; fullVM is pending. Remaining callback/JS/concurrency/SEH source prerequisites need coordinator assignment. Circus ICM source066436de and native fixture1bae355 await fullVM; Mad Bomber wave API7fd352855 reviewedfe540cf2 awaits fullVM. Keep child gameplay criteria open; runtime403 blocks captures, not remaining source work.
+  Next: RichEdit edit_stream_call source3c01665c was delivered by edit-stream-owner-oct20; fullVM is pending. Remaining callback/JS/concurrency/SEH source prerequisites need coordinator assignment. Circus ICM source066436de and native fixture1bae355 await fullVM. Mad Bomber original gameplay is accepted (CLI0c0fa3eb, browserf09e09c6); its separate wave API fullVM qualification remains distinct. Keep remaining child gameplay criteria open; runtime403 blocks remaining affected captures, not accepted Mad Bomber gameplay or source work.
   done: Recurring user priority, not complete after two games; each child task needs a working launch route, visible player-controlled gameplay, ordinary input response and a reviewed screenshot linked to its run and source.
   notes: Known freeware/shareware/demo titles first; public NFS/Diablo/StarCraft variants do not count as new games. Serialize browser and benchmark ownership; preserve review gates. Standing policy in ops/ORCHESTRATOR.md.
 
@@ -1775,14 +1775,13 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   Next: Property-page/CRT/qsort/bsearch fixes are already main. ICM ownership066436de plus real-x86 fixture1bae355 are off main pending fullVM. edit-stream-owner-oct20 delivered RichEdit edit_stream_call source3c01665c; its fullVM remains pending and remaining callback/JS/concurrency/SEH prerequisites keep jump APIs disabled. Runtime403 blocks native/gameplay evidence, not source work.
   Done: Original working launch, ordinary player-controlled gameplay and reviewed screenshot with exact run/source identity.
 
-- [~] New-game lane: Mad Bomber 0.2.5 original Windows release
+- [x] New-game lane: Mad Bomber 0.2.5 original Windows release
   id: NEW-GAME-MADBOMBER-20261018
-  depends-on: MADBOMBER-WINMM-ERROR-TEXT-20261019
-  blocker: Existing sandbox.resume 403 api_key_action_forbidden; requires documented authorized runtime access change and coordinator allocation, not a retry.
-  worker: none (source prerequisites delivered)
-  status: blocked (wave API fullVM and original SDL/gameplay observation pending)
+  worker: none (scoped gameplay acceptance complete)
+  status: done (original launch, ordinary player-controlled gameplay and reviewed screenshots accepted)
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  Next: LockFile and SetLocalTime are already qualified on main. waveOutGetErrorTextA/W implementation7fd352855 is main and source reviewfe540cf2 passed; exact-source normalbuild/native API validation and original SDL observation remain. No active LockFile preparation or gameplay claim.
+  Evidence: CLI acceptance0c0fa3eb and browser acceptancef09e09c6: original registered launch, Enter One Player, Space starts bombs, ordinary mouse bucket movement, catch splash and score0→1→3 with reviewed screenshots and exact run/source/module identities. See docs/re-notes/madbomber-status-20261021.md and docs/reviews/madbomber-gameplay-integration-20261021/README.md, docs/reviews/madbomber-browser-integration-20261021/README.md.
+  Notes: Prior runtime403 and unobserved SDL/gameplay blockers are superseded for this Done criterion. MADBOMBER-WINMM-ERROR-TEXT-20261019 retains separate native API qualification; it does not reopen accepted original gameplay. FPS acceptance768044a7 (docs/reviews/madbomber-fps-integration-20261021/README.md) covers only94logical entries/4438.655ms=21.1775864536FPS in one instrumented interval. Audio quality, sustained play/performance, display/uninstrumented/native hardware FPS, full-game completion and Windows parity remain unqualified.
   Done: Original working launch, ordinary player-controlled gameplay and reviewed screenshot with exact run/source identity.
 
 - [~] Legacy texture cube API conformance
