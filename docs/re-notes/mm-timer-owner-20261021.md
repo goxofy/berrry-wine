@@ -1,8 +1,10 @@
 # Win32 multimedia timer retained return ownership
 
 Base: exact integrated main `d550de85ae9b46d23314d164a932d66478894999`.
-Task branch: `task/mm-timer-owner-recovered-oct21`. Independent acceptance is
-pending; this task does not merge main or enable nonlocal jump APIs.
+Original task branch: `task/mm-timer-owner-recovered-oct21`. The original task
+left independent acceptance pending. The dated addenda below record subsequent
+source acceptance, runtime qualification and integration; nonlocal jump APIs
+remain disabled.
 
 ## Reproduction and correction
 
@@ -290,6 +292,11 @@ The assigned box remains running (Boat state `idle`, health `ok`), expiry
 The coordinator retains shutdown ownership and the 02:43 UTC checkpoint.
 No worker/box creation, stop, resume or snapshot action was issued by this task.
 
+### Historical source-review resources (before canonical qualification)
+
+The following paragraph describes only the earlier source-review task, not the
+canonical qualification or integration task.
+
 Review branch: `task/mm-timer-owner-release-review-oct22`.
 Evidence: `scratch/runs/20261022-mm-timer-owner-release-review/`, including
 admission, seal verification, successful and failed gate logs, result and
@@ -299,3 +306,55 @@ was 8,321,327,104 bytes against 2,982,150,144 required. No 16 MiB checkout limit
 was applied. No workers, boxes, build, browser, dependency installation, fleet,
 deployment or laptop actions; no assigned box/expiry, lifecycle stays with the
 coordinator. Candidate and root WIP/index/config/TODOS/STATUS were not edited.
+
+## Independent qualification acceptance and integration — 2026-10-22
+
+**ACCEPT within the stated scope.** Independently reviewed qualification commit
+`a2afc1797ae782a4c53e1799ecc1dd12a7871c03`, reusing accepted source review
+`f7cc26c5433859ebf986fff30ce4a28f7224e15a` for production candidate
+`ce4ce4f95eacaedff1b3e386f3ce3ae5d85bd16c`. All 65 qualification seals match both
+the committed and main-host evidence. The 5,623 initial manifest blobs and two
+supplemental tracked blobs match the exact candidate; the ignored PE fixture
+remains separately identified. All five archived module hashes match receipts.
+
+Reviewed the actual observer, test transforms, compiler closure, canonical
+owner fixture, full-closure identity check, successful logs and preserved failed
+attempts. The observer delegates assertions and instantiation to the originals;
+the inspected test transforms only append exports and the compile helper updates
+all three VFS aliases. This observer is evidence for these inspected tests, not
+a general detector of arbitrary VFS substitution. The timer suites exercise the
+full compiled module with explicit harness setup and modeled RET stack advances;
+the wave-wait and shipping fixtures execute real guest INC/RET20. Assertion
+counts 28/22/23 describe those suites, not 73 independent end-to-end scenarios.
+The unmodified full closure equals shipping bytes after the canonical 37-byte
+layout stamp, so the instrumented modules are correctly distinguished from the
+shipping module rather than mislabeled as identical binaries.
+
+The corrected RET20 expectation does not conceal a producer defect: the guest
+instruction pops its return address and five arguments before reaching the
+CACA000A validator. Stale root/epoch rejection must preserve the remaining
+40-byte saved caller frame and active owner, without restoring the parked wait.
+The preserved failed expectation asked for rejection before that guest pop.
+One fresh replay on the same box passed all 26 assertions across normal,
+stale-root and stale-epoch cases using the unchanged shipping SHA256
+`f644bbb26edc077239dac17b8b2cfda482aafd9eb44af4c4776d4fe153d5a1a7` and sealed
+fixture. No build, dependency installation or packaging was repeated.
+
+Reconciled remote main `bf99a428500d47ecacd3de2e86cc47cb0dfaacef`: its only
+changes from the production base are the three ops documents, preserved exactly.
+The integrated production trees remain identical to tested candidate source.
+Fresh manifest, fragment-balance and diff checks pass; canonical build and
+full-module results are reused at that exact source identity. Integration branch:
+`task/mm-timer-qualified-integrate-oct22`; receipts and publication identity:
+`scratch/runs/20261022-mm-timer-qualified-integrate/`.
+
+This acceptance does not qualify CACA003B's independent retained lifetime,
+Windows/browser/game behavior, Worker semaphore delivery or compatibility-module
+execution. The API jump lock is unchanged. The prior 78,226,630-byte archive
+allocation violation remains disclosed above; this task uses individual sparse
+paths with a measured 41,540,061-byte projection plus 16 MiB reserve under the
+64 MiB cap. No full-goal completion is claimed.
+
+Box `bx_pfv6b6wu` remains running (idle/health ok, exec reachable), expiry
+02:53:01.742 UTC, coordinator shutdown checkpoint 02:43 UTC. Shutdown ownership
+is returned to the coordinator; this task issued no lifecycle mutation.
