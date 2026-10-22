@@ -3384,8 +3384,10 @@
       (then (return (i32.const 0))))
     ;; The winmm timer thread runs the callbacks itself.
     (if (call $mm_timer_thread_owned) (then (return (i32.const 0))))
+    (call $mm_callback_begin
+      (i32.sub (i32.load offset=16 (global.get $reg_base)) (i32.const 40)) (i32.const 0))
     (local.set $slot (call $mm_timer_due_slot))
-    (if (i32.eqz (local.get $slot)) (then (return (i32.const 0))))
+    (if (i32.eqz (local.get $slot)) (then (call $mm_callback_cancel) (return (i32.const 0))))
     (local.set $id (i32.load (local.get $slot)))
     (local.set $dwuser (i32.load offset=12 (local.get $slot)))
     (local.set $cb (i32.load offset=8 (local.get $slot)))
@@ -3450,6 +3452,8 @@
       (then (return (i32.const 0))))
     (if (i32.or (global.get $mm_timer_in_cb) (global.get $wave_callback_saved))
       (then (return (i32.const 0))))
+    (call $mm_callback_begin
+      (i32.sub (i32.load offset=16 (global.get $reg_base)) (i32.const 40)) (i32.const 1))
     (global.set $wave_callback_saved_wait_handle (global.get $wait_handle))
     (global.set $wave_callback_saved_wait_handles_ptr (global.get $wait_handles_ptr))
     (global.set $wave_callback_saved_wait_all (global.get $wait_all))

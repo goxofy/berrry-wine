@@ -30,7 +30,7 @@ function scanWat(src, file) {
     walk(form, node => {
       if (head(node) === 'global.set' && node[2] === '$eip') writes.push(node);
       if (head(node) === 'global.set' && (String(node[2]).startsWith('$invocation_') ||
-          ['$qsort_owner', '$qsort_depth', '$bsearch_owner', '$bsearch_depth', '$crt_callback_owner', '$crt_callback_depth'].includes(node[2]))) ownershipWrites.push(node[2]);
+          ['$qsort_owner', '$qsort_depth', '$bsearch_owner', '$bsearch_depth', '$crt_callback_owner', '$crt_callback_depth', '$mm_callback_owner', '$mm_callback_depth'].includes(node[2]))) ownershipWrites.push(node[2]);
       if (head(node) === 'call') calls.push(node[2]);
       if (head(node) === 'export') exports.push(JSON.parse(node[2]));
     });

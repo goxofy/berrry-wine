@@ -1058,3 +1058,7 @@
   ;; Startup show value and one process-wide first-show latch.
   (region.declare $STARTUP_SHOW_STATE (size 0x00000010) (align 0x00000010)
     (owner "09a-handlers3-sync.wat:$startup_show_set"))
+
+  ;; Retained CACA000A owners: sixteen thread slots, 64 records of 32 bytes.
+  (region.declare $MM_CALLBACK_CONTEXTS (size 0x00008000) (align 16)
+    (owner "09a-handlers.wat:$MM_CALLBACK_CONTEXTS"))
