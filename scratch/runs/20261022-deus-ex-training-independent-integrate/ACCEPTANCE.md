@@ -2,7 +2,9 @@
 
 Accepted candidate `45d125cba932e8a91f87fceedc7f42b4f2e7cd7e` for evidence-only integration. Tested engine/source revision is `c26252c4a95babe583ade1d1c6e2da0c050be45c`, with shipping module SHA-256 `f644bbb26edc077239dac17b8b2cfda482aafd9eb44af4c4776d4fe153d5a1a7`. No build or runtime was repeated for this review.
 
-The actual candidate parent is c26252c4, not the preceding blocked-report commit 3bd7e25c. Full ancestor/delta inspection found exactly 65 added files, all under `scratch/runs/20261022-deus-ex-native-support-training/`. The prior failure logs and mapping are retained there as `prior-*`; no blocked-report ledger edit, engine change, guest binary, or unrelated ancestor delta is being integrated. Current remote main was reconciled to c26252c4 before publication.
+The actual candidate parent is c26252c4, not the preceding blocked-report commit 3bd7e25c. Full ancestor/delta inspection found exactly 65 added files, all under `scratch/runs/20261022-deus-ex-native-support-training/`. The prior failure logs and mapping are retained there as `prior-*`; no blocked-report ledger edit, engine change, guest binary, or unrelated candidate ancestor delta is being integrated.
+
+Remote main initially matched c26252c4, then advanced during task-branch publication to `a6c68f4565a35f783a95e3d7b5d0a1c7f1c46500`. The final integration reconciles that main revision without conflicts and preserves its entire tree outside the two evidence directories. Its concurrent production changes are outside this review's ownership. This historical evidence does **not** qualify the advanced engine/module; the tested revision and module remain explicitly c26252c4/f644bbb2.
 
 ## Independent visual and runtime judgment
 

@@ -209,7 +209,12 @@ const stats = {
         const format = u32At(view, stackWa, 6);
         const type = u32At(view, stackWa, 7);
         length = checkedImageBytes(width, height, format, type);
-        borrow = true;
+        // Only four-byte texels whose rows need no unpack padding are
+        // snapshotted. Larger or other pixel layouts keep their input lease.
+        const snapshot = u32At(view, stackWa, 0) === 0x0DE1
+          && type === 0x1401 && (format === 0x1908 || format === 0x80E1)
+          && length <= 65536 && (width % 2 === 0 || height === 1);
+        borrow = !snapshot;
         break;
       }
       case 61: { // gluBuild2DMipmaps

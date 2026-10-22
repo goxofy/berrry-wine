@@ -7,6 +7,14 @@
   ;; does not permanently enlarge every instance's static memory map.
 
   (global $gl_stream_wa (mut i32) (i32.const 0))
+  ;; Opt-in leased transport: host admission keeps at most two published
+  ;; buffers live before acknowledging a submission. The third is the writer.
+  ;; Once initialized these allocations and the rotation survive encoder reset.
+  (global $gl_stream_pool_enabled (mut i32) (i32.const 0))
+  (global $gl_stream_pool_0 (mut i32) (i32.const 0))
+  (global $gl_stream_pool_1 (mut i32) (i32.const 0))
+  (global $gl_stream_pool_2 (mut i32) (i32.const 0))
+  (global $gl_stream_pool_index (mut i32) (i32.const 0))
   (global $gl_stream_used_bytes (mut i32) (i32.const 0))
   (global $gl_stream_command_count (mut i32) (i32.const 0))
   (global $gl_wat_stat_calls (mut i64) (i64.const 0))
@@ -78,12 +86,13 @@
     (local.get $guest))
 
   (func $gl_wat_init (result i32)
-    (local $guest i32)
+    (local $guest i32) (local $extra1 i32) (local $extra2 i32)
     (if (i32.eqz (global.get $gl_stream_wa))
       (then
         (local.set $guest (call $gl_alloc_affine (i32.const 0x00200000)))
         (if (i32.eqz (local.get $guest)) (then (return (i32.const 0))))
-        (global.set $gl_stream_wa (call $g2w (local.get $guest)))))
+        (global.set $gl_stream_wa (call $g2w (local.get $guest)))
+        (global.set $gl_stream_pool_0 (global.get $gl_stream_wa))))
     (if (i32.eqz (global.get $gl_immediate_wa))
       (then
         (local.set $guest (call $gl_alloc_affine (i32.const 0x00000E00)))
@@ -91,7 +100,35 @@
         (global.set $gl_immediate_guest (local.get $guest))
         (global.set $gl_immediate_wa (call $g2w (local.get $guest)))
         (global.set $gl_immediate_capacity (i32.const 0x00000E00))))
+    (if (i32.and (i32.ne (global.get $gl_stream_pool_enabled) (i32.const 0))
+        (i32.eqz (global.get $gl_stream_pool_1)))
+      (then
+        (local.set $extra1 (call $gl_alloc_affine (i32.const 0x00200000)))
+        (if (local.get $extra1)
+          (then (local.set $extra2 (call $gl_alloc_affine (i32.const 0x00200000)))))
+        (if (i32.eqz (local.get $extra2))
+          (then
+            ;; Never publish a partial pool. Keep the original synchronous
+            ;; buffer, free any unpublished extra and do not retry each call.
+            (if (local.get $extra1) (then (call $heap_free (local.get $extra1))))
+            (global.set $gl_stream_pool_enabled (i32.const 0)))
+          (else
+            (global.set $gl_stream_pool_1 (call $g2w (local.get $extra1)))
+            (global.set $gl_stream_pool_2 (call $g2w (local.get $extra2)))))))
     (i32.const 1))
+
+  (func $gl_wat_stream_pool_enable (param $enable i32) (result i32)
+    ;; Configuration only before first allocation, including after reset/OOM.
+    (if (i32.or (i32.ne (global.get $gl_stream_wa) (i32.const 0))
+        (i32.gt_u (local.get $enable) (i32.const 1))) (then (return (i32.const 0))))
+    (global.set $gl_stream_pool_enabled (local.get $enable))
+    (i32.const 1))
+
+  (func $gl_wat_stream_pool_base (param $index i32) (result i32)
+    (if (i32.eqz (local.get $index)) (then (return (global.get $gl_stream_pool_0))))
+    (if (i32.eq (local.get $index) (i32.const 1)) (then (return (global.get $gl_stream_pool_1))))
+    (if (i32.eq (local.get $index) (i32.const 2)) (then (return (global.get $gl_stream_pool_2))))
+    (i32.const 0))
 
   (func $gl_wat_stream_flush (result i32)
     (local $result i32)
@@ -101,6 +138,11 @@
     (global.set $gl_wat_stat_flushes (i64.add (global.get $gl_wat_stat_flushes) (i64.const 1)))
     (global.set $gl_stream_used_bytes (i32.const 0))
     (global.set $gl_stream_command_count (i32.const 0))
+    (if (global.get $gl_stream_pool_2)
+      (then
+        (global.set $gl_stream_pool_index (i32.rem_u
+          (i32.add (global.get $gl_stream_pool_index) (i32.const 1)) (i32.const 3)))
+        (global.set $gl_stream_wa (call $gl_wat_stream_pool_base (global.get $gl_stream_pool_index)))))
     (local.get $result))
 
   ;; $len bytes of guest memory at $ga into wasm $dst. One $g2w is good for
@@ -133,6 +175,9 @@
       (then (return (i32.const 0))))
     (if (i32.gt_u (i32.add (global.get $gl_stream_used_bytes) (local.get $record_bytes))
         (i32.const 0x00200000)) (then (drop (call $gl_wat_stream_flush))))
+    ;; Start renderer work at 512 KiB; retain 2 MiB capacity for large records.
+    (if (i32.gt_u (i32.add (global.get $gl_stream_used_bytes) (local.get $record_bytes))
+        (i32.const 0x00080000)) (then (drop (call $gl_wat_stream_flush))))
     (local.set $start (i32.add (global.get $gl_stream_wa) (global.get $gl_stream_used_bytes)))
     (local.set $ptr_off (select
       (i32.add (global.get $gl_stream_used_bytes) (i32.add (i32.const 32) (local.get $stack_bytes)))
@@ -179,34 +224,38 @@
       (global.set $gl_immediate_guest (local.get $guest))
       (global.set $gl_immediate_wa (call $g2w (local.get $guest)))
       (global.set $gl_immediate_capacity (local.get $cap))))
-    (local.set $p (i32.add (global.get $gl_immediate_guest)
+    ;; This private allocation was checked across its whole span by
+    ;; gl_alloc_affine, including after growth. Reuse its mapped base; unlike
+    ;; arbitrary guest client arrays, these fields cannot cross sparse backing.
+    (local.set $p (i32.add (global.get $gl_immediate_wa)
       (i32.shl (global.get $gl_immediate_floats) (i32.const 2))))
-    (f32.store (call $g2w (local.get $p)) (local.get $x))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 4))) (local.get $y))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 8))) (local.get $z))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 12))) (global.get $gl_color_r))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 16))) (global.get $gl_color_g))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 20))) (global.get $gl_color_b))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 24))) (global.get $gl_color_a))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 28))) (global.get $gl_tex_s))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 32))) (global.get $gl_tex_t))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 36))) (global.get $gl_normal_x))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 40))) (global.get $gl_normal_y))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 44))) (global.get $gl_normal_z))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 48))) (global.get $gl_tex1_s))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 52))) (global.get $gl_tex1_t))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 56))) (local.get $w))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 60))) (global.get $gl_tex_r))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 64))) (global.get $gl_tex_q))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 68))) (global.get $gl_tex1_r))
-    (f32.store (call $g2w (i32.add (local.get $p) (i32.const 72))) (global.get $gl_tex1_q))
+    (f32.store (local.get $p) (local.get $x))
+    (f32.store offset=4 (local.get $p) (local.get $y))
+    (f32.store offset=8 (local.get $p) (local.get $z))
+    (f32.store offset=12 (local.get $p) (global.get $gl_color_r))
+    (f32.store offset=16 (local.get $p) (global.get $gl_color_g))
+    (f32.store offset=20 (local.get $p) (global.get $gl_color_b))
+    (f32.store offset=24 (local.get $p) (global.get $gl_color_a))
+    (f32.store offset=28 (local.get $p) (global.get $gl_tex_s))
+    (f32.store offset=32 (local.get $p) (global.get $gl_tex_t))
+    (f32.store offset=36 (local.get $p) (global.get $gl_normal_x))
+    (f32.store offset=40 (local.get $p) (global.get $gl_normal_y))
+    (f32.store offset=44 (local.get $p) (global.get $gl_normal_z))
+    (f32.store offset=48 (local.get $p) (global.get $gl_tex1_s))
+    (f32.store offset=52 (local.get $p) (global.get $gl_tex1_t))
+    (f32.store offset=56 (local.get $p) (local.get $w))
+    (f32.store offset=60 (local.get $p) (global.get $gl_tex_r))
+    (f32.store offset=64 (local.get $p) (global.get $gl_tex_q))
+    (f32.store offset=68 (local.get $p) (global.get $gl_tex1_r))
+    (f32.store offset=72 (local.get $p) (global.get $gl_tex1_q))
     (global.set $gl_immediate_floats (i32.add (global.get $gl_immediate_floats) (i32.const 19))))
 
   (func $gl_copy_vertex (param $dst i32) (param $index i32) (param $color_index i32)
     (local $src i32) (local $csrc i32) (local $i i32) (local $from i32)
-    (local.set $src (i32.add (global.get $gl_immediate_guest)
+    ;; Both source vertices belong to the same verified affine allocation.
+    (local.set $src (i32.add (global.get $gl_immediate_wa)
       (i32.mul (local.get $index) (i32.const 76))))
-    (local.set $csrc (i32.add (global.get $gl_immediate_guest)
+    (local.set $csrc (i32.add (global.get $gl_immediate_wa)
       (i32.add (i32.mul (local.get $color_index) (i32.const 76)) (i32.const 12))))
     (loop $words
       (local.set $from (i32.add (local.get $src) (i32.shl (local.get $i) (i32.const 2))))
@@ -215,7 +264,7 @@
         (then (local.set $from (i32.add (local.get $csrc)
           (i32.shl (i32.sub (local.get $i) (i32.const 3)) (i32.const 2))))))
       (i32.store (i32.add (local.get $dst) (i32.shl (local.get $i) (i32.const 2)))
-        (i32.load (call $g2w (local.get $from))))
+        (i32.load (local.get $from)))
       (local.set $i (i32.add (local.get $i) (i32.const 1)))
       (br_if $words (i32.lt_u (local.get $i) (i32.const 19)))))
 
@@ -292,7 +341,10 @@
     ;; through, and the record is complete here -- so it is where the WAT
     ;; software rasterizer reads a draw (src/09a8g-gl-raster.wat). Inert
     ;; unless a host enabled it.
-    (call $gl_sw_consume (local.get $start) (local.get $vertices)))
+    (call $gl_sw_consume (local.get $start) (local.get $vertices))
+    ;; Submit only complete draws, after the software consumer has read them.
+    (if (i32.ge_u (global.get $gl_stream_used_bytes) (i32.const 0x00080000))
+      (then (drop (call $gl_wat_stream_flush)))))
 
   (func $gl_finish_immediate (result i32)
     (local $count i32) (local $mode i32) (local $out_mode i32)
@@ -506,7 +558,7 @@
       (local.set $len (select (i32.const 16) (i32.const 4) (i32.eq (i32.load offset=4 (local.get $stack)) (i32.const 0x0B66))))))
     (if (i32.eq (local.get $op) (i32.const 83)) (then (local.set $arg (i32.const 2))
       (local.set $len (select (i32.const 4) (i32.const 16) (i32.eq (i32.load offset=8 (local.get $stack)) (i32.const 0x2500))))))
-    ;; Texture uploads are borrowed and flushed synchronously.
+    ;; Texture uploads default to borrowed, synchronous consumption.
     (if (i32.eq (local.get $op) (i32.const 45)) (then (local.set $arg (i32.const 8))
       (local.set $len (call $gl_checked_image_bytes
         (i32.load offset=16 (local.get $stack)) (i32.load offset=20 (local.get $stack))
@@ -516,7 +568,21 @@
       (local.set $len (call $gl_checked_image_bytes
         (i32.load offset=20 (local.get $stack)) (i32.load offset=24 (local.get $stack))
         (i32.load offset=28 (local.get $stack)) (i32.load offset=32 (local.get $stack))))
-      (local.set $borrow (i32.const 1))))
+      (local.set $borrow (i32.const 1))
+      ;; Small RGBA/BGRA byte updates own their pixels in the stream. Even
+      ;; widths make a row divisible by every supported unpack alignment
+      ;; (1/2/4/8); a single row has no trailing padding. Other layouts retain
+      ;; the borrowed path, whose consumer computes its aligned read extent.
+      (if (i32.and
+          (i32.and (i32.eq (i32.load offset=4 (local.get $stack)) (i32.const 0x0DE1))
+            (i32.eq (i32.load offset=32 (local.get $stack)) (i32.const 0x1401)))
+          (i32.and
+            (i32.or (i32.eq (i32.load offset=28 (local.get $stack)) (i32.const 0x1908))
+              (i32.eq (i32.load offset=28 (local.get $stack)) (i32.const 0x80E1)))
+            (i32.and (i32.le_u (local.get $len) (i32.const 0x10000))
+              (i32.or (i32.eqz (i32.and (i32.load offset=20 (local.get $stack)) (i32.const 1)))
+                (i32.eq (i32.load offset=24 (local.get $stack)) (i32.const 1))))))
+        (then (local.set $borrow (i32.const 0))))))
     (if (i32.eq (local.get $op) (i32.const 61)) (then (local.set $arg (i32.const 6))
       (local.set $len (call $gl_checked_image_bytes
         (i32.load offset=12 (local.get $stack)) (i32.load offset=16 (local.get $stack))

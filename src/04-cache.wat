@@ -964,8 +964,14 @@
         (global.set $page_index_free (i32.load (local.get $p)))
         (return (local.get $p))))
     (local.set $p
-      (i32.add (global.get $PAGE_INDEX)
-        (i32.mul (global.get $page_index_next) (global.get $PAGE_INDEX_BYTES))))
+      (if (result i32)
+          (i32.and (i32.ne (global.get $PAGE_INDEX_EXTRA) (i32.const 0))
+            (i32.ge_u (global.get $page_index_next) (i32.const 16)))
+        (then (i32.add (global.get $PAGE_INDEX_EXTRA)
+          (i32.mul (i32.sub (global.get $page_index_next) (i32.const 16))
+            (global.get $PAGE_INDEX_BYTES))))
+        (else (i32.add (global.get $PAGE_INDEX)
+          (i32.mul (global.get $page_index_next) (global.get $PAGE_INDEX_BYTES))))))
     (global.set $page_index_next (i32.add (global.get $page_index_next) (i32.const 1)))
     (local.get $p))
 

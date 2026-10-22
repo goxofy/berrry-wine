@@ -6351,6 +6351,22 @@
   ;; ThreadManager's synchronization handles or a VFS file handle.
   (global $IOCP_HANDLE_TAG i32 (i32.const 0x1C0C0000))
 
+  ;; Headers, queues and associations are process-shared, including under real
+  ;; Workers. Reserve a cache line in the unused tail (associations end at
+  ;; 25472) for the existing owner/depth lock; no region placement changes.
+  ;; Helpers suffixed _locked require this lock. Never translate guest memory,
+  ;; call a host import or yield while holding it.
+  (func $iocp_lock
+    (call $lock_acquire (region.addr $IOCP_TABLE 0x6400)))
+  (func $iocp_unlock
+    (call $lock_release (region.addr $IOCP_TABLE 0x6400)))
+  ;; A completion may translate guest output after taking its association
+  ;; snapshot. A per-slot generation prevents its later publication into a
+  ;; closed/reused port while allowing the translation to run without the lock.
+  (func $iocp_generation (param $idx i32) (result i32)
+    (i32.add (region.addr $IOCP_TABLE 0x6440)
+      (i32.shl (local.get $idx) (i32.const 2))))
+
   (func $iocp_header (param $idx i32) (result i32)
     (i32.add (global.get $IOCP_TABLE) (i32.mul (local.get $idx) (i32.const 16))))
 
@@ -6384,6 +6400,8 @@
           (i32.store (i32.add (local.get $hdr) (i32.const 4)) (i32.const 0))
           (i32.store (i32.add (local.get $hdr) (i32.const 8)) (i32.const 0))
           (i32.store (i32.add (local.get $hdr) (i32.const 12)) (i32.const 0))
+          (i32.store (call $iocp_generation (local.get $idx))
+            (i32.add (i32.load (call $iocp_generation (local.get $idx))) (i32.const 1)))
           (i32.store (local.get $hdr) (local.get $handle))
           (return (local.get $handle))))
       (local.set $idx (i32.add (local.get $idx) (i32.const 1)))
@@ -6393,11 +6411,20 @@
   ;; Close a port handle. Returns 1 when this was a port, 0 when it was not,
   ;; so CloseHandle can go on to try the other handle namespaces.
   (func $iocp_close (param $handle i32) (result i32)
-    (local $idx i32)
+    (local $idx i32) (local $i i32) (local $e i32)
+    (call $iocp_lock)
     (local.set $idx (call $iocp_slot (local.get $handle)))
     (if (i32.lt_s (local.get $idx) (i32.const 0))
-      (then (return (i32.const 0))))
+      (then (call $iocp_unlock) (return (i32.const 0))))
     (i32.store (call $iocp_header (local.get $idx)) (i32.const 0))
+    ;; Drop bindings now, before another creator can reuse the slot.
+    (loop $bindings
+      (local.set $e (call $iocp_assoc_entry (local.get $i)))
+      (if (i32.eq (i32.load offset=4 (local.get $e)) (i32.add (local.get $idx) (i32.const 1)))
+        (then (i32.store offset=4 (local.get $e) (i32.const 0))))
+      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      (br_if $bindings (i32.lt_u (local.get $i) (global.get $IOCP_ASSOC_MAX))))
+    (call $iocp_unlock)
     (i32.const 1))
 
   (func $iocp_push (param $idx i32) (param $bytes i32) (param $key i32)
@@ -6456,7 +6483,7 @@
       (i32.add (global.get $IOCP_ASSOC_OFF) (i32.mul (local.get $i) (i32.const 12)))))
 
   ;; The entry for a file handle, or 0 when that handle is bound to no port.
-  (func $iocp_assoc_find (param $handle i32) (result i32)
+  (func $iocp_assoc_find_locked (param $handle i32) (result i32)
     (local $i i32) (local $e i32)
     (if (i32.eqz (local.get $handle)) (then (return (i32.const 0))))
     (block $done (loop $scan
@@ -6470,12 +6497,20 @@
       (br $scan)))
     (i32.const 0))
 
+  ;; External callers only test presence, never dereference the returned entry.
+  (func $iocp_assoc_find (param $handle i32) (result i32)
+    (local $e i32)
+    (call $iocp_lock)
+    (local.set $e (call $iocp_assoc_find_locked (local.get $handle)))
+    (call $iocp_unlock)
+    (local.get $e))
+
   ;; Bind a file handle to a port slot. Re-binding an already-bound handle
   ;; overwrites its key, which is what a second CreateIoCompletionPort on the
   ;; same file means.
   (func $iocp_assoc_add (param $handle i32) (param $idx i32) (param $key i32) (result i32)
     (local $i i32) (local $e i32)
-    (local.set $e (call $iocp_assoc_find (local.get $handle)))
+    (local.set $e (call $iocp_assoc_find_locked (local.get $handle)))
     (if (i32.eqz (local.get $e))
       (then
         (block $done (loop $scan
@@ -6496,9 +6531,11 @@
   ;; CloseHandle can call it without first asking whether it was ever bound.
   (func $iocp_assoc_drop (param $handle i32)
     (local $e i32)
-    (local.set $e (call $iocp_assoc_find (local.get $handle)))
+    (call $iocp_lock)
+    (local.set $e (call $iocp_assoc_find_locked (local.get $handle)))
     (if (local.get $e)
-      (then (i32.store (i32.add (local.get $e) (i32.const 4)) (i32.const 0)))))
+      (then (i32.store (i32.add (local.get $e) (i32.const 4)) (i32.const 0))))
+    (call $iocp_unlock))
 
   ;; Finish one overlapped request on a bound file handle: publish the byte
   ;; count into the OVERLAPPED the guest supplied and queue the completion.
@@ -6510,28 +6547,39 @@
   ;; 0xC0000011 (STATUS_END_OF_FILE) for a short read at EOF.
   (func $iocp_complete_overlapped (param $handle i32) (param $overlapped i32)
       (param $bytes i32) (param $status i32) (result i32)
-    (local $e i32) (local $idx i32)
-    (local.set $e (call $iocp_assoc_find (local.get $handle)))
-    (if (i32.eqz (local.get $e)) (then (return (i32.const 0))))
+    (local $e i32) (local $idx i32) (local $key i32) (local $generation i32)
+    (call $iocp_lock)
+    (local.set $e (call $iocp_assoc_find_locked (local.get $handle)))
+    (if (i32.eqz (local.get $e)) (then (call $iocp_unlock) (return (i32.const 0))))
     (local.set $idx (i32.sub (i32.load (i32.add (local.get $e) (i32.const 4))) (i32.const 1)))
     ;; The port may have been closed while a file stayed bound to it.
     (if (i32.ne (i32.load (call $iocp_header (local.get $idx)))
                 (i32.or (global.get $IOCP_HANDLE_TAG) (local.get $idx)))
       (then
         (i32.store (i32.add (local.get $e) (i32.const 4)) (i32.const 0))
+        (call $iocp_unlock)
         (return (i32.const 0))))
+    (local.set $key (i32.load offset=8 (local.get $e)))
+    (local.set $generation (i32.load (call $iocp_generation (local.get $idx))))
+    (call $iocp_unlock)
     (if (local.get $overlapped)
       (then
         (call $gs32 (local.get $overlapped) (local.get $status))
         (call $gs32 (i32.add (local.get $overlapped) (i32.const 4)) (local.get $bytes))))
-    (drop (call $iocp_push (local.get $idx) (local.get $bytes)
-      (i32.load (i32.add (local.get $e) (i32.const 8))) (local.get $overlapped)))
+    (call $iocp_lock)
+    (if (i32.and
+          (i32.eq (i32.load (call $iocp_generation (local.get $idx))) (local.get $generation))
+          (i32.ne (i32.load (call $iocp_header (local.get $idx))) (i32.const 0)))
+      (then (drop (call $iocp_push (local.get $idx) (local.get $bytes)
+        (local.get $key) (local.get $overlapped)))))
+    (call $iocp_unlock)
     (i32.const 1))
 
   ;; CreateIoCompletionPort(FileHandle, ExistingCompletionPort, CompletionKey,
   ;;                        NumberOfConcurrentThreads) -> HANDLE
   (func $handle_CreateIoCompletionPort (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
     (local $idx i32)
+    (call $iocp_lock)
     (if (i32.eq (local.get $arg0) (i32.const -1))
       (then
         ;; INVALID_HANDLE_VALUE with an existing port is the one combination
@@ -6541,11 +6589,13 @@
             (i32.store offset=0 (global.get $reg_base) (i32.const 0))
             (global.set $last_error (i32.const 87)) ;; ERROR_INVALID_PARAMETER
             (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
+            (call $iocp_unlock)
             (return)))
         (i32.store offset=0 (global.get $reg_base) (call $iocp_create))
         (if (i32.eqz (i32.load offset=0 (global.get $reg_base)))
           (then (global.set $last_error (i32.const 8)))) ;; ERROR_NOT_ENOUGH_MEMORY
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
+        (call $iocp_unlock)
         (return)))
     ;; Attaching a file. Without an existing port the call creates one and
     ;; attaches to it in a single step.
@@ -6558,6 +6608,7 @@
           (then
             (global.set $last_error (i32.const 8))
             (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
+            (call $iocp_unlock)
             (return)))
         (local.set $arg1 (i32.load offset=0 (global.get $reg_base)))
         (local.set $idx (call $iocp_slot (local.get $arg1)))))
@@ -6566,29 +6617,34 @@
         (i32.store offset=0 (global.get $reg_base) (i32.const 0))
         (global.set $last_error (i32.const 6)) ;; ERROR_INVALID_HANDLE
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
+        (call $iocp_unlock)
         (return)))
     (if (call $iocp_assoc_add (local.get $arg0) (local.get $idx) (local.get $arg2))
       (then (i32.store offset=0 (global.get $reg_base) (local.get $arg1)))
       (else
         (i32.store offset=0 (global.get $reg_base) (i32.const 0))
         (global.set $last_error (i32.const 8)))) ;; ERROR_NOT_ENOUGH_MEMORY
-    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20))))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
+    (call $iocp_unlock))
 
   ;; PostQueuedCompletionStatus(port, bytes, key, lpOverlapped) -> BOOL
   (func $handle_PostQueuedCompletionStatus (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
     (local $idx i32)
+    (call $iocp_lock)
     (local.set $idx (call $iocp_slot (local.get $arg0)))
     (if (i32.lt_s (local.get $idx) (i32.const 0))
       (then
         (i32.store offset=0 (global.get $reg_base) (i32.const 0))
         (global.set $last_error (i32.const 6)) ;; ERROR_INVALID_HANDLE
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
+        (call $iocp_unlock)
         (return)))
     (i32.store offset=0 (global.get $reg_base) (call $iocp_push (local.get $idx)
       (local.get $arg1) (local.get $arg2) (local.get $arg3)))
     (if (i32.eqz (i32.load offset=0 (global.get $reg_base)))
       (then (global.set $last_error (i32.const 298)))) ;; ERROR_TOO_MANY_POSTS
-    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20))))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
+    (call $iocp_unlock))
 
   ;; GetQueuedCompletionStatus(port, lpBytes, lpKey, lpOverlapped, dwMilliseconds)
   ;; -> BOOL. An empty queue parks the calling thread on its own import thunk
@@ -6596,17 +6652,20 @@
   ;; re-enters from the top when this thread is scheduled again.
   (func $handle_GetQueuedCompletionStatus (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
     (local $idx i32) (local $hdr i32) (local $head i32) (local $queue_entry i32)
-    (local $now i32)
+    (local $now i32) (local $bytes i32) (local $key i32) (local $overlapped i32)
+    (call $iocp_lock)
     (local.set $idx (call $iocp_slot (local.get $arg0)))
     (if (i32.lt_s (local.get $idx) (i32.const 0))
       (then
         (i32.store offset=0 (global.get $reg_base) (i32.const 0))
         (global.set $last_error (i32.const 6)) ;; ERROR_INVALID_HANDLE
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 24)))
+        (call $iocp_unlock)
         (return)))
     (local.set $hdr (call $iocp_header (local.get $idx)))
     (if (i32.eqz (i32.load (i32.add (local.get $hdr) (i32.const 12))))
       (then
+        (call $iocp_unlock)
         ;; Nothing queued. A zero timeout is an immediate poll.
         (if (i32.eqz (local.get $arg4))
           (then
@@ -6640,18 +6699,19 @@
     (local.set $head (i32.load (i32.add (local.get $hdr) (i32.const 4))))
     (local.set $queue_entry (i32.add (call $iocp_queue (local.get $idx))
       (i32.mul (local.get $head) (i32.const 12))))
-    (if (local.get $arg1)
-      (then (call $gs32 (local.get $arg1) (i32.load (local.get $queue_entry)))))
-    (if (local.get $arg2)
-      (then (call $gs32 (local.get $arg2)
-        (i32.load (i32.add (local.get $queue_entry) (i32.const 4))))))
-    (if (local.get $arg3)
-      (then (call $gs32 (local.get $arg3)
-        (i32.load (i32.add (local.get $queue_entry) (i32.const 8))))))
+    ;; Consume atomically before guest output translation, which can invoke
+    ;; callbacks or fault handling. The packet survives in instance locals.
+    (local.set $bytes (i32.load (local.get $queue_entry)))
+    (local.set $key (i32.load offset=4 (local.get $queue_entry)))
+    (local.set $overlapped (i32.load offset=8 (local.get $queue_entry)))
     (i32.store (i32.add (local.get $hdr) (i32.const 4))
       (i32.rem_u (i32.add (local.get $head) (i32.const 1)) (global.get $IOCP_QUEUE_CAP)))
     (i32.store (i32.add (local.get $hdr) (i32.const 12))
       (i32.sub (i32.load (i32.add (local.get $hdr) (i32.const 12))) (i32.const 1)))
+    (call $iocp_unlock)
+    (if (local.get $arg1) (then (call $gs32 (local.get $arg1) (local.get $bytes))))
+    (if (local.get $arg2) (then (call $gs32 (local.get $arg2) (local.get $key))))
+    (if (local.get $arg3) (then (call $gs32 (local.get $arg3) (local.get $overlapped))))
     (i32.store offset=0 (global.get $reg_base) (i32.const 1))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 24))))
 
