@@ -94,3 +94,74 @@ repository. The published task branch, based on the stated main commit, is
 the remote recovery source; no ignored binary or full build is required for
 these source-slice tests. No boxes were assigned, started, resumed, stopped or
 deleted; runtime lifecycle remains coordinator-owned.
+
+## Independent source acceptance — 2026-10-22
+
+**Scoped SOURCE ACCEPTANCE** of exact candidate
+`ce4ce4f95eacaedff1b3e386f3ce3ae5d85bd16c` against
+`d550de85ae9b46d23314d164a932d66478894999`. No concrete source defect found
+within this review. This is not permission to merge or runtime qualification.
+Remote candidate matched; remote main
+`bf99a428500d47ecacd3de2e86cc47cb0dfaacef` differs from the base only in
+`ops/COORDINATOR.md`, `ops/README.md`, and `ops/TELEGRAM.md`. Those audit/policy
+documents were reconciled read-only; no candidate source was replaced by main.
+
+Reviewed the actual changed WAT and all CACA000A producers, including
+DispatchMessageA and the outer dispatcher. The private record retains child,
+root, expected ESP, prior guard/resume and audio ownership; invocation_leave
+returns to the retained child's parent stack entry. Root/epoch/slot validation
+precedes record access. Explicit loader/thread initialization establishes roots;
+fresh slot reuse retires the old instance. Frame indexing is
+`(tid-1)*2048 + depth*32` within 32768 bytes for 16 slots. The invocation stack
+permits 63 live children (root consumes its first entry), tighter than the
+64-record allocation. No guest-provided record pointer is trusted.
+
+Admission precedes producer stack, timer consumption/event signaling and audio
+wait changes. DispatchMessage admission is at its MM_TIMER arm, not before all
+ordinary API dispatcher bookkeeping; the latter is not claimed transactional.
+The separate CACA000A return preflight is before dispatcher effects and the
+finish helper revalidates before popping/restoring. No-due/event polls release
+their provisional child. One-shot and periodic consumption remain unchanged.
+Nested DispatchMessage records restore outer guard/resume without restoring an
+outer audio wait. CACA003B refuses a live CACA000A owner before its pinned-stack
+reset; its independent callback lifetime is still outside this acceptance.
+
+Validation on Node v24.18.1:
+
+- Requested ownership replay: 55 cases and the wrong-child mutation detected.
+- Requested saved-carry replay: 29 cases and all six mutations detected.
+  Snapshot implementations copy memory (`Buffer.from` / `slice`), rather than
+  retaining a live view; mutation checks require behavioral assertion failures.
+- `node test/test-mm-timer-release-review.js`: seven independent cases. Four
+  producer routes execute the exact production RET20, run-loop thunk routing,
+  whole outer dispatcher and inner prefix through the continuation. Wrong-child
+  outer dispatch rejects before prefix effects. Additional cases exercise actual
+  shared-memory thread-slot reuse, thread 16 with 63 nested callbacks and region
+  canaries, and observable event signaling after rejected/exhausted admission.
+- Generated region mirror is current (268 regions). The appended allocation
+  leaves old region placements unchanged. Census/mutation validation uses exact
+  Git fallback for missing sparse files; raw sparse runs correctly rejected the
+  absent `host.js` seal, and their failed logs are retained. No gate is suppressed.
+- All 14 candidate source hashes and all 12 prior log seals match result.json.
+  Unrelated token/host-owner/queue/scheduler, region-declaration and tier evidence
+  is reused at that exact revision. Census changes retain `ownership: pending`,
+  whole-function seals and the nonlocal API lock. No API jump unlock or broad
+  SEH change occurred.
+
+The independent fixture stubs resource cleanup, host services, thunk membership
+and branch/cache dispatch; identity guest translation remains. It closes the
+specific modeled-RET/separate-dispatch gap for these routes, **not** the complete
+interpreter integration gap. Canonical/full-module timer and wave-wait tests,
+full build, real guest translation/fault handling, browser/game/runtime tests,
+and CACA003B's own retained lifetime remain outstanding. Coordinator owns that
+qualification decision and any eventual integration; **NO MAIN MERGE** here.
+
+Review branch: `task/mm-timer-owner-release-review-oct22`.
+Evidence: `scratch/runs/20261022-mm-timer-owner-release-review/`, including
+admission, seal verification, successful and failed gate logs, result and
+publication receipts. Exact non-cone manifest projection was 36,551,511 bytes
+plus 16,777,216 reserved bytes, below the 64 MiB total allowance; fresh admission
+was 8,321,327,104 bytes against 2,982,150,144 required. No 16 MiB checkout limit
+was applied. No workers, boxes, build, browser, dependency installation, fleet,
+deployment or laptop actions; no assigned box/expiry, lifecycle stays with the
+coordinator. Candidate and root WIP/index/config/TODOS/STATUS were not edited.
