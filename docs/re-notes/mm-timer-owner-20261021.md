@@ -156,6 +156,140 @@ full build, real guest translation/fault handling, browser/game/runtime tests,
 and CACA003B's own retained lifetime remain outstanding. Coordinator owns that
 qualification decision and any eventual integration; **NO MAIN MERGE** here.
 
+## Canonical build and full-module qualification — 2026-10-22
+
+**SCOPED ACCEPTANCE** of candidate `ce4ce4f95eacaedff1b3e386f3ce3ae5d85bd16c`:
+the canonical build and the three previously unrun full-module regressions pass.
+This addendum follows independent source acceptance
+`f7cc26c5433859ebf986fff30ce4a28f7224e15a`; it does not repeat that source review.
+No producer, canonical gate, existing test, or main branch was changed.
+
+Evidence: `scratch/runs/20261022-mm-timer-canonical-qualification/` on the main
+host and this task branch. `qualification-artifacts.tar.gz` retains both shipping
+modules, the three instrumented test modules, logs, test fixtures and first
+failed attempts. Archive SHA256:
+`3e308c0012e996070a01c1f77d6f399e9aaf7adb2d2620b27af018a80d29e248`.
+See `RECOVERY.txt`, `result.json`, `source-manifest.json`, supplemental/fixture
+manifests and `logs/`. The compressed artifact is explicitly committed, rather
+than relying on ignored build files surviving the box.
+
+### Source, build and loader identity
+
+No reusable module existed in the candidate checkout, acceptance checkout or
+main-host build directory; the preceding reports explicitly left builds unrun.
+Exact candidate Git blobs were archived without Git history or the irrelevant
+binary corpus. The remote staging repository retained the real candidate commit,
+trees and API-table blob, so the append-only gate checked against actual `HEAD`.
+Final verification checked 5,625 tracked files plus the existing ignored
+`test/binaries/notepad.exe` fixture: zero SHA256 mismatches. The fixture was
+copied from the main host, without downloading or restoring archived assets.
+
+All compilation and execution used `/home/user/timer-qualification` on assigned
+`bx_pfv6b6wu`, Linux x86-64, Node `v24.18.1`. Node binary SHA256:
+`f3432a45b03b2da0d270095fdd8813dc34cbea73f5fc8b18c7a384b7cf9b333a`.
+Dependencies were installed with
+`npm ci --omit=dev --omit=optional --ignore-scripts --no-audit --no-fund`
+(exit 0: `pngjs@7.0.0`, `wabt@1.0.39`). No WINE compiler/layout overrides were set.
+
+`bash tools/build.sh` exited **0**, every canonical gate enabled, including
+compiler provenance, layout checks, actual Wasm validation and compiled data
+overlap checks. `logs/build.log` is the complete successful log. Layout hash:
+`9a3bc9149d58209c`; 324 data segments, no overlaps.
+
+| Module | Bytes | SHA256 |
+| --- | ---: | --- |
+| Shipping `build/wine-assembly.wasm` | 1,878,971 | `f644bbb26edc077239dac17b8b2cfda482aafd9eb44af4c4776d4fe153d5a1a7` |
+| Shipping compatibility module | 1,881,544 | `9ad1d087170b755519a6b35f6dcb4fd5df3b729500a26deb3d0882f27cb691b7` |
+| Timer callback test module | 1,880,090 | `6c8eec2c429be82d834a50bdf2a2585ba17adf4a636081b2bafb7326761bac1c` |
+| Timer thread test module | 1,879,367 | `cd1a1505b4c61e329f855f4dba58d45c511f863d4307ea0d5fadcb768ab83e9d` |
+| Wave-wait test module | 1,879,109 | `9e4cc591e8717ae8bf42d4af9ad0f7aefb136898fd1ed4da66e514542b1da3ff` |
+
+The existing tests compile the entire `src/main.watx` closure through
+`test/compile-src.js` and the canonical WATX compiler, appending test-only exports
+to `13-exports.wat`; they do **not** load the shipping file verbatim. The evidence
+observer verified this append-only transform and recorded the exact bytes passed
+to real `WebAssembly.instantiate`, matching each compiled hash above. No
+source-slice surrogate or replacement interpreter was used.
+
+`node evidence/full-closure-identity.cjs` exited 0 (one assertion). The untouched
+test compile is 1,878,934 bytes, SHA256
+`03af1aa4d94cd3ccee5b757e439e76830a8ab89ee1308648235ab32947f9b818`.
+Applying the **same** `appendSection` layout stamp as `tools/build-compile-wat.js`
+makes it byte-identical to the shipping module; the difference is the 37-byte
+`wine-region-layout` custom section, with no executable-section changes.
+
+### Executed regressions and limits
+
+Commands below ran from the remote staging root. Each command exited **0**;
+assertion counts are dynamic counts of the original Node assertions, not source
+line counts. Per-test `.exit`, `.log` and `.identity.json` files are in `logs/`.
+
+| Command | Passing assertions |
+| --- | ---: |
+| `node --require ./evidence/observe.cjs test/test-mm-timer-callback.js` | 28 |
+| `node --require ./evidence/observe.cjs test/test-mm-timer-thread.js` | 22 |
+| `node --require ./evidence/observe.cjs test/test-wave-callback-wait.js` | 23 |
+| `node evidence/canonical-wave-owner.cjs` | 26 across 3 cases |
+
+The callback suite covers event set/pulse, one-shot retirement, periodic phase,
+parked-wait entry/return, CACA000A completion, DispatchMessage argument/frame
+restoration and ordinary thread-message rejection. The thread suite covers
+deadlines, main-thread suppression, timer-thread callback arguments, loop ESP
+pinning and idle/deadline sleeps. These two suites use explicit harness setup
+exports; their return setup is not a Windows callback experiment.
+
+The applicable audio regression is **`test/test-wave-callback-wait.js`**. It
+loads the existing PE fixture, runs real guest INC/RET20 through the full
+interpreter, rejects unsupported/nested injection, restores the parked wait
+tuple, and preserves TLS/FS. It explicitly does not qualify Worker delivery or
+real semaphore behavior.
+
+The additional narrow `canonical-wave-owner.cjs` fixture directly reads and
+instantiates the **unchanged shipping module** (no compile or added WAT). It
+executes real guest INC/RET20 for normal parked wave return and two stale return
+cases: changed shared root and changed process epoch. Both stale cases trap;
+the callback remains active, the parked wait is not restored, and the 40-byte
+saved caller frame is not popped. Guest RET20 itself first advances ESP by 24
+bytes; validation is at the CACA000A continuation boundary, not before the
+guest instruction's argument pop. This adds full-interpreter root/epoch evidence
+without claiming the entire prior source-slice adversarial matrix was rerun.
+
+**CACA003B's independent retained callback lifetime remains unqualified.**
+The passing thread regression does not change that limitation. Compatibility
+Wasm was built/validated by the canonical gates but was not used for these
+runtime regressions. No Windows, browser, game, fleet or public-deployment
+acceptance is claimed. No main merge was performed.
+
+### Preserved setup and qualification failures
+
+The first canonical attempt exited 1 because staging omitted tracked
+`docs/dos-corpus/live/toyvm-bundle.js` and `toyvm-jit-bundle.js`. Exact candidate
+blobs were supplied; the complete unchanged build then passed. The first
+wave-wait attempt exited 1 with ENOENT for the ignored Notepad fixture, before
+any assertion; supplying the existing fixture made the unchanged test pass.
+No canonical gate was bypassed and no production fix was needed.
+
+The initial identity check incorrectly required equality before adding the
+shipping metadata stamp. The optional canonical fixture initially expected
+`load_pe` to return 1 (it returns the entry address), then incorrectly expected
+the guest RET20 argument pop to be rejected. Both fixture expectations were
+corrected to the documented API/continuation boundary; all original scripts,
+failed logs and exit statuses are preserved. These were evidence-harness
+failures, not silently discarded production failures.
+
+The first local archive selection accidentally included encoded DOS corpus JS
+and produced 78,226,630 bytes, exceeding the 64MiB allocation. It was immediately
+deleted without transfer/use. The replacement archive is 28,009,389 bytes;
+`allocation.json` records this workflow violation and subsequent measurements.
+Fresh free-space admission passed throughout. SCP was denied with
+`api_key_action_forbidden` (SSH unavailable); staging/retrieval used the explicitly
+assigned, authorized Boat exec API, without SSH/config changes.
+
+The assigned box remains running (Boat state `idle`, health `ok`), expiry
+**2026-10-22 02:53:01.742 UTC**; final measured free space was 48,878,579,712 bytes.
+The coordinator retains shutdown ownership and the 02:43 UTC checkpoint.
+No worker/box creation, stop, resume or snapshot action was issued by this task.
+
 Review branch: `task/mm-timer-owner-release-review-oct22`.
 Evidence: `scratch/runs/20261022-mm-timer-owner-release-review/`, including
 admission, seal verification, successful and failed gate logs, result and
