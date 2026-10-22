@@ -18,6 +18,9 @@
 
 const assert = require('assert');
 const { ThreadManager } = require('../lib/thread-manager');
+const fs = require('fs');
+const vm = require('vm');
+const { WorkerLink } = require('../lib/guest-thread-host');
 
 let passed = 0, failed = 0;
 function check(ok, label, detail) {
@@ -32,6 +35,7 @@ class FakeLink {
     this.slot = slot;
     this.script = script.slice();
     this.calls = [];
+    this.retryFlags = [];
     this.completed = [];
     this.completedSends = [];
     this.exports = [];
@@ -39,8 +43,9 @@ class FakeLink {
     this.concurrentPeak = 0;
   }
 
-  async slice(steps) {
+  async slice(steps, sync, localSleep, retryYield9) {
     this.calls.push(steps);
+    this.retryFlags.push(retryYield9 === true);
     FakeLink.inFlight++;
     FakeLink.peak = Math.max(FakeLink.peak, FakeLink.inFlight);
     // Yield to the event loop so a scheduler that awaited each thread in turn
@@ -63,6 +68,61 @@ class FakeLink {
 }
 FakeLink.inFlight = 0;
 FakeLink.peak = 0;
+
+// Exercise the shipped slice sender and browser Worker handler together.
+// Guest exports are deterministic fakes so races change the live yield at
+// admission without depending on OS scheduling or compiling another module.
+async function retrySliceProtocol(){
+  let yieldReason=9,clears=0,runs=0,sleepReads=0;
+  const replies=[],messages=[];
+  const sandbox={URL,importScripts(){},location:{href:'https://example.invalid/guest-worker.js'},
+    performance,setTimeout,clearTimeout,ThreadSendWaits:require('../lib/thread-send-waits'),
+    GuestRpc:{readInputPending:()=>false},
+    postMessage:message=>replies.push(message),
+    fixture:{exports:{get_yield_reason:()=>yieldReason,get_eip:()=>0x401000,
+      clear_yield(){clears++;yieldReason=0;},run(){runs++;},get_last_run_blocks:()=>1,
+      get_sleep_yielded(){sleepReads++;return 0;}}}};
+  sandbox.self=sandbox;
+  const context=vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(require.resolve('../lib/guest-worker'),'utf8'),context);
+  vm.runInContext('instance=fixture;',context);
+  const link=Object.create(WorkerLink.prototype);
+  link.sliceStats={slices:0,guestMs:0,ends:{}};
+  link._ask=async message=>{
+    messages.push(message);const seq=messages.length;
+    await sandbox.onmessage({data:{...message,seq}});
+    const reply=replies.find(r=>r.seq===seq);
+    assert(reply, 'slice handler responds');assert.notStrictEqual(reply.t,'error',reply.error);
+    return reply;
+  };
+  await link.slice(100,null,null,true);
+  assert.strictEqual(clears,1);assert.strictEqual(runs,1);
+  assert.strictEqual(messages[0].retryYield9,true,'retry flag shares the slice message');
+  yieldReason=0;
+  await link.slice(100,null,null,true);
+  assert.strictEqual(runs,2,'already cleared live yield still executes the admitted slice');
+  for(const reason of [1,2,3,7,10,15,16,17]){
+    yieldReason=reason;
+    const before=runs,beforeSleep=sleepReads;
+    const r=await link.slice(100,{vblank:true},{preWaitMs:10},true);
+    assert.strictEqual(clears,1,`retry must not clear changed live yield ${reason}`);
+    assert.strictEqual(r.yield,reason);
+    assert.strictEqual(runs,before,`retry must not execute changed live wait ${reason}`);
+    assert.strictEqual(sleepReads,beforeSleep,'changed wait must not consume the sleep flag');
+    assert.strictEqual(r.blocks,0);
+  }
+  yieldReason=9;await link.slice(100);
+  assert.strictEqual(clears,1,'unflagged slices do not clear yield9');
+  assert(!('retryYield9' in messages[messages.length-1]),'ordinary slice protocol remains unchanged');
+  for(const guard of ['threadSendFrames.push({})','threadSendWaits.rootSend={}']){
+    vm.runInContext(guard,context);
+    const before=runs,r=await link.slice(100,null,null,true);
+    assert(r.threadSendPending,'incoming callback/root-send skips retry slice');
+    assert.strictEqual(clears,1);assert.strictEqual(runs,before);
+    vm.runInContext('threadSendFrames.length=0;threadSendWaits.rootSend=null;',context);
+  }
+  await link.slice(100,null,null,true);assert.strictEqual(clears,2);
+}
 
 // Enough of GuestThreadHost for the scheduler: PE metadata comes from slot 0,
 // and every spawn hands back a link.
@@ -115,6 +175,8 @@ function makeManager(backend, extraOpts) {
 
 (async () => {
   console.log('ThreadManager worker backend\n');
+  await retrySliceProtocol();
+  check(true,'retry clear rides slice, checks live yield, and follows incoming-send guards');
 
   // A contended CS must not produce an unbounded free-run RPC chain. Polling
   // ownership is only a hint; a racing acquisition must park the waiter again.
@@ -151,7 +213,8 @@ function makeManager(backend, extraOpts) {
     Atomics.store(owner, 0, 8);
     await tm.runWorkerSlices(1000);
     assert.strictEqual(thread.link.calls.length, 2, 'changed owner permits an acquire recheck');
-    assert.deepStrictEqual(thread.link.exports, ['clear_yield']);
+    assert.deepStrictEqual(thread.link.exports, [], 'eligible CS retry needs no export rendezvous');
+    assert.strictEqual(thread.link.retryFlags[thread.link.retryFlags.length-1], true);
     await tm.runWorkerSlices(1000);
     assert.strictEqual(thread.link.calls.length, 2, 'new contention remains parked');
     Atomics.store(owner, 0, 0);
@@ -189,21 +252,42 @@ function makeManager(backend, extraOpts) {
       assert(!thread.parkedCriticalSection);
       retryNow++;
     }
-    // A nested callback pump arriving while clear_yield is in flight cannot
-    // send a second clear or slice for the same parked frame.
-    let releaseClear;
+    // A nested callback pump arriving during the retry slice cannot dispatch
+    // that parked frame twice. A Worker-side send guard keeps the retry due.
+    let releaseSlice;
     const clears = thread.link.exports.length;
-    thread.link.callExport = async name => {
-      thread.link.exports.push(name);
-      await new Promise(resolve => { releaseClear = resolve; });
+    const beforeSlices=thread.link.calls.length;
+    thread.link.slice = async (steps,sync,localSleep,retry) => {
+      thread.link.calls.push(steps);assert.strictEqual(retry,true);
+      return new Promise(resolve=>{releaseSlice=resolve;});
     };
+    const retryAt=thread.importRetryAt;
     const resuming = tm._runWorkerThread(handle, thread, 1000);
     await tm._runWorkerThread(handle, thread, 1000);
-    assert.strictEqual(thread.link.exports.length, clears + 1);
+    assert.strictEqual(thread.link.exports.length, clears);
+    assert.strictEqual(thread.link.calls.length,beforeSlices+1);
     assert.strictEqual(tm._workerSkipReason(thread, retryNow, true), 'inflight');
-    releaseClear();
+    releaseSlice({threadSendPending:true,blocks:0});
     await resuming;
     assert.strictEqual(thread.importRetryPreparing, false);
+    assert.strictEqual(thread.importRetryAt,retryAt,'skipped retry keeps original due deadline');
+    const retry=tm._runWorkerThread(handle,thread,1000);
+    releaseSlice({yield:0,eip:0x401000,blocks:10});await retry;
+    assert.strictEqual(thread.importRetryAt,0,'admitted retry consumes old parking metadata');
+    const parked={addr,owner:7};thread.parkedCriticalSection=parked;
+    Atomics.store(owner,0,0);
+    const csSkipped=tm._runWorkerThread(handle,thread,1000);
+    releaseSlice({threadSendPending:true,blocks:0});await csSkipped;
+    assert.strictEqual(thread.parkedCriticalSection,parked,'incoming send preserves qualified CS retry metadata');
+    const csRetry=tm._runWorkerThread(handle,thread,1000);
+    releaseSlice({yield:0,eip:0x401000,blocks:10});await csRetry;
+    assert.strictEqual(thread.parkedCriticalSection,null);
+    thread.importRetryAt=retryNow;
+    thread.link.slice=async()=>{throw new Error('retry transport lost');};
+    await tm._runWorkerThread(handle,thread,1000);
+    assert.strictEqual(thread.importRetryPreparing,false,'failed retry releases preparation guard');
+    assert.strictEqual(thread.inFlight,false,'failed retry releases in-flight guard');
+    assert(backend.dropped.includes(thread.link.slot),'transport failure retires thread instead of retrying stale state');
     check(true, 'CS waiters park without RPC churn, wake on release, and recheck acquisition races');
   }
 

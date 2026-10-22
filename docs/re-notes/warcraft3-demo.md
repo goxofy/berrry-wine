@@ -2535,3 +2535,752 @@ the cinematic, not gameplay, while `20261019-wc3-fix-gameplay` timed out at
 briefing because direct renderer keyboard calls targeted HWND0. The final
 driver uses `agent-remote.runCommands`, the same DOM-event path as `ctl.js`,
 and waits for the visible gameplay HUD before moving and sampling.
+
+### Queued GL transport and mapped scratch candidates (2026-10-19)
+
+The next Worker bottleneck is architectural: each native GL stream flush
+parks its producer until the page broker and render Worker have replayed it.
+The producer cannot prepare the next frame while that rendering runs.
+
+The candidate retains synchronous local/cooperative rendering, but lets the
+Worker producer resume after the page takes an immutable copy of eligible
+GL commands. Admission and replay remain ordered across owners, with at most
+two owned buffers of 2 MiB each. The next submission waits for space.
+Only reviewed scalar commands, copied matrices, and packed vertex records
+qualify. Queries, context operations, borrowed pointers, bitmap contexts,
+software rendering, and unknown commands retain synchronous completion.
+`?gl-sync` disables early acknowledgment for comparison with the same code.
+
+Early SwapBuffers/glFlush acknowledgment also requires a known current
+top-level drawable and the existing shared pre-GDI ownership flag. The flag
+is set before releasing the producer. The actual pre-GDI host import drains
+earlier GL work, resolves canonical pixels, and clears ownership within the
+ordered admission queue; later submissions cannot lose their ownership flag
+to an older readback. Frames retain the original window identity and captured
+WAT client dimensions, so destroyed/reused HWNDs reject stale frames and a
+later resize does not change an older batch's drawable. Context ownership is
+replaced from the render Worker's complete authoritative owner map. Async
+errors remain sticky; teardown drains accepted work before endpoint retirement.
+
+Focused protocol tests cover buffer reuse, embedded vertices, bounded queue
+pressure, cross-owner query ordering, borrowed/software fallbacks, failures,
+teardown, context deletion, stale HWNDs, and captured geometry. The real
+`createHostImports`/`Win98Renderer` integration test verifies delayed red GL
+terrain followed by green GDI pixels through the actual pre-GDI import.
+The separate existing WAT Worker test stops before GL assertions because its
+harness does not handle the `beep_process_begin` startup RPC; this is not
+evidence of a rendering regression.
+
+The independent encoder candidate uses the already verified affine
+`gl_immediate_wa` allocation for internal vertex append/copy. Arbitrary guest
+arrays keep sparse-safe translation. Full isolated build gates, the complete
+encoder byte-oracle suite, and sparse-array tests pass. On ARM64, inspected
+SpiderMonkey 155 Ion append/copy code shrank from 1208/288 to 744/156 bytes;
+V8 15.4.49 TurboFan from 6144/1408 to 4608/448 bytes. Internal copy now uses
+direct loads/stores, and append removes nineteen per-vertex translation calls.
+Candidate WASM SHA256 is
+`a55ff0505fb749d3e5597c424d5fc10ef6df41319cdf7f4025285408d0b5632f`.
+Reviewed build/test/native evidence is retained in
+`scratch/runs/20261019-wc3-gl-scratch`.
+These are code-generation and correctness results, not an FPS claim.
+Gameplay comparisons remain required before declaring either candidate faster.
+
+### Concurrent completion queue and GL admission (2026-10-20)
+
+The actual shared-WASM IOCP stress test demonstrated a queue race: two
+consumers received 385 completions from 256 posts, with 129 duplicates and
+an underflowed count. The serial control delivered 256 unique completions.
+Queue headers, associations, creation and closure now use the existing
+owner-aware lock in the unused IOCP region tail. Dequeue snapshots the packet
+before releasing the lock and writing guest outputs. Completion publication
+checks a slot generation after guest writes, preventing a reentrant close and
+reuse from receiving an old completion. Concurrent creation, producers,
+consumers, wraparound, timeout, and close/reuse regression tests pass.
+Reviewed proof and fixed-build evidence:
+`scratch/runs/20261020-wc3-iocp-race`. This proves a correctness fix, not
+that this race caused a particular loading stall or a measured FPS improvement.
+
+The first gameplay queue comparison admitted zero owned batches and therefore
+did not measure asynchronous rendering. Live command inspection found copied
+light/material/fog vectors missing from the admission whitelist. These now
+require matching pointer arguments and exact copied payload lengths. The
+sample also shows a `glFinish` after each frame, which remains an explicit
+completion barrier. Roughly 22 small borrowed texture uploads per frame also
+force synchronous flushes. A live follow-up captured 16x16 RGBA unsigned-byte
+uploads, motivating a separate bounded texture-copy candidate.
+
+The bounded copy candidate captures only `glTexSubImage2D` RGBA/BGRA
+unsigned-byte updates up to 64 KiB whose rows need no padding for any
+supported alignment (even width, or a single row). Other layouts and larger
+uploads remain borrowed. The existing sparse-safe copy path owns the pixels
+at call time; the host validates the corresponding captured pointer and
+extent before asynchronous admission. Tests verify 22 uploads submit once at
+the explicit finish barrier, source mutation cannot change the captured
+pixels, and sparse-page crossings preserve bytes. Encoder parity, protocol,
+sparse-array tests and the full build pass. Reviewed ARM64 V8/SpiderMonkey
+code shows the added bounded predicate, without a new translation path.
+Evidence: `scratch/runs/20261020-wc3-small-texture-snapshots`.
+The combined IOCP/scratch/texture WASM is
+`ee91eb437aa0405dffb5d1cb53904d8ac275f346c110f3de92635d5acaa43665`.
+
+Sequential Chrome gameplay runs of this same build, using the original
+Prologue select/move/return route and three unprofiled 25-second samples:
+
+| Mode | Sample 1 | Sample 2 | Sample 3 |
+| --- | ---: | ---: | ---: |
+| Threads, queued GL | 23.92 FPS | 29.56 FPS | 29.20 FPS |
+| Cooperative | 20.64 FPS | 23.76 FPS | 23.07 FPS |
+
+Only one test browser ran at a time. Both modes reached gameplay and visibly
+selected and moved Thrall. Threaded submissions fell from approximately
+25 per guest frame in the prior candidate to 2.1; one batch per frame was
+owned asynchronously and queue depth stayed at two. Threads were faster in
+these local samples, but the host was busy (final load approximately 4.03
+for threads, 5.48–5.60 for coop), so this is not a controlled causal speedup
+measurement or a guarantee for other scenes/devices. The earlier paired
+queued/synchronous comparison alone was mixed and establishes no reliable
+speedup. Evidence:
+`scratch/runs/20261020-wc3-texture-threads`,
+`scratch/runs/20261020-wc3-texture-coop`, and
+`scratch/runs/20261020-wc3-iocp-async`.
+
+The root local build now byte-matches the tested `ee91eb43` WASM with layout
+`eb58be38f5ebb837`. The local server serves the real 278581-byte
+`binaries/dlls/msvcrt.dll`; a fixture without that directory reproduces the
+reported `_clearfp` failure. Restore the fixture assets rather than adding
+a silent CRT stub.
+
+### Committed-build profiling and retry coalescing (2026-10-20)
+
+The 30-second Worker capture of `829f2ae3f` is retained in
+`scratch/runs/20261020-wc3-committed-worker-profile`. Main-worker self samples
+are dominated by interpreter execution: `uop_fast` 3657 ms, `branch_end_at`
+1652 ms, and `th_load32_rop` 1430 ms. Its 4597 ms in `waitForResponse` is
+blocked elapsed time, not CPU consumption. The page and render Worker were
+approximately 87% idle. Profiling overhead and a busy host make the recorded
+20.89 guest presents/s unsuitable as an unprofiled performance comparison.
+
+Due yield-9 retries previously issued a separate `clear_yield` export request
+before every slice. The retry flag now travels with the slice. The Worker
+checks it after incoming-send guards and only clears a live yield 9. If the
+live yield changed to another nonzero wait, it reports the current state
+without executing guest code, resuming the wait, or consuming sleep flags.
+A skipped callback-owned slice retains its original retry metadata. Other
+wait, render and query protocols are unchanged. Scheduler/protocol, API
+batching, vblank and callback-census tests pass; evidence is in
+`scratch/runs/20261020-wc3-retry-slice`.
+
+Sequential 30-second unprofiled gameplay samples measured 25.49 FPS for the
+control and 25.79 FPS for the candidate, with approximately 53.3 ms p95
+presentation intervals in both. These single windows had unequal busy-host
+load, so there is no reliable FPS improvement claim. The confirmed transport
+change is 8960 -> 1 separate clear requests and 36689 -> 27674 total requests,
+while slice counts were similar (22103 -> 22124). Selection and movement
+were visually reviewed. Runs:
+`scratch/runs/20261020-wc3-cache-cause` and
+`scratch/runs/20261020-wc3-retry-coalesce`.
+
+The control's expanded cache snapshot failed because `readExports` coerces
+results to uint32 and one getter returned i64. The candidate uses 31 verified
+i32 getters and asserts main/audio counter availability before timing. Its
+audio thread recorded 59597 evictions, all from page-index capacity, zero
+directory collisions, and 1392253 decoded-block stores. It made no guest
+code-write invalidation calls; the 120765 retirement count includes code
+publication/descriptor replacement and must not be called self-modification.
+Main recorded 573 capacity evictions and 1105 directory collisions. A future
+worker-index capacity experiment should therefore preserve main's existing
+512 slots, rather than using the existing worker-heavy split that shrinks it.
+
+### Expanded worker indexes (2026-10-20)
+
+WC3 opts into page-index layout 2 through `expandedWorkerCodeCache`. Main
+retains 512 indexes. Each worker retains its original 16 indexes and uses
+144 KiB at the tail of its own code partition for another 16. Its compiled
+code limit drops from 768 to 624 KiB; the allocator's existing 16 KiB reserve
+still applies. The memory map, thread count and other apps' defaults do not
+change. Existing worker-heavy layout 1 remains available for Hype.
+
+Sequential 30-second Prologue gameplay captures:
+
+| Audio-worker counter | 16 indexes | 32 indexes |
+| --- | ---: | ---: |
+| Index-capacity evictions | 39,652 | 4,462 |
+| Decoded-block stores | 995,709 | 140,979 |
+| Stores per million page hits + misses | 27,100 | 4,107 |
+| Full cache clears | 0 | 1 |
+| Unpublished blocks | 58 | 144 |
+
+The normalized redecoding count fell about 85%. Main's normalized stores
+were similar, 432 versus 429. This is a capacity tradeoff, not elimination
+of all cache pressure: the candidate incurred one full clear and more
+unpublished blocks. Sampled FPS was 6.90 versus 10.53, but host load fell
+from approximately 113–130 to 15–13 between runs, so those rates establish
+no causal FPS improvement. Selection, movement and final gameplay were
+visually reviewed; subjective audio quality was not verified.
+
+Evidence: `scratch/runs/20261020-wc3-cache32-control`,
+`scratch/runs/20261020-wc3-cache32-candidate`, and
+`scratch/runs/20261020-wc3-cache32-native`. Candidate WASM:
+`c15f6f7a199a2bc09dae6376cd7091e6e60eefc779081df8cae47bd810e70b1d`.
+Full build and real-WASM allocator tests pass, covering all 15 worker
+owners, both index segments, sentinel isolation, free-list reuse, clock
+eviction, spill and instance reuse. Matching ARM64 Ion/TurboFan inspection
+shows a register-only selection branch in fresh index allocation and
+unchanged dispatch structure; no x86-64 measurement was made.
+
+The CLI honors the app default; `--no-expanded-worker-code-cache` restores
+the ordinary layout, and `--expanded-worker-code-cache` forces layout 2.
+An explicit `--worker-heavy-code-cache` overrides WC3's default with layout 1;
+if both positive flags are supplied, expanded wins.
+
+The final app-config path also passed cooperative Prologue gameplay in
+`scratch/runs/20261020-wc3-cache32-coop`: 32.36 FPS over 30 seconds, with
+audio-worker arena size asserted before timing. Audio recorded 2,298,609
+page hits and zero misses, decoded stores, index evictions or full clears
+during that window. The threaded candidate executed many more audio page
+lookups (34,142,673 hits), so the two audio workloads are not interchangeable.
+Without audio production/consumption measurements, that difference does
+not establish either threaded busy-waiting or cooperative starvation.
+
+A final threaded run through the real app-config path, after host load
+subsided, measured 26.80 FPS (p95 47.42 ms), versus the preceding cooperative
+32.36 FPS (p95 39.66 ms). Load was approximately 6.17→4.96 for threads and
+7.84→6.03 for coop; these remain single sequential windows, not a controlled
+speedup measurement. Threads were still slower in this comparison. Audio
+recorded 4,966 capacity evictions, 154,121 decoded stores, and one full clear.
+Evidence: `scratch/runs/20261020-wc3-cache32-threads-final`.
+
+Next, measure audio work per output second: T4 execution and scheduling
+delay together with active voices, AudioContext state, cursor advancement
+and ring-update bytes. The cooperative scheduler has a 4 ms background
+budget when audio is active; threaded scheduling has no equivalent cap.
+Neither cache lookups nor that policy alone establishes excess mixing or
+starvation. Preserve audio behavior while investigating the remaining gap.
+
+### Matching audio workloads before comparing schedulers (2026-10-20)
+
+The follow-up captures `20261020-wc3-audio-output-threads` and
+`20261020-wc3-audio-output-coop-retry` instrument the existing voice manager,
+worklet progress and per-thread execution hooks on `80fc118a4`/`c15f6f7a`.
+Both modes used two 44100 Hz stereo 16-bit AudioWorklet rings. Over about
+20 seconds, each ring consumed 3,536,384 bytes in threads and 3,538,944
+bytes in coop, matching elapsed audio time. The 136704-byte music ring had
+changing nonzero PCM in all 82 samples in each run; the 65536-byte ring was
+silent and had no refresh calls. Subjective audio quality was not checked.
+
+Music refresh counts were 2486 threaded versus 2484 cooperative, and T4
+retired 54.069 million versus 53.933 million blocks. The previous large
+audio-work disparity was therefore not reproduced. The older cooperative
+capture had no voice/output diagnostics and must not be assumed silent,
+starved, or equivalent to these captures. A buffer refresh's length is the
+whole ring extent, not newly produced PCM bytes; no production-throughput
+claim can be derived by multiplying refresh count by ring length.
+
+T4 slice elapsed time was 7.241 seconds threaded and 5.264 seconds coop,
+with 1399 versus 5936 slices. Threaded elapsed time can include synchronous
+RPC waits; it is not a CPU-time comparison. Observed FPS was 17.94 versus
+14.50, reversing the prior ordering under different busy-host conditions.
+These remain diagnostic samples, not a controlled speedup benchmark.
+There is no evidence here supporting an audio pacing or quantum change.
+Future comparisons should verify active music, advancing worklet progress,
+ring refreshes and changing PCM before treating workloads as equivalent.
+
+The first cooperative attempt (`20261020-wc3-audio-output-coop`) failed
+profile creation before timing. Its screenshot shows the entered name and
+an empty profile list. The retry verifies profile creation before Select;
+the failed attempt is retained as a harness error, not a gameplay failure.
+
+The following isolated-fixture capture, `20261020-wc3-rpc-timing-retry`,
+times each synchronous `waitForResponse` by import name and labels CPU
+profiles with the actual worker slot. The main and audio diagnostic
+snapshots are asserted before timing. An initial attempt queried a retired
+worker and failed before sampling; that harness error is retained in
+`20261020-wc3-rpc-timing`. The timing instrumentation was removed from the
+fixture after capture; tracked runtime files were never changed.
+
+Over the approximately 20-second window:
+
+| Worker | Synchronous wait | Calls | Elapsed time |
+| --- | --- | ---: | ---: |
+| Main 0 | GL batch | 1008 | 3266.2 ms |
+| Main 0 | All synchronous imports/batches | — | 3611.5 ms |
+| Audio 4 | wait_single | 3571 | 172.8 ms |
+| Audio 4 | set_event | 1985 | 138.2 ms |
+
+Audio retired 53.4 million blocks, made 2483 music-ring refreshes and
+maintained real-time worklet progress. Its total slice elapsed time was
+5.548 seconds in this capture, so the earlier 7.241-second measurement
+does not establish a stable two-second threaded penalty. Only 0.311
+seconds here were spent inside measured synchronous RPC waits. This
+does not support changing audio scheduling to address the main bottleneck.
+
+About 90% of main's measured synchronous wait time was GL submission and
+completion. Earlier command inspection already established a `glFinish`
+after each frame; keep that explicit completion barrier. Profiled main
+interpreter self samples remain largest in `uop_fast` (2627 ms),
+`branch_end_at` (1167 ms) and `th_load32_rop` (1001 ms). Render-worker
+non-idle samples total about 2.65 seconds, with uniform setup and draw
+replay prominent. Next targets are rendering submission/replay cost and
+main interpreter execution, not speculative audio throttling. Sampled
+`waitForResponse` time includes blocked elapsed time, not active CPU.
+
+### Earlier GL dispatch experiment (2026-10-20)
+
+The next pair traces host receipt, opcode counts, render-worker dispatch,
+renderer replay start/end and producer release. Evidence is in
+`20261020-wc3-gl-dispatch-control` and `20261020-wc3-gl-dispatch-512k`.
+Both use the same Prologue select/move/return route, active music, one Chrome
+browser at a time and no CPU profiler. Control is the `c15f6f7a` WASM.
+
+The encoder normally accumulates up to 2 MiB or an explicit barrier. WC3's
+typical frame fits: about 1.7 MiB arrives with `gpuPresent`, followed almost
+immediately by a separate 36-byte `glFinish`. The median frame has one draw
+batch and one finish batch. Thus asynchronous admission alone does not give
+useful overlap: median renderer replay starts 0.185 ms *after* the host
+receives the finish request. About 89% of captured draw records are in
+presentation batches. The backend really calls WebGL `gl.finish()`.
+
+The isolated experiment retains 2 MiB storage and all explicit barriers,
+but submits existing records before a new generic record would cross
+512 KiB, and submits completed packed draws at that watermark after
+software consumption. Generic records must not be flushed indiscriminately
+after encoding: doing so could consume query/context return values before
+the existing barrier reads them. Large individual packed draws may still
+exceed the soft watermark. Existing immutable batch ownership and bounded
+two-buffer admission are unchanged.
+
+| Per-frame median | Control | 512 KiB dispatch |
+| --- | ---: | ---: |
+| Batches | 2 | 5 |
+| First renderer replay before finish receipt | -0.185 ms | 15.958 ms |
+| Finish request to producer release | 4.400 ms | 1.157 ms |
+| All host submission waits | 5.390 ms | 2.185 ms |
+| Renderer replay elapsed, summed | 3.955 ms | 5.405 ms |
+
+Earlier dispatch therefore establishes substantial overlap without weakening
+`glFinish`. These are host/renderer JavaScript timestamps, not GPU execution
+timestamps. WebGL draw submission occurs during replay; GPU scheduling was
+not measured. Summed replay elapsed is not isolated CPU time.
+
+Observed presentation rate was 27.93 versus 26.49 FPS over 20 seconds.
+Host load was unequal (control approximately 4.74 to 4.89, candidate 5.31
+to 4.98), and tracing adds overhead. This pair establishes no FPS benefit;
+do not infer that smaller batches improve throughput merely because finish
+waits shrink. Audio work remained comparable: 53.916 versus 53.857 million
+blocks, with 2482 versus 2486 music refreshes. Both gameplay images were
+reviewed. Renderer replay flushes pending geometry at every batch boundary,
+so extra dispatches also change where geometry can be combined; that and
+concurrent CPU contention remain follow-up hypotheses, not measured causes.
+
+Focused real-WASM context, generic ownership/query, client-array and primitive
+tests passed, as did shared-render queue/fence tests after removing browser
+timing instrumentation (its `performance` reference is absent in the test VM).
+Exact batch-grouping pressure parity was not claimed for the changed grouping.
+The experimental source, module, trace and native captures are retained in
+the run folder. No production runtime change is selected from this pair.
+
+## Shared GL packet slots (2026-10-20)
+
+The next implementation keeps the original 2 MiB dispatch boundaries and
+encodes into three WASM-resident slots. The host leases published slots until
+renderer replay has flushed retained geometry; its existing two-pending limit
+protects rotation. This removes command-stream snapshot and Worker clone copies
+without relaxing queries, borrowed-input barriers or `glFinish`.
+
+Sequential Chrome 155 threaded Prologue captures are preserved in
+`20261020-wc3-packets-copy` and `20261020-wc3-packets-shared`. Both use module
+`cd3b43cf9718fd63b3ca56d54e0b3e112acd0f8dfb997dd21cdbc58f19b73ce6`.
+The copied control uses `?gl-copy`; shared publication uses offset descriptors
+into process memory. Exact source identities are recorded per run.
+
+| Measurement | Copied | Shared slots |
+| --- | ---: | ---: |
+| 20-second presentation rate | 25.85/s | 27.03/s |
+| p95 presentation interval | 53.22 ms | 48.78 ms |
+| Whole-launch copied batches | 3,469 | 0 |
+| Whole-launch copied bytes | 4,230,062,784 | 0 |
+| Whole-launch leased batches | 0 | 3,304 |
+| Audio-thread blocks during sample | 53,006,349 | 53,914,529 |
+| Music refreshes during sample | 2,480 | 2,483 |
+
+Both final images show Prologue gameplay and the Thrall HUD. Whole-launch
+counters include navigation and warmup, so they are not timed-window bandwidth.
+Host load differed (copied 5.73→6.04, shared 4.96→4.97); one pair establishes
+copy removal and functional rendering, not a causal FPS improvement or parity
+with cooperative mode. Matching ARM64 V8 TurboFan and SpiderMonkey Ion native
+listings are reviewed in `20261020-wc3-shared-packets-native`: init frames grow
+16 bytes in both engines and Ion flush grows 16 bytes. No x86-64 claim.
+
+### Earlier dispatch with shared slots (2026-10-20)
+
+Retested the same 512 KiB watermark on top of the shared packet pool. Control
+is `fccc344c7` / module `cd3b43cf…`; candidate module is
+`5812db90568d7f7569751296ab43ae21cd0df1b18fd180ca72f7d41a04c2510d`.
+The experiment changes only generic pre-record crossing and completed packed
+draw submission after software consumption. Storage remains three 2 MiB slots;
+queries and explicit `glFinish` retain their barriers.
+
+Sequential, fresh headful Chrome runs used the same Prologue select/move/return
+route and 30-second samples, with no concurrent test browser or CPU profiler.
+Actual downloaded module hashes match each recorded variant. All final gameplay
+images were reviewed. Evidence is in `20261020-wc3-pool-dispatch-` folders
+`control-a`, `512k`, `control-b`, and `native`.
+
+| Measurement | Control A | 512 KiB | Control B |
+| --- | ---: | ---: | ---: |
+| Presentation rate | 19.30/s | 26.72/s | 23.66/s |
+| p95 presentation interval | 67.54 ms | 69.00 ms | 75.32 ms |
+| Submitted batches during sample | 1,252 | 4,106 | 1,517 |
+| Batch-copy bytes | 0 | 0 | 0 |
+| Audio-thread blocks | 77,963,888 | 77,604,934 | 77,608,674 |
+| Music refreshes | 3,721 | 3,721 | 3,725 |
+| Music bytes consumed | 5,298,688 | 5,297,664 | 5,304,320 |
+| Host load before → after | 10.68→8.89 | 7.37→8.11 | 4.96→4.79 |
+
+Every music sample was nonzero (122/122 per run). The candidate's higher FPS
+therefore does not come from omitted audio work, but host load remains unequal.
+Its 13% lead over the better control is smaller than the controls' 23% spread;
+these samples do not establish a repeatable causal gain. Smaller batches also
+increase submissions per presented frame from about 2.1 to 5.1. Timing the
+first GPU submission/finish overlap was not repeated in this experiment.
+
+Generic ownership/query, primitive and triple-pool tests pass. Matching ARM64
+Ion/TurboFan captures show added integer threshold checks; V8 packed-finish
+grows from 736 to 1,024 bytes and its local frame from 48 to 64 bytes. No new
+FP-state or translation helper was introduced. The isolated full-build command
+stopped at stale fixture census metadata; explicit concatenation and compilation
+passed with unchanged layout `eb58be38f5ebb837`. This is an experimental module,
+not a newly approved production build. Exact sources, logs and native captures
+are retained. The fixture was restored afterward.
+
+Keep the existing dispatch default. Before selecting this candidate, repeat on
+a quieter host until controls are stable; evaluate submission/geometry flush
+overhead separately from buffer-copy removal. No threaded-versus-cooperative
+performance claim is made from this comparison.
+
+### 1 MiB dispatch and measured execution overlap (2026-10-20)
+
+Compared shared-pool 2 MiB control `cd3b43cf…`, 1 MiB candidate
+`c650a6b1774c820d432fc340e291c8f75000e35e00aa3726745c846d59fdb431`,
+and the previous 512 KiB candidate `5812db90…`. Storage remains three 2 MiB
+slots; only the dispatch watermark changes. Sequential fresh Chrome 155
+threaded runs use the same Prologue select/move/return route, 30-second samples,
+and identical fixture-only timing instrumentation. One test browser at a time.
+
+| Measurement | 2 MiB | 1 MiB | 512 KiB |
+| --- | ---: | ---: | ---: |
+| Presentation rate | 26.02/s | 27.93/s | 18.60/s |
+| p95 presentation interval | 57.71 ms | 46.87 ms | 75.75 ms |
+| Median batches/frame | 2 | 3 | 5 |
+| Median first WebGL draw lead before guest finish RPC | -0.15 ms | 10.19 ms | 21.04 ms |
+| Median guest finish RPC wait | 4.66 ms | 2.89 ms | 1.65 ms |
+| Median total GL submission wait/frame | 5.19 ms | 3.46 ms | 2.77 ms |
+| Median replay time/frame, excluding WebGL finish | 4.37 ms | 4.73 ms | 8.65 ms |
+| Main/replay overlap during sample | 0.51 ms | 1,812.11 ms | 3,842.79 ms |
+| Fraction of replay overlapping non-blocked main execution | 0.013% | 42.03% | 77.25% |
+| Conservative clock-only overlap bounds | 0.22–9.94 ms | 1,796.82–1,829.44 ms | 3,764.22–3,932.17 ms |
+| Host load before → after | 4.91→6.75 | 4.96→5.55 | 6.19→6.31 |
+
+Overlap is the intersection of render-worker `bridge.replay` wall intervals
+with actual main-worker `ex.run` intervals, after subtracting the union of JS
+RPC and Atomics waits. WebGL `finish` call time is excluded from the replay
+denominator. Worker clock ping bounds before/after sampling calibrate epoch
+timestamps; relative uncertainty is 0.055/0.057/0.065 ms. Interval arithmetic
+self-tests and an independent agent review passed. All host batches associate
+with main RPC records, and no trace buffer overflowed. The first draw lead is
+a separate measurement; it alone does not demonstrate overlap.
+
+These are wall-time overlap measurements, not CPU cycles or GPU execution.
+OS descheduling, lock spin, WASM-internal waits and driver blocking can remain.
+Replay excludes descriptor setup and post-replay bookkeeping. Individual draw
+intervals were not retained. Frame association assumes this single main GL
+stream. Tracing adds overhead, and the host was busy: 512 KiB's higher overlap
+coincides with much more replay wall time per frame and lower FPS. This does
+not establish that the watermark alone caused the regression. 1 MiB is the
+better candidate for a repeated, stable-control comparison; production keeps
+the existing default until that evidence exists.
+
+All final screenshots show intact Thrall Prologue gameplay. Downloaded WASM
+hashes match the intended variants, batch-copy bytes are zero, and audio work
+is comparable: 77.62/77.64/77.48 million audio-thread blocks,
+3,724/3,722/3,724 music refreshes, and 5,304,320/5,301,760/5,305,344 consumed
+music bytes. All 122 music samples per run are nonzero.
+
+Reviewed captures: `20261020-wc3-overlap-{2m,1m,512k}`. Timing source snapshots,
+analyzer and measurement review: `20261020-wc3-overlap-tools`. Matching ARM64
+Ion/TurboFan and generic/primitive/pool tests for 1 MiB are reviewed in
+`20261020-wc3-1m-overlap-native`; the packed V8 frame grows 48→64 bytes as in
+the 512 KiB variant, while Ion frames remain unchanged. No x86-64 claim.
+Experimental concat/compile passed with unchanged layout; the known stale
+fixture census prevents treating this as a full production build. Fixture
+runtime instrumentation, encoder and build were restored after capture.
+
+### Repeated software/WebGL CPU and three-thread overlap (2026-10-21 UTC)
+
+Eight fresh, sequential 30-second Prologue gameplay captures compare the same
+1 MiB and 512 KiB experimental modules above. Order: GL 1 MiB, GL 512 KiB,
+software 1 MiB, software 512 KiB, software 512 KiB, software 1 MiB,
+GL 512 KiB, GL 1 MiB. Only one test browser runs at a time. Each successful
+capture executes the select/move/return route and retains matching module
+hashes, backend checks, screenshots, audio diagnostics and raw timelines.
+Software checkpoint references differ from WebGL; three text-mask failures
+and one highlighted-but-unactivated Campaign click are retained separately,
+with no timing sample. Software-specific references and a longer Campaign
+click resolve the harness failures. Final gameplay images were reviewed.
+
+| Backend / watermark / repeat | FPS | Renderer CPU/frame | Main CPU/frame | Main/render overlap | Main/audio overlap |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| WebGL / 1 MiB / A | 33.76 | 4.21 ms | 25.39 ms | 41.6% | 87.9% |
+| WebGL / 512 KiB / A | 27.52 | 5.69 ms | 30.25 ms | 76.3% | 86.4% |
+| Software / 1 MiB / A | 7.13 | 102.67 ms | 40.80 ms | 21.8% | 42.6% |
+| Software / 512 KiB / A | 7.66 | 101.96 ms | 38.97 ms | 20.8% | 42.5% |
+| Software / 512 KiB / B | 7.23 | 103.48 ms | 40.10 ms | 20.9% | 42.4% |
+| Software / 1 MiB / B | 7.03 | 104.25 ms | 41.17 ms | 21.3% | 40.9% |
+| WebGL / 512 KiB / B | 29.19 | 5.35 ms | 29.14 ms | 76.3% | 87.3% |
+| WebGL / 1 MiB / B | 27.79 | 4.99 ms | 29.00 ms | 42.1% | 83.9% |
+
+Overlap still means calibrated, nonblocked **wall** intervals, not exact CPU
+execution overlap. Main/render percentages use renderer replay as denominator;
+main/audio percentages use audio-worker nonblocked execution as denominator.
+Audio/render overlap is 12.0–17.6% of renderer time for WebGL 1 MiB,
+30.3–30.7% for WebGL 512 KiB, and 13.2–17.9% for software. All three lanes
+and clock uncertainty bounds are retained in `analysis-repeat.json`.
+
+CPU measurements are separate Chrome `RunTask.tdur` totals for the correctly
+identified worker thread, divided by presented frames. Unique performance
+marks and their returned epoch timestamps align Chrome events to the capture
+window; only complete tasks inside conservative bounds count. Missing/invalid
+durations and boundary tasks are excluded explicitly, not treated as zero.
+Valid CPU durations cover 99.88–100% of complete renderer task wall time.
+Renderer CPU/task-wall ratios are 88.1–97.7% for WebGL and 96.4–97.4% for
+software. Independent review found no meaningful missing render-task time.
+Thread CPU includes renderer task bookkeeping; unlike replay wall time it
+excludes descheduling, but still depends on core assignment/frequency and
+contention. It cannot locate exact simultaneous CPU execution within tasks.
+
+The WebGL workload remains about 382 draw calls/frame for both watermarks.
+The old near-doubling of replay wall time does not reproduce as doubled CPU
+work: 512 KiB costs 5.35–5.69 ms/frame versus 4.21–4.99 at 1 MiB here. More
+overlap is repeatable, but FPS ordering reverses between the two pairs. Thus
+neither a stable FPS winner nor a batching-only cause for all CPU differences
+is established; host load remains unequal. Keep the production default.
+
+Software is a different queue: `?gl-renderer=software` enables WAT rasterization
+and offloads snapshots through legacy `D3DCommandStream` RECORD_GL packets.
+That encoder has its own 2 MiB slots and 75%-full/idle-consumer submission
+policy. The experimental GL watermark does not resize that raster queue;
+software generic GL batches remain synchronous. Timing only `gl-batch` would
+miss most software work, so this capture unions GL and legacy replay spans.
+Actual software exports report enabled=1, increasing presents, nonzero front,
+and zero unsupported texture uploads; WebGL has enabled=0 and actual WebGL
+draw calls. Software issues about 406–407 legacy commands/frame and spends
+102–104 ms of CPU/frame on its render worker. Its bottleneck is rasterization,
+not a large hidden scheduler delay. Optimize that path independently of the
+WebGL dispatch watermark.
+
+Audio remains active: 122/122 nonzero music samples in every capture,
+5.298–5.306 MB consumed per sample window, and 75.87–78.48 million audio-thread
+blocks. These checks rule out omitted audio, not all scheduling differences.
+No new runtime optimization or native variant was introduced. Reused native
+evidence is the preceding 1 MiB/512 KiB ARM64 Ion/TurboFan comparison.
+
+Evidence: `20261021-wc3-repeat-` folders `gl-1m-a`, `gl-512k-a`,
+`sw-1m-a-verified`, `sw-512k-a-retry`, `sw-512k-b`, `sw-1m-b`, `gl-512k-b`,
+`gl-1m-b`. Harness failures use `sw-1m-a`, `sw-1m-a-retry`,
+`sw-1m-a-retry2`, `sw-512k-a`. Instrumentation, analyzers, aggregate JSON and
+measurement review are in `20261021-wc3-render-repeat-tools`. Matching
+800×600 software/WebGL captures were opened in Preview for visual comparison.
+Fixture runtime/build restored after capture; production and unrelated
+brightness work remain unchanged.
+
+### Six additional 60-second WebGL captures (2026-10-21 UTC)
+
+Retested the existing native-reviewed modules with the preceding three-worker
+clock/CPU instrumentation and fresh Prologue route. Order is 2 MiB, 1 MiB,
+512 KiB, 512 KiB, 1 MiB, 2 MiB; one browser at a time. Each timed window is
+60 seconds. All six final gameplay images were reviewed and actual downloaded
+WASM/backend checks pass. No new runtime variant was introduced.
+
+| Watermark / repeat | FPS | First / second half FPS | Renderer CPU/frame | Main CPU/frame | Main/render overlap |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2 MiB / A | 32.83 | 32.26 / 33.39 | 3.98 ms | 24.82 ms | ~0% |
+| 1 MiB / A | 27.05 | 24.67 / 29.43 | 5.15 ms | 29.34 ms | 42.7% |
+| 512 KiB / A | 31.19 | 30.73 / 31.66 | 5.12 ms | 27.65 ms | 76.4% |
+| 512 KiB / B | 28.53 | 27.87 / 29.20 | 5.57 ms | 29.44 ms | 76.2% |
+| 1 MiB / B | 30.35 | 29.30 / 31.40 | 4.72 ms | 27.16 ms | 42.0% |
+| 2 MiB / B | 24.98 | 27.76 / 22.20 | 4.83 ms | 29.87 ms | ~0% |
+
+The unchanged control spans 24.98–32.83 FPS, a 31% high/low spread, larger
+than the candidate differences. Closing control host load rose 3.59→9.19;
+its second half drops to 22.20 FPS. In the first 1 MiB run, load rose
+4.46→7.28 while FPS increased between halves, so load averages alone do not
+explain individual frame times. These are noisy session measurements, not a
+causal FPS ranking or independent per-frame statistical trials. Keep the
+production 2 MiB default. The repeatable finding is earlier dispatch and
+nonblocked wall overlap, not improved throughput. CPU time remains sensitive
+to core assignment/frequency and contention; there is no new attribution of
+the CPU differences to one batching mechanism.
+
+Draw counts are 379.4–380.0/frame. Audio-thread work is 151.50–152.27 million
+blocks, music consumption 10.596–10.605 MB, and every run has 242/242 nonzero
+music samples. Valid renderer thread CPU covers 99.88–99.98% of complete task
+wall time. The prior clock bounds, boundary-task exclusions and distinction
+between wall overlap, thread CPU and GPU execution still apply.
+
+Evidence: `20261021-wc3-confirm-{2m-a,1m-a,512k-a,512k-b,1m-b,2m-b}`;
+capture tools, source snapshots and aggregate metrics are retained in
+`20261021-wc3-webgl-confirm-tools`. No capture failure in this series. Fixture
+runtime/build restored after testing. A useful next isolation experiment is
+fixed-command replay with different packet boundaries, followed by a quiet
+gameplay control/candidate comparison; more noisy whole-game averages alone
+will not identify the source of the extra CPU time.
+
+### Common submission queue FPS comparison (2026-10-21)
+
+Compared parent `d0220545a` against queue refactor `485e2c9f8` in the isolated
+fixture. All captured runtime identities match except the four intended files:
+`render-worker.js`, `gl-render-host.js`, `glide-host.js`, and
+`d3d-command-stream.js`. Both use unchanged production WASM `cd3b43cf…`, the
+2 MiB GL watermark and existing software batching. No new interpreter/native
+variant. Fresh Chrome profiles, one browser at a time, identical Prologue menu
+route, HUD checks and Thrall select/move/return input. The timed scene is the
+animated opening area with Thrall standing, not a large battle or an identical
+recorded command stream. No overlap tracing or CPU sampling was enabled;
+lightweight audio checks and the existing presentation/liveness hooks remain.
+
+The initial four WebGL captures used 60-second windows: old 24.76/27.13 FPS,
+new 26.50/32.98. The first control's host load rose 5.89→18.53 and its halves
+were 28.93/20.60 FPS. Inspection after the user's warm-up question confirmed
+`--warmup=2` runs **before** the navigation driver. Although loading/cinematics
+were excluded and the movement route provided roughly 15 seconds of gameplay,
+there was no dedicated steady-state settling period. These exploratory samples
+remain separate from the corrected series below.
+
+Corrected protocol: verify gameplay and complete movement, then wait **60 seconds
+uncounted**, then measure **180 seconds**, retaining six 30-second windows.
+Run old/new/new/old sequentially for WebGL, then the same order for software.
+FPS counts host game-frame presentation callbacks using `performance.now()`;
+it is not the page's approximately 60 Hz requestAnimationFrame rate, GPU
+execution duration, or proof of distinct monitor scanouts. The presentation
+source tag `gpu` also names native-software output through this compositor;
+backend selection is independently checked with producer exports.
+
+| Backend / queue / repeat | FPS | First / second 90s FPS | Present interval p95 |
+| --- | ---: | --- | ---: |
+| WebGL / old / A | 27.50 | 27.92 / 27.08 | 46.78 ms |
+| WebGL / new / A | 28.77 | 28.88 / 28.67 | 44.32 ms |
+| WebGL / new / B | 29.64 | 28.14 / 31.13 | 45.03 ms |
+| WebGL / old / B | 33.69 | 33.74 / 33.63 | 37.74 ms |
+| Software / old / A | 7.64 | 7.54 / 7.74 | 137.62 ms |
+| Software / new / A | 7.47 | 7.28 / 7.65 | 137.92 ms |
+| Software / new / B | 7.67 | 7.65 / 7.68 | 138.25 ms |
+| Software / old / B | 7.74 | 7.76 / 7.72 | 139.20 ms |
+
+WebGL descriptive means are 30.595 old versus 29.205 new (−4.54%). This is
+not an established regression: unchanged controls differ by 22.5%, and pairwise
+direction reverses. Candidate B's six windows are 28.73, 28.20, 27.50, 27.03,
+33.03, 33.33 FPS, followed by a steady 33.69 FPS old control. Longer settling
+does not eliminate between-session performance shifts or this within-session
+step. Load averages do not explain all variation: the fast closing control
+starts at 3.53 and ends at 8.97. No causal FPS gain is demonstrated.
+
+Software descriptive means are 7.69 old versus 7.57 new (−1.56%). Both pairs
+are slightly lower with the new queue, but run ranges overlap and the candidate's
+own spread is 2.7%. A small software slowdown remains possible; two fresh
+sessions per variant are insufficient to establish it. Do not report either
+an FPS improvement or proven equivalence. Software host load stays roughly
+2.3–2.65. A quieter controlled replay would be more useful for isolating queue
+overhead than repeatedly averaging this whole game scene.
+
+All eight long samples have 722/722 nonzero music checks and approximately
+31.76 MB of music consumed. WebGL audio-thread work is 437.76–438.50 million
+blocks; software is 353.77–362.59 million, so software audio workload is not
+perfectly matched even with equal audible progress. Actual fetched WASM hashes,
+source manifests, native-software enablement/presents/front/unsupported-texture
+checks, live canvas checks, and final scene/HUD images were reviewed. No capture
+failed. Frames/windows are correlated observations, not independent repeats.
+
+Evidence: `20261021-wc3-queue-gl-{before,after}-{a,b}` for the short series;
+`20261021-wc3-queue-long-{gl,sw}-{before,after}-{a,b}` for the corrected series.
+Drivers, analyzers, per-window results and full source snapshots accompany the
+runs; aggregate tools are in `20261021-wc3-queue-fps-tools` and
+`20261021-wc3-queue-long-tools`. Fixture queue sources restored to the root's
+current files after capture; all test browsers closed. No further runtime
+change, push or deployment follows from these measurements.
+
+### Active unit movement / dispatch threshold (2026-10-21 UTC)
+
+Accepted common queue commit `485e2c9f8` as the fixed cleanup baseline, then
+varied only the WebGL soft dispatch threshold. Storage remains three 2 MiB
+slots; completion fences and queue machinery are unchanged. Reused exact
+native-reviewed artifacts: production `cd3b43cf…` (2 MiB), `c650a6b1…`
+(1 MiB, `20261020-wc3-1m-overlap-native`), and `5812db90…` (512 KiB,
+`20261020-wc3-pool-dispatch-native`). No new native optimization variant.
+
+Fresh threaded Chrome sessions, sequentially and one browser at a time:
+2 MiB / 1 MiB / 512 KiB / 512 KiB / 1 MiB / 2 MiB. Verify the Prologue HUD,
+select/move/return Thrall, settle for 60 seconds, then count guest presentation
+callbacks for 180 seconds. **During** that measurement, issue 30 right-click
+orders at six-second intervals, cycling four nearby destinations. Seven
+world-canvas captures at approximately 3/9/15/21/63/123/171 seconds show the
+route; red-unit centroid checks agree across runs, and manual review confirms
+movement and intact final HUDs. Command scheduling deviations are below 500 ms.
+This is fixed-camera single-unit movement, not an army battle or a deterministic
+graphics-command replay. Page rAF remains around 60 Hz and is not the FPS metric.
+
+| Threshold / repeat | FPS | First / second 90s | Present interval p95 | Submissions/frame | Load before / after |
+| --- | ---: | --- | ---: | ---: | --- |
+| 2 MiB / A | 29.30 | 28.43 / 30.18 | 46.12 ms | 2.107 | 4.27 / 4.48 |
+| 1 MiB / A | 28.56 | 27.77 / 29.36 | 47.82 ms | 3.110 | 5.27 / 4.98 |
+| 512 KiB / A retry | 38.02 | 37.91 / 38.12 | 33.69 ms | 5.084 | 3.19 / 2.20 |
+| 512 KiB / B retry | 32.47 | 32.53 / 32.41 | 42.00 ms | 5.098 | 6.43 / 4.26 |
+| 1 MiB / B | 29.78 | 29.38 / 30.18 | 46.60 ms | 3.106 | 5.72 / 5.50 |
+| 2 MiB / B | 28.13 | 27.30 / 28.97 | 50.36 ms | 2.112 | 5.09 / 5.31 |
+
+Descriptive means: 28.715 / 29.170 / 35.245 FPS for 2 MiB / 1 MiB /
+512 KiB. Both successful 512 KiB runs exceed both controls; it is the strongest
+candidate in this series. The descriptive mean difference is +22.7% versus
+2 MiB, but not an established general speedup: the fastest session has much
+lower host load, the two 512 KiB sessions differ by 17.1%, there are only two
+successful independent sessions per setting, and earlier shorter/instrumented
+tests did not establish this ranking. Keep the production default at 2 MiB
+pending broader/quiet-host validation; prioritize 512 KiB for that validation.
+1 MiB has no clear advantage here. This pass has no CPU/overlap tracing and
+does not measure GPU start time. The threshold controls submission to the
+renderer worker, not a GPU scheduling guarantee.
+
+Payload volume stays about 1.586 MiB/frame across settings while submissions
+rise from approximately 2.1 to 3.1 to 5.1/frame. Largest packets are 1,726,928 /
+1,057,164 / 531,592 bytes respectively; soft thresholds may be exceeded by a
+completed packed record. Actual fetched module hashes and WebGL enablement
+were checked. Runtime JS/harness source hashes match across all six sessions;
+only the WASM identity differs. Every sample has 722/722 nonzero music checks,
+31.781–31.789 MB consumed, and 443.93–444.80 million audio-thread blocks.
+Six 30-second FPS windows and raw presentation timestamps are retained.
+
+Two failed attempts remain visible in the evidence: `512k-a` did not advance
+the main-menu click to the profile list (timeout screenshot reviewed), and
+`512k-b` failed before briefing with a detached-frame error (no final capture;
+underlying cause unknown). Neither contributed an FPS sample. Each was retried
+once in a fresh browser; successful retries are identified explicitly above.
+
+Evidence: `20261021-wc3-active-{2m-a,1m-a,512k-a-retry,512k-b-retry,1m-b,2m-b}`
+plus the two failed folders. Drivers, source snapshots, movement checks, raw
+metrics and aggregate tools are in those bundles and
+`20261021-wc3-active-threshold-tools`. All six successful bundles and both
+failures reviewed/published; evidence checker has only the preexisting Zuma
+outside-path error, with no missing/invalid records. Fixture restored to root
+runtime and production WASM after testing; test browsers closed. No production
+threshold change or deployment.
+
+### Promote 512 KiB default (2026-10-21)
+
+User chose to adopt the active-movement candidate. The production GL encoder
+now uses the same 512 KiB soft threshold with unchanged 2 MiB storage and
+explicit barriers. Full build passes and its WASM SHA-256 is exactly
+`5812db90568d7f7569751296ab43ae21cd0df1b18fd180ca72f7d41a04c2510d`, matching
+the measured and ARM64 V8/SpiderMonkey native-reviewed candidate above.
+The full encoder parity suite passes; pressure cases now compare complete
+ordered records independently of packet boundaries and check early dispatch.
+Shared-worker protocol and lifecycle tests pass. This is a default selection
+based on the recorded workload, not a claim of a general 22.7% speedup.
