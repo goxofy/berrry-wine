@@ -8972,3 +8972,63 @@ So draw throughput is ~35% lower. Candidate causes, none measured:
 - **Real lock contention:** since f5329feb1 the render worker excludes on shared-table locks instead of re-entering them.
 
 To separate them, rerun the same scene on one host with both Node versions, and with and without f5329feb1, and profile the worker for lock-spin time.
+
+## 2026-10-23: the lock-identity fix costs no frame rate; the per-draw heap does
+
+Run `scratch/runs/20261023T1350Z-black_white_2_demo-claude263-lockperf-ab` (boat bx_2bxb3m3w, 4 vCPU Ryzen 9 9950X). This answers the open question above: does f5329feb1, which makes the render worker exclude on shared-table locks, cost frame rate?
+
+**Method:**
+- Two clean worktrees on one boat:
+  - parent: 32c0b9bcf = f5329feb1^, wasm 4b7c42d8;
+  - fix: f5329feb1, wasm 43375d0f, which is main's code (later main commits are docs only).
+- Both full builds pass.
+- The same FIFO route as the Gold Scroll run. Arms run as concurrent pairs, on the same Node (v20.20.2).
+- Metric: render-worker CPU per completed draw (`/proc` thread utime+stime), over the same probe-time windows. Draws are `completed[5]`, presents `completed[12]`.
+- One pair ran with `--cpu-prof` on the CLI child, so both arms carry the same profiler overhead.
+
+**Render-worker ms per draw, parent vs fix:**
+
+| window | rep 1 | rep 2 (profiled) | rep 4 |
+|---|---|---|---|
+| 600–900 s (land load) | 126.45 / 125.98 | 100.54 / 99.35 | 108.35 / 105.34 |
+| 900–1200 s | parent latched | 14.51 / 14.12 | parent latched |
+| 1200–1500 s (Land3 intro, ~545 draws/present) | — | 11.93 / 12.01 | — |
+
+In rep 2's 1200–1500 s window:
+- 75.87 vs 75.39 draws/s;
+- 0.140 vs 0.136 fps;
+- the same frame in both arms (`frames/r2-*-1500/1504`).
+
+**Profile (render worker, 1190–1490 s, both arms):** `$lock_acquire` is **0.01%** inclusive (0.03 s of 300 s), `$lock_release` <0.01% and `$w2g_sparse` 0.16%. The worker does not wait on the guest's locks. The fix is free.
+
+**The parent arm still latches:** the -1 raster latch hit 2 of 3 unprofiled parent runs (first failed draw ~1125 s in rep 1, inside 900–1200 s in rep 4). That is why the heavy scene has only one parent sample.
+
+**Node v24.18.1 vs v20.20.2** (fix build, rep 3, concurrent pair):
+- v24 loads the land faster.
+- v24 spends ~10–15% less worker CPU per draw in the intro: 12.25 / 12.72 ms vs 13.73 / 14.56 ms.
+
+So part of the 0.146 vs 0.09 fps gap between the two earlier runs is Node. The rest is scene (draws per present vary 545–740 across the intro) and host/load; here two runs shared 4 vCPUs.
+
+**Where the worker's time does go** (same in both arms, 1190–1490 s):
+- `$d3d_software_step` and the shader VM, as expected for a rasterizer.
+- But **`$heap_alloc` is 23.5% inclusive** and `$heap_free` 7.7%. **`$heap_arena_find` is the top self-time function at 17.5%.**
+- The chain: `$d3d_software_create_mode` allocates each draw's ~852 KB context. It is a large block, so every draw gets a fresh arena:
+  - `$heap_large_alloc` → `$virtual_reserve_down` → `$virtual_reserve_place` → **`$virtual_range_edge_locked` 13.3%**, a linear scan for free address space;
+  - then `$heap_arena_register` → `$heap_arena_release_free` → `$heap_free_list_purge` → `$heap_arena_find` 7%;
+  - `$heap_free` of the context, plus `$d3d_shader_vm_free`, through `$heap_arena_find`.
+- So roughly 30% of the render worker reserves and releases address space for one context per draw. This is not caused by f5329feb1.
+
+**Lead (not implemented):** keep the draw context, or one free large arena, across draws instead of reserving a fresh range each time. Alternatively, index the reserve/arena lookups. On this profile that would buy up to ~1.4x on the heavy scene's draws/s. Check it with the same paired, profiled run.
+
+Function indices for reading the profiles (same in both builds; `node tools/func-index.js N`):
+
+| index | function |
+|---|---|
+| 10625 | `$lock_acquire` |
+| 10641 | `$virtual_range_edge_locked` |
+| 10675 | `$heap_arena_find` |
+| 10700 | `$heap_alloc` |
+| 10686 | `$heap_large_alloc` |
+| 10703 | `$heap_free` |
+| 7630 | `$d3d_software_create_mode` |
+| 7659 | `$d3d_software_step` |
