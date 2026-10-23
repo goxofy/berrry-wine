@@ -179,3 +179,138 @@ room have to share a wall clock: [blobby-volley.md](blobby-volley.md).
 | Worms 2 October demo | [worms2-demo.md](worms2-demo.md) |
 | Warcraft III: Reign of Chaos demo | [warcraft3-demo.md](warcraft3-demo.md) |
 | Windows Installer 2.0 for Win9x (instmsi.exe) | [windows-installer-2.0.md](windows-installer-2.0.md) |
+| American McGee's Alice demo | [alice-demo.md](alice-demo.md) |
+| Alien Shooter (Reflexive) | [alien-shooter.md](alien-shooter.md) |
+| Sid Meier's Alpha Centauri Classic (Win95 ISO) | [alpha-centauri.md](alpha-centauri.md) |
+| Age of Empires II Trial | [aoe2-trial.md](aoe2-trial.md) |
+| Army Men (1998) original demo (preflight, acquisition, setup, licence pane, CMOS RTC, remote launch, recovery, BltFast observer/conformance) | [army-men-demo.md](army-men-demo.md), [army-men-acquisition.md](army-men-acquisition.md), [army-men-setup-startup.md](army-men-setup-startup.md), [army-men-licence-pane.md](army-men-licence-pane.md), [army-men-cmos-rtc-20261019.md](army-men-cmos-rtc-20261019.md), [army-men-remote-launch-preparation-20261019.md](army-men-remote-launch-preparation-20261019.md), [army-men-authorized-recovery-20261019.md](army-men-authorized-recovery-20261019.md), [army-men-paired-observer-20261020.md](army-men-paired-observer-20261020.md), [army-men-observer-abi-fix-20261020.md](army-men-observer-abi-fix-20261020.md), [army-men-bltfast-conformance-20261020.md](army-men-bltfast-conformance-20261020.md) |
+| Arx Fatalis demo (local media, packed-entry allocation, startup fault) | [arx-fatalis-demo.md](arx-fatalis-demo.md), [arx-allocation-correctness-20261007.md](arx-allocation-correctness-20261007.md), [arx-ordinary-startup-fault-20261007.md](arx-ordinary-startup-fault-20261007.md) |
+| Atomic Bomberman demo | [atomic-bomberman-demo.md](atomic-bomberman-demo.md) |
+| Aliens versus Predator 2 (single-player demo) | [avp2-demo.md](avp2-demo.md) |
+| Baldur's Gate II demo | [baldurs-gate2-demo.md](baldurs-gate2-demo.md) |
+| Baldur's Gate previews | [baldurs-gate-demos.md](baldurs-gate-demos.md) |
+| Barrage 1.0.5 Win32 | [barrage-105.md](barrage-105.md) |
+| Beneath a Steel Sky (GOG ScummVM) | [beneath-a-steel-sky-gog.md](beneath-a-steel-sky-gog.md) |
+| Beyond Good and Evil Windows demo (second note; see also beyond-good-evil-demo.md) | [beyond-good-and-evil-demo.md](beyond-good-and-evil-demo.md) |
+| Black & White 2 demo | [black-white-2.md](black-white-2.md) |
+| Broken Sword demo | [broken-sword-demo.md](broken-sword-demo.md) |
+| Caesar III demo | [caesar3-demo.md](caesar3-demo.md) |
+| Captain Claw demo | [captain-claw-demo.md](captain-claw-demo.md) |
+| Carmageddon TDR2000 alpha test demo | [carmageddon-tdr2000-demo.md](carmageddon-tdr2000-demo.md) |
+| Warhammer 40,000: Chaos Gate demo | [chaos-gate-demo.md](chaos-gate-demo.md) |
+| Circus Linux! 1.0.0 | [circuslinux-100.md](circuslinux-100.md) |
+| Colin McRae Rally 3 demo (two notes) | [colin-mcrae-rally-3-demo.md](colin-mcrae-rally-3-demo.md), [colin-mcrae-rally3-demo.md](colin-mcrae-rally3-demo.md) |
+| Comanche 3 DOS demo (installer, AH5A review, later execution, memory repair) | [comanche3-demo.md](comanche3-demo.md), [comanche3-ah5a-review-20261007.md](comanche3-ah5a-review-20261007.md), [comanche3-later-execution-20261007.md](comanche3-later-execution-20261007.md), [comanche3-memory-repair-20261007.md](comanche3-memory-repair-20261007.md) |
+| Conan (2004) demo | [conan-demo.md](conan-demo.md) |
+| Constructor (1997) DOS demo | [constructor-demo.md](constructor-demo.md) |
+| Crimsonland (relative pointer input, main-thread exit) | [crimsonland-relative-input-20261008.md](crimsonland-relative-input-20261008.md), [crimsonland-owning-exit-20261008.md](crimsonland-owning-exit-20261008.md) |
+| The Curse of Monkey Island demo | [curse-monkey-island-demo.md](curse-monkey-island-demo.md) |
+| Classic WordZap (idle audit) | [cwordzap.md](cwordzap.md) |
+| The Elder Scrolls II: Daggerfall (GOG) | [daggerfall-gog.md](daggerfall-gog.md) |
+| Dark Reign 2 demo | [dark-reign2-demo.md](dark-reign2-demo.md) |
+| Darkstone demo 1.0 | [darkstone-demo.md](darkstone-demo.md) |
+| Deus Ex demo | [deus-ex-demo.md](deus-ex-demo.md) |
+| Deus Ex: Invisible War demo | [deus-ex-invisible-war-demo.md](deus-ex-invisible-war-demo.md) |
+| Diablo II (next bounded evidence run, 2026-10-19) | [diablo2-runtime-readiness-20261019.md](diablo2-runtime-readiness-20261019.md) |
+| Disciples II demo | [disciples2-demo.md](disciples2-demo.md) |
+| Dungeon Keeper demo | [dungeon-keeper-demo.md](dungeon-keeper-demo.md) |
+| Dungeon Siege demo (original retry, thread snapshot boundary) | [dungeon-siege-demo.md](dungeon-siege-demo.md), [dungeon-siege-original-retry.md](dungeon-siege-original-retry.md), [dungeon-siege-thread-snapshot.md](dungeon-siege-thread-snapshot.md) |
+| Dungeon Siege: Legends of Aranna demo | [dungeon-siege-legends-aranna-demo.md](dungeon-siege-legends-aranna-demo.md) |
+| Dungeons of Dredmor (Steam beta, public release) | [dungeons-of-dredmor.md](dungeons-of-dredmor.md), [dungeons-of-dredmor-release.md](dungeons-of-dredmor-release.md) |
+| DX5 SDK `boids.exe` | [dx-sdk-boids.md](dx-sdk-boids.md) |
+| DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl) | [dx-sdk-d3drm-samples.md](dx-sdk-d3drm-samples.md) |
+| Elasto Mania 1.0 | [elasto-mania.md](elasto-mania.md) |
+| EmPipe (idle audit) | [empipe.md](empipe.md) |
+| Fallout Win95 interactive demo | [fallout-demo.md](fallout-demo.md) |
+| FIFA 98: Road to World Cup demo | [fifa98-demo.md](fifa98-demo.md) |
+| Flight of the Amazon Queen (GOG ScummVM) | [flight-of-the-amazon-queen-gog.md](flight-of-the-amazon-queen-gog.md) |
+| Four Stones | [fourstones.md](fourstones.md) |
+| Funtris (idle audit) | [funtris.md](funtris.md) |
+| Heroes of Might and Magic II demo: why it feels slow (2026-10-04) | [heroes2-performance-20261004.md](heroes2-performance-20261004.md) |
+| Hock-A-Loogie | [hock-a-loogie.md](hock-a-loogie.md) |
+| Icewind Dale demo | [icewind-dale-demo.md](icewind-dale-demo.md) |
+| Interstate '76 Arsenal demo | [interstate76-arsenal-demo.md](interstate76-arsenal-demo.md) |
+| Jazz Jackrabbit 2 shareware 1.23s | [jazz2-demo.md](jazz2-demo.md) |
+| Jedi Knight: Dark Forces II demo (start with jedi-status; preflight, installer, licence, layout, components input, renderer input, DirectX predicate, alternate recovery) | [jedi-status-20261021.md](jedi-status-20261021.md), [jedi-knight-demo.md](jedi-knight-demo.md), [jedi-knight-installer-handoff.md](jedi-knight-installer-handoff.md), [jedi-original-accept-launch-20261020.md](jedi-original-accept-launch-20261020.md), [jedi-original-layout-install-20261021.md](jedi-original-layout-install-20261021.md), [jedi-components-input-fix-20261020.md](jedi-components-input-fix-20261020.md), [jedi-input-review-integrate-20261020.md](jedi-input-review-integrate-20261020.md), [jedi-directx-predicate-20261021.md](jedi-directx-predicate-20261021.md), [jedi-original-alternate-recovery-20261021.md](jedi-original-alternate-recovery-20261021.md) |
+| JezzBall (WEP4) | [jezzball.md](jezzball.md) |
+| .kkrieger Chapter I beta | [kkrieger-beta.md](kkrieger-beta.md) |
+| LBreakout2 2.5.1 | [lbreakout2-251.md](lbreakout2-251.md) |
+| LMarbles 1.0.8 | [lmarbles-first-launch.md](lmarbles-first-launch.md) |
+| Lords of the Realm II demo | [lords2-demo.md](lords2-demo.md) |
+| Lure of the Temptress (GOG ScummVM) | [lure-of-the-temptress-gog.md](lure-of-the-temptress-gog.md) |
+| Mad Bomber 0.2.5 (start with madbomber-status; package, corpus launch, CRT/DBCS/LockFile checkpoints, MIDI, gameplay, browser FPS) | [madbomber-status-20261021.md](madbomber-status-20261021.md), [madbomber-025.md](madbomber-025.md), [madbomber-corpus-launch-20261020.md](madbomber-corpus-launch-20261020.md), [madbomber-dbcs-contract.md](madbomber-dbcs-contract.md), [madbomber-fdopen-design.md](madbomber-fdopen-design.md), [madbomber-fdopen-retry.md](madbomber-fdopen-retry.md), [madbomber-lockfile-design.md](madbomber-lockfile-design.md), [madbomber-rewind-retry.md](madbomber-rewind-retry.md), [madbomber-after-midi-original-20261020.md](madbomber-after-midi-original-20261020.md), [madbomber-current-main-gameplay-20261021.md](madbomber-current-main-gameplay-20261021.md), [madbomber-browser-gameplay-20261021.md](madbomber-browser-gameplay-20261021.md), [madbomber-browser-fps-20261021.md](madbomber-browser-fps-20261021.md) |
+| Marbles (`MARBLES.EXE`) | [marbles.md](marbles.md) |
+| MechWarrior 3 demo | [mechwarrior3-demo.md](mechwarrior3-demo.md) |
+| Classic Media Player (`mplay32.exe`) | [media-player.md](media-player.md) |
+| Messiah demo (MCI error-constant contract) | [messiah-demo.md](messiah-demo.md), [messiah-mci-contract-20261020.md](messiah-mci-contract-20261020.md) |
+| Morrowind (GOTY retail ISO) | [morrowind.md](morrowind.md) |
+| Motocross Madness demo | [motocross-madness-demo.md](motocross-madness-demo.md) |
+| Need for Speed Windows demos (NFS III Glide renderer) | [need-for-speed.md](need-for-speed.md), [need-for-speed-glide.md](need-for-speed-glide.md) |
+| Neverwinter Nights demo (native display-list boundary) | [neverwinter-nights-demo.md](neverwinter-nights-demo.md) |
+| Nocturne demo | [nocturne-demo.md](nocturne-demo.md) |
+| Nox demo | [nox-demo.md](nox-demo.md) |
+| Oni demo | [oni-demo.md](oni-demo.md) |
+| Organic Art / D3DRM screensavers (Plus! 98) | [organic-art-screensavers.md](organic-art-screensavers.md) |
+| Outcast demo | [outcast-demo.md](outcast-demo.md) |
+| Outlaws demo (acquisition, first launch, PM/Pro loader, NE bridge, QT_Thunk, KERNEL32 image, guest NE lifecycle) | [outlaws-demo.md](outlaws-demo.md), [outlaws-demo-first-launch.md](outlaws-demo-first-launch.md), [outlaws-pmpro-loader.md](outlaws-pmpro-loader.md), [outlaws-ne-bridge-ownership.md](outlaws-ne-bridge-ownership.md), [outlaws-qt-abi.md](outlaws-qt-abi.md), [outlaws-kernel32-image.md](outlaws-kernel32-image.md), [outlaws-guest-lifecycle.md](outlaws-guest-lifecycle.md) |
+| Space Cadet Pinball (mobile presentation) | [pinball.md](pinball.md) |
+| Plus! 98 Direct3D screensavers (ARCHITEC, FALLINGL, GEOMETRY, JAZZ, OASAVER, ROCKROLL, SCIFI) | [plus98-dx-screensavers.md](plus98-dx-screensavers.md) |
+| Rage of Mages demo | [rage-of-mages-demo.md](rage-of-mages-demo.md) |
+| Rage of Mages II: Necromancer demo | [rage-of-mages2-demo.md](rage-of-mages2-demo.md) |
+| Recoil demo | [recoil-demo.md](recoil-demo.md) |
+| Reflexive corpus compatibility probe | [reflexive.md](reflexive.md) |
+| Return Fire demo | [return-fire-demo.md](return-fire-demo.md) |
+| Ricochet Xtreme 1.4 | [ricochet-xtreme.md](ricochet-xtreme.md) |
+| Rodent's Revenge 2000 (VB6 remake) | [rodent2000.md](rodent2000.md) |
+| RollerCoaster Tycoon (demo) | [rollercoaster-tycoon.md](rollercoaster-tycoon.md) |
+| Runenlegen | [runenlegen.md](runenlegen.md) |
+| Sacrifice demo | [sacrifice-demo.md](sacrifice-demo.md) |
+| Sanity: Aiken's Artifact demo | [sanity-demo.md](sanity-demo.md) |
+| Shadow Man (genuine DSETUP/VERSION, installed launcher and Configuration) | [shadow-man-dsetup-qualified-20261022.md](shadow-man-dsetup-qualified-20261022.md), [shadow-man-launcher-evidence-accepted-20261023.md](shadow-man-launcher-evidence-accepted-20261023.md) |
+| Shadow Warrior Classic Complete (GOG) | [shadow-warrior-gog.md](shadow-warrior-gog.md) |
+| Silver demo | [silver-demo.md](silver-demo.md) |
+| SimCity 2000 Network Edition demo (2KCLIENT / 2KSERVER) | [simcity-2000-network-edition.md](simcity-2000-network-edition.md) |
+| Sid Meier's SimGolf demo | [simgolf-demo.md](simgolf-demo.md) |
+| Slave Zero demo | [slave-zero-demo.md](slave-zero-demo.md) |
+| Solitaire (NT debug build in Entertainment Pack) | [solitaire.md](solitaire.md) |
+| StarCraft shareware | [starcraft-shareware.md](starcraft-shareware.md) |
+| SuperTux 0.1.3 | [supertux-013.md](supertux-013.md) |
+| System Shock 2 demo | [system-shock2-demo.md](system-shock2-demo.md) |
+| Thief II: The Metal Age demo | [thief2-demo.md](thief2-demo.md) |
+| Tony Hawk's Pro Skater 2 demo | [thps2-demo.md](thps2-demo.md) |
+| Command & Conquer: Tiberian Sun demo | [tiberian-sun-demo.md](tiberian-sun-demo.md) |
+| Tile World | [tile-world.md](tile-world.md) |
+| Total Annihilation demo (second note; see also total-annihilation.md) | [total-annihilation-demo.md](total-annihilation-demo.md) |
+| Turok 2 demo | [turok2-demo.md](turok2-demo.md) |
+| Unreal-family demo installers | [unreal-family-demos.md](unreal-family-demos.md) |
+| Urban Chaos demo | [urban-chaos-demo.md](urban-chaos-demo.md) |
+| Visual Basic 5.0 CCE (and other free VB/Delphi editions) | [visual-basic-5-cce.md](visual-basic-5-cce.md) |
+| Warcraft III demo: 512 KiB integration (2026-10-22) | [wc3-512-integration-20261022.md](wc3-512-integration-20261022.md) |
+| Chip's Challenge (Win16 WEP4) | [wep16-chips.md](wep16-chips.md) |
+| Fuji Golf (Win16 WEP3) | [wep16-fujigolf.md](wep16-fujigolf.md) |
+| Go Figure! (Win16 WEP4) | [wep16-gofigure.md](wep16-gofigure.md) |
+| Tetris for Windows (Win16 WEP1) | [wep16-tetris.md](wep16-tetris.md) |
+| TriPeaks (Win16 WEP) | [wep16-tripeaks.md](wep16-tripeaks.md) |
+| WordZap (Win16 WEP3; display-DC publication) | [wep16-wordzap.md](wep16-wordzap.md) |
+| Winamp wVis popup routing | [winamp-wvis.md](winamp-wvis.md) |
+| WinBoard 4.2.7 (GNU Chess route) | [winboard.md](winboard.md) |
+| Worms Armageddon demo | [worms-armageddon-demo.md](worms-armageddon-demo.md) |
+
+## Cross-cutting and dated investigation notes
+
+These files cover a subsystem shared by many apps, or are dated reports from a
+single bounded task. They are not per-binary notes, but they are indexed here so
+nobody redoes them.
+
+| Topic | Files |
+|---|---|
+| CRT functions (descriptor metadata, `_iob`, `_fdopen`, `_fpreset`, rewind, setbuf, setjmp) | [crt-descriptor-prerequisite.md](crt-descriptor-prerequisite.md), [crtdll-iob.md](crtdll-iob.md), [crt-fdopen-binary.md](crt-fdopen-binary.md), [crt-fpreset.md](crt-fpreset.md), [crt-rewind.md](crt-rewind.md), [crt-setbuf.md](crt-setbuf.md), [crt-setjmp.md](crt-setjmp.md) |
+| Callback invocation ownership (census, CRT init/exit, qsort, bsearch, property sheets, synchronous window, multimedia timer, token concurrency) | [callback-ownership-census.md](callback-ownership-census.md), [callback-census-reconcile-20261020.md](callback-census-reconcile-20261020.md), [crt-init-exit-invocation-ownership.md](crt-init-exit-invocation-ownership.md), [qsort-invocation-ownership.md](qsort-invocation-ownership.md), [bsearch-invocation-ownership.md](bsearch-invocation-ownership.md), [propsheet-invocation-ownership.md](propsheet-invocation-ownership.md), [sync-window-invocation-ownership.md](sync-window-invocation-ownership.md), [mm-timer-owner-20261021.md](mm-timer-owner-20261021.md), [callback-token-concurrency-20261021.md](callback-token-concurrency-20261021.md), [circus-icm-native-fixture-20261020.md](circus-icm-native-fixture-20261020.md) |
+| COM ownership and token boundaries (JS callbacks, public activation, compiled tokens, native acceptance) | [js-com-callback-owner-20261020.md](js-com-callback-owner-20261020.md), [js-com-owner-review-20261020.md](js-com-owner-review-20261020.md), [com-public-activation-ownership-20261020.md](com-public-activation-ownership-20261020.md), [com-token-real-boundaries-20261020.md](com-token-real-boundaries-20261020.md), [com-token-integrate-sparse-review-20261020.md](com-token-integrate-sparse-review-20261020.md), [com-native-qualified-20261020.md](com-native-qualified-20261020.md) |
+| Audio and MIDI (beep lifetime, saved carry, MIDI stream/timing, native MIDI, MCI integration) | [beep-output-prerequisite.md](beep-output-prerequisite.md), [audio-saved-carry-20261020.md](audio-saved-carry-20261020.md), [audio-carry-lifecycle-review-20261020.md](audio-carry-lifecycle-review-20261020.md), [midi-stream-lifecycle-20261020.md](midi-stream-lifecycle-20261020.md), [midi-timing-corrections-20261020.md](midi-timing-corrections-20261020.md), [midi-native-qualified-20261020.md](midi-native-qualified-20261020.md), [mci-audited-integration-20261020.md](mci-audited-integration-20261020.md) |
+| D3D palette keys and texture caps (P8 all-key, filtered index, alpha vs key, state144, legacy texture caps) | [d3d-allkey-decode-20261020.md](d3d-allkey-decode-20261020.md), [d3d-allkey-independent-review-20261020.md](d3d-allkey-independent-review-20261020.md), [d3d-alpha-key-contract-20261020.md](d3d-alpha-key-contract-20261020.md), [d3d-filtered-index-identity-20261020.md](d3d-filtered-index-identity-20261020.md), [d3d-index-independent-review-20261020.md](d3d-index-independent-review-20261020.md), [d3d-state144-contract-20261020.md](d3d-state144-contract-20261020.md), [legacy-texture-caps-native-20261020.md](legacy-texture-caps-native-20261020.md), [legacy-caps-early-exit-20261020.md](legacy-caps-early-exit-20261020.md), [legacy-caps-bootstrap-review-20261020.md](legacy-caps-bootstrap-review-20261020.md), [legacy-caps-fixture-review-20261020.md](legacy-caps-fixture-review-20261020.md) |
+| D3D9 POSITIONT native IR (2026-10-23 chain, ends in qualified integration) | [render-shared-positiont-ir-20261023.md](render-shared-positiont-ir-20261023.md), [render-positiont-rhw-admission-repair-20261023.md](render-positiont-rhw-admission-repair-20261023.md), [render-positiont-depth-repair-20261023.md](render-positiont-depth-repair-20261023.md), [render-positiont-tiny-rhw-cause-repair-20261023.md](render-positiont-tiny-rhw-cause-repair-20261023.md), [render-positiont-tiny-rhw-independent-review-20261023.md](render-positiont-tiny-rhw-independent-review-20261023.md), [render-positiont-tiny-rhw-native-qualification-20261023.md](render-positiont-tiny-rhw-native-qualification-20261023.md), [render-positiont-allocator-reuse-cause-20261023.md](render-positiont-allocator-reuse-cause-20261023.md), [render-positiont-com-qualification-fixture-20261023.md](render-positiont-com-qualification-fixture-20261023.md), [render-positiont-reuse-independent-qualification-20261023.md](render-positiont-reuse-independent-qualification-20261023.md), [render-positiont-qualified-integrate-20261023.md](render-positiont-qualified-integrate-20261023.md) |
+| Window/process lookup ports (FindWindow, process aliases) | [iw-lookup-correct-port-20261020.md](iw-lookup-correct-port-20261020.md), [process-alias-correct-port-20261020.md](process-alias-correct-port-20261020.md) |
+| WinHelp native DLL path | [winhelp-native-path-failure-20261020.md](winhelp-native-path-failure-20261020.md), [winhelp-path-review-integration-20261020.md](winhelp-path-review-integration-20261020.md) |
+| SetLocalTime virtual calendar | [setlocaltime-compatibility.md](setlocaltime-compatibility.md) |
+| Ledger/dashboard reconciliations and saved requests | [alice-return-fire-reconciliation-20261018.md](alice-return-fire-reconciliation-20261018.md), [dashboard-actionable-reconciliation-20261020.md](dashboard-actionable-reconciliation-20261020.md), [telegram-backlog-20261013.md](telegram-backlog-20261013.md) |
