@@ -8225,7 +8225,11 @@
     (f32.store (i32.add (local.get $wa) (i32.const 164)) (f32.const 8192.0))
     (f32.store (i32.add (local.get $wa) (i32.const 168)) (f32.const 0.0))
     (i32.store (i32.add (local.get $wa) (i32.const 176)) (i32.const 8))       ;; dwFVFCaps: 8 texcoord sets
-    (i32.store (i32.add (local.get $wa) (i32.const 180)) (i32.const 0x003FF));; dwTextureOpCaps
+    ;; SELECTARG1 | SELECTARG2 | MODULATE: the software stage combiner and
+    ;; legacy GPU lowering implement these operations. Other values modulate,
+    ;; including DISABLE: a bound texture stays active in both outer paths.
+    ;; Do not advertise operations that would silently produce another result.
+    (i32.store (i32.add (local.get $wa) (i32.const 180)) (i32.const 0x0000E));; dwTextureOpCaps
     (i32.store16 (i32.add (local.get $wa) (i32.const 184)) (i32.const 1))    ;; wMaxTextureBlendStages
     (i32.store16 (i32.add (local.get $wa) (i32.const 186)) (i32.const 1))    ;; wMaxSimultaneousTextures
     (i32.store (i32.add (local.get $wa) (i32.const 188)) (i32.const 8))      ;; dwMaxActiveLights
