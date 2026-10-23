@@ -2,6 +2,7 @@
 
 Commands and code paths are relative to the repository root.
 
+- `tools/board.js` — read the shared `messageboard.txt` as text (it has contained NUL bytes since August, so plain `grep`/`tail` call it binary): `node tools/board.js [--tail=N] [--grep=PATTERN] [-i] [--since=ISO] [--file=PATH]`. NULs are stripped, and unstamped lines inherit the previous entry's time for `--since`. It finds the main checkout's board from inside a worktree. It is read-only: post with `echo ... >> messageboard.txt`.
 - `tools/gen_dispatch.js` — Generates `09b2-dispatch-table.generated.wat` (br_table + calls + `$init_dx_com_thunks`) from `api_table.json`. COM vtable start IDs are auto-computed from interface prefixes (e.g. `IDirectDraw_*`), so adding a new API never requires manual ID fixups.
 - `tools/gen_api_table.js` — Generates the API hash table (`01b-api-hashes.generated.wat`)
 - `lib/pe.js` — **the** PE header/section reader (`readPE(fileOrBuffer)` → `{buf, imageBase, sections, va2off, va2offInfo, off2va, sectionForVa, isCodeVa}`). Use it instead of re-deriving `readUInt32LE(0x3c)` + section walk in a new tool. Two rules live here so every tool inherits them: `section.isCode` is true for Borland sections *named* CodeSeg/DataSeg even when flagged as data, and `va2offInfo().hasRaw` is false for BSS addresses that have no bytes on disk (`va2off` returns -1 for those).
