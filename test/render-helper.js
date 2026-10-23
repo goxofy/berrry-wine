@@ -18,7 +18,6 @@ const fs = require('fs');
 const path = require('path');
 const { createCanvas } = require('../lib/canvas-compat');
 const { createHostImports } = require('../lib/host-imports');
-const { compileSrcWasm } = require('./compile-src');
 const { Win98Renderer } = require('../lib/renderer');
 const { fontMounts, BUNDLED_BITMAP_FONTS } = require('../lib/font-substitutions');
 
@@ -60,6 +59,7 @@ function mountBundledFonts(ctx, { scalable = true } = {}) {
 // which matched nothing and silently dropped every extraWat export.
 const harnessWasmCache = new Map();
 function compileHarnessWasm(extraWat, tailCalls) {
+  const { compileSrcWasm } = require('./compile-src');
   const key = JSON.stringify([extraWat, tailCalls]);
   if (harnessWasmCache.has(key)) return harnessWasmCache.get(key);
   const bytes = compileSrcWasm(!extraWat ? null : (file, source) =>
@@ -71,8 +71,11 @@ function compileHarnessWasm(extraWat, tailCalls) {
 async function bootRenderHarness({
   extraHostOverrides = {}, extraWat = '', width = 640, height = 480,
   fonts = 'all', memory: suppliedMemory = null, tailCalls = true,
+  prebuiltModule = null,
 } = {}) {
-  const wasmBytes = compileHarnessWasm(extraWat, tailCalls);
+  if (prebuiltModule !== null && (!(prebuiltModule instanceof WebAssembly.Module) || extraWat))
+    throw new Error('prebuiltModule requires a compiled WebAssembly.Module and no extraWat');
+  const wasmBytes = prebuiltModule || compileHarnessWasm(extraWat, tailCalls);
   const memory = suppliedMemory ||
     new WebAssembly.Memory({ initial: 8192, maximum: 8192, shared: true });
   const canvas = createCanvas(width, height);
@@ -98,7 +101,9 @@ async function bootRenderHarness({
   base.host.wait_multiple = () => 0;
   base.host.com_create_instance = () => 0x80004002;
   Object.assign(base.host, extraHostOverrides);
-  const { instance, module } = await WebAssembly.instantiate(wasmBytes, base);
+  const result = await WebAssembly.instantiate(wasmBytes, base);
+  const instance = prebuiltModule ? result : result.instance;
+  const module = prebuiltModule || result.module;
   const e = instance.exports;
   ctx.exports = e;
   renderer.wasm = instance;
