@@ -138,6 +138,8 @@ if(require.main===module)(async()=>{
  // Perspective/viewport DEF rebind and immutability; a compile after moving
  // viewport must alter native constants, leaving the first packet unchanged.
  const moved=snapshot();moved.viewport={x:1,y:1,width:2,height:2,minZ:0,maxZ:1};
+ const movedVertices=new Float32Array(moved.vertices.buffer);
+ for(const [i,x,y] of [[0,1,1],[12,3,1],[24,1,3]]){movedVertices[i]=x;movedVertices[i+1]=y;}
  const next=native(moved,e,memory);assert.notDeepStrictEqual(next.vertex.nativeBytes,n.vertex.nativeBytes);
  assert.deepStrictEqual(n.vertex.nativeBytes,original);
  // Unequal RHW must affect interpolation. Independent barycentric weights at
