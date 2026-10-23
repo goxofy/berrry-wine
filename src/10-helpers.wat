@@ -394,10 +394,20 @@
   ;; Recursive by owner id, so a critical section that reaches another function
   ;; taking the same lock deadlocks nothing. That is defence rather than a
   ;; feature: nothing here nests deliberately.
+  ;; Extra identity bits for an instance that is not a guest thread at all.
+  ;; The render worker (d3dim_worker_init) never runs init_thread, so its
+  ;; $current_thread_id keeps the default 1 -- which is also the main guest
+  ;; thread's id (tid 0 + 1). With equal owner ids every lock "recursed" across
+  ;; the two: the worker entered LOCK_VIRTUAL_MAP while the guest held it, the
+  ;; two edited the map table at once, and a live heap arena's record vanished
+  ;; under the worker's draw context (Black & White 2's software D3D9 queue
+  ;; then latched "native raster execution failed (-1)" when $w2g of that
+  ;; context returned 0 and its compaction was refused).
+  (global $lock_identity (mut i32) (i32.const 0))
   (func $lock_owner_id (result i32)
     ;; A shadow bridge can run concurrently with the guest using its metadata
     ;; slot. Distinguish their lock identities so they cannot falsely recurse.
-    (i32.or (global.get $current_thread_id)
+    (i32.or (i32.or (global.get $current_thread_id) (global.get $lock_identity))
       (select (i32.const 0x80000000) (i32.const 0) (global.get $host_shadow))))
   (func $lock_acquire (param $lock i32)
     (local $me i32) (local $spins i32)

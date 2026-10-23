@@ -364,6 +364,10 @@
   (func (export "d3dim_worker_init") (param $img_base i32)
     ;; The renderer materializes these very pixels; never wait on its client.
     (global.set $d3dim_lazy_bypass (i32.const 1))
+    ;; Not a guest thread: take a lock identity no guest thread can have, or
+    ;; every shared-table lock recurses with the main thread's (see
+    ;; $lock_identity). One render worker per process hosts all endpoints.
+    (global.set $lock_identity (i32.const 0x40000000))
     (global.set $image_base (local.get $img_base))
     (global.set $heap_ptr (i32.const 0))
     (global.set $heap_end (i32.const 0))
