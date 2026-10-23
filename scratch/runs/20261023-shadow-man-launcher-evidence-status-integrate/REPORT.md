@@ -63,3 +63,17 @@ No force push. `publication.json` and the append-only root messageboard retain
 the resulting exact commit/ref identities; the final publication receipt is
 local because a commit cannot contain its own hash. The box stays STOPPED and
 the task stops after publication.
+
+## Coordinator publication resolution
+
+2026-10-23: the isolated checkout omitted the shared repository's existing
+trusted SSH command. The coordinator reused that exact dedicated key and
+known-hosts configuration for this invocation, retaining BatchMode and strict
+host verification; no keys, trust files or donor/root Git configuration changed.
+Reviewed checkpoint `9d49587d4cca3ff56c3373d325ea18de414f35f3` was pushed and
+its actual remote task ref verified. Remote main still matched reviewed base
+`58e90870a40a541a4083cae5e987ca8de31889e6`. The earlier blocked-publication
+paragraph and receipt describe the worker handoff, not the coordinator's later
+resolved publication. Coordinator reran verify.py PASS and reviewed the exact
+TODO-only scope and durable note before publishing. Final branch/main refs are
+recorded in the coordinator publication receipt and append-only messageboard.
