@@ -9,7 +9,7 @@ const path = require('path');
 const Module = require('module');
 const { spawnSync } = require('child_process');
 const root = path.resolve(__dirname, '..');
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'render-artifact-protocol-'));
+const temp = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'render-artifact-protocol-'));
 const wasm = Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]);
 let checks = 0;
 function put(file, bytes) {
@@ -35,7 +35,7 @@ const fs=require('fs'),path=require('path');
 exports.watxSourceClosure=()=>{const source=fs.readFileSync(path.join(__dirname,'../src/13-exports.wat'),'utf8');
  return {source:'fixture',vfs:new Map(['13-exports.wat','src/13-exports.wat','./13-exports.wat'].map(k=>[k,source]))};};
 exports.compileClosure=(closure,options)=>{
- const expected=fs.readFileSync(path.join(__dirname,'../expected-extra'),'utf8');
+ const expected=fs.readFileSync(path.join(__dirname,'../src/expected.wat'),'utf8');
  const base=fs.readFileSync(path.join(__dirname,'../src/13-exports.wat'),'utf8');
  const value=expected?base+'\\n'+expected+'\\n':base;
  require('assert').deepStrictEqual([...closure.vfs.values()],[value,value,value]);
@@ -47,12 +47,13 @@ exports.compileClosure=(closure,options)=>{
     put(`lib/${file}.js`, 'throw new Error("host dependency loaded during preparation");');
   const artifact = path.join(temp, 'module.wasm');
   function prepare(extraWat, tailCalls = true) {
-    put('expected-extra', extraWat);
+    put('src/expected.wat', extraWat);
     const script = `global.WebAssembly={Memory:class{constructor(){throw Error('guest memory during prepare')}},instantiate(){throw Error('instantiate during prepare')}};
 require('./test/render-helper').bootRenderHarness(${JSON.stringify({ extraWat, tailCalls })}).catch(e=>{console.error(e);process.exitCode=1});
 process.on('beforeExit',()=>{throw Error('prepare failed to exit before test body')});`;
+    assert(Number(/MemAvailable:\s+(\d+)/.exec(fs.readFileSync('/proc/meminfo', 'utf8'))[1]) * 1024 >= 805306368);
     const r = spawnSync(process.execPath, ['--max-old-space-size=256', '-e', script], {
-      cwd: temp, encoding: 'utf8', timeout: 10000, maxBuffer: 32768,
+      cwd: temp, stdio: 'inherit', timeout: 10000,
       env: { ...process.env, WINE_RENDER_ARTIFACT_PREPARE: artifact, EXPECT_TAIL: String(tailCalls) },
     });
     assert.strictEqual(r.status, 0, r.stderr || String(r.error));
@@ -76,10 +77,15 @@ process.on('beforeExit',()=>{throw Error('prepare failed to exit before test bod
   }
   const options = { extraWat: targetExtras[1], tailCalls: true };
   const goodManifest = fs.readFileSync(`${artifact}.json`);
-  ok('preparation rejects an already-loaded compiler', () => {
+  ok('preparation isolates an already-loaded compiler without deleting held exports', () => {
     const compilerPath = path.join(temp, 'tools/watx.js');
-    require.cache[compilerPath] = { exports: {} };
-    try { assert.throws(() => protocol.prepareArtifact(artifact, options), /fresh compiler process/); }
+    const held = { exports: {} };
+    require.cache[compilerPath] = held;
+    try {
+      protocol.prepareArtifact(artifact, options);
+      assert.deepStrictEqual(protocol.consumeArtifact(artifact, options), wasm);
+      assert.strictEqual(require.cache[compilerPath], held);
+    }
     finally { delete require.cache[compilerPath]; }
   });
   function reject(label, mutate, restore, pattern) {
@@ -164,7 +170,7 @@ process.on('beforeExit',()=>{throw Error('prepare failed to exit before test bod
     await assert.rejects(bootRenderHarness(harnessOptions), /absolute/);
     delete process.env.WINE_RENDER_ARTIFACT;
     compilerDenied = false;
-    put('expected-extra', options.extraWat);
+    put('src/expected.wat', options.extraWat);
     await bootRenderHarness(harnessOptions);
     await bootRenderHarness(harnessOptions);
     assert.strictEqual(fs.readFileSync(path.join(temp, 'compile-calls'), 'utf8'), beforeCalls + 'called\n');
@@ -173,7 +179,7 @@ process.on('beforeExit',()=>{throw Error('prepare failed to exit before test bod
     await bootRenderHarness(harnessOptions);
     assert.strictEqual(fs.readFileSync(path.join(temp, 'compile-calls'), 'utf8'), beforeCalls + 'called\ncalled\n');
     checks++; console.log('PASS default source change invalidates cache');
-    put('expected-extra', '');
+    put('src/expected.wat', '');
     process.env.EXPECT_TAIL = 'false';
     await bootRenderHarness({ fonts: 'none', memory: harnessOptions.memory, extraWat: null, tailCalls: false });
     delete process.env.EXPECT_TAIL;
@@ -189,6 +195,7 @@ process.on('beforeExit',()=>{throw Error('prepare failed to exit before test bod
     assert.deepStrictEqual(protocol.consumeArtifact(artifact, { extraWat: '', tailCalls: false }), wasm);
     checks++; console.log('PASS no-extraWat non-tail artifact protocol');
     console.log(`PASS ${checks} protocol checks; no production/native renderer qualification`);
+    await require('./render-executable-cache-controls')();
   })().catch(e => { console.error(e); process.exitCode = 1; }).finally(cleanup);
 } catch (e) { cleanup(); throw e; }
 

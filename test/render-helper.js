@@ -16,6 +16,9 @@
 // or the JS draw fallback was silently used).
 const fs = require('fs');
 const path = require('path');
+const Module = require('module');
+const evaluatedSource = module.renderSource || fs.readFileSync(__filename);
+let replacement;
 
 // Mount the fonts a real host mounts. Every guest glyph now comes from a strike
 // the VFS supplies, so a harness with an empty font directory draws no text at
@@ -56,11 +59,15 @@ function mountBundledFonts(ctx, { scalable = true } = {}) {
 // which matched nothing and silently dropped every extraWat export.
 const harnessWasmCache = new Map();
 function compileHarnessWasm(extraWat, tailCalls) {
-  const { identity, extraWatTransform } = require('./render-artifact');
-  const { compileSrcWasm } = require('./compile-src');
-  const key = JSON.stringify(identity({ extraWat: extraWat ? String(extraWat) : '', tailCalls: !!tailCalls }));
+  const { identity, compileHarness } = require('./render-artifact');
+  const options = { extraWat: extraWat ? String(extraWat) : '', tailCalls: !!tailCalls };
+  const key = JSON.stringify(identity(options, evaluatedSource));
   if (harnessWasmCache.has(key)) return harnessWasmCache.get(key);
-  const bytes = compileSrcWasm(extraWatTransform(extraWat), { tailCalls });
+  const { bytes, identity: compiledIdentity } = compileHarness(options, evaluatedSource);
+  if (JSON.stringify(compiledIdentity) !== key)
+    throw new Error('render artifact inputs changed before compilation');
+  // Retain only the current module; changing inputs must not accumulate Wasm.
+  harnessWasmCache.clear();
   harnessWasmCache.set(key, bytes);
   return bytes;
 }
@@ -81,11 +88,12 @@ async function bootRenderHarness({
   if (prebuiltModule !== null && (!(prebuiltModule instanceof WebAssembly.Module) || extraWat))
     throw new Error('prebuiltModule requires a compiled WebAssembly.Module and no extraWat');
   if (prepare !== undefined) {
-    require('./render-artifact').prepareArtifact(prepare, { extraWat, tailCalls });
+    require('./render-artifact').prepareArtifact(prepare, { extraWat, tailCalls }, evaluatedSource);
+    process.stderr.write('PREPARATION ONLY: render artifact written; host, native module and test assertions not run\n');
     process.exit(0);
   }
   const wasmBytes = prebuiltModule || (artifact !== undefined
-    ? require('./render-artifact').consumeArtifact(artifact, { extraWat, tailCalls })
+    ? require('./render-artifact').consumeArtifact(artifact, { extraWat, tailCalls }, evaluatedSource)
     : compileHarnessWasm(extraWat, tailCalls));
   const { createCanvas } = require('../lib/canvas-compat');
   const { createHostImports } = require('../lib/host-imports');
@@ -222,5 +230,27 @@ async function runRenderTest(name, body, { minColors = 8 } = {}) {
   process.exit(failed > 0 ? 1 : 0);
 }
 
-module.exports = { bootRenderHarness, mountBundledFonts, countUniqueColors,
-  pixelMatches, writePng, runRenderTest };
+// A caller may retain bootRenderHarness while this helper changes on disk.
+// Evaluate its current bytes in a private Module, without evicting anyone's
+// require cache or executing stale helper code under a new receipt.
+function currentImplementation() {
+  const source = fs.readFileSync(__filename);
+  if (source.equals(evaluatedSource)) return null;
+  if (!replacement || !replacement.source.equals(source)) {
+    const fresh = new Module(__filename);
+    fresh.filename = __filename;
+    fresh.paths = module.paths;
+    fresh.renderSource = source;
+    fresh._compile(source.toString('utf8'), __filename);
+    replacement = { source, exports: fresh.exports };
+  }
+  return replacement.exports;
+}
+module.exports = {};
+for (const [name, fn] of Object.entries({ bootRenderHarness, mountBundledFonts, countUniqueColors,
+  pixelMatches, writePng, runRenderTest })) {
+  module.exports[name] = (...args) => {
+    const current = currentImplementation();
+    return current ? current[name](...args) : fn(...args);
+  };
+}
