@@ -1831,16 +1831,18 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   Authorization: docs/license-acceptance-authorization-20261018.json; acceptedInGuest=false until observed.
 
 
-- [ ] Authorized original installer acceptance
+- [~] Shadow Man original demo: installed launcher/configuration response accepted
   id: NEW-GAME-SHADOW-MAN-DEMO-20261013
-  blocker: Existing sandbox.resume 403 api_key_action_forbidden; requires documented authorized runtime access change and coordinator allocation, not a retry.
-  worker: none (awaiting authorized runtime and verified original closure)
-  status: blocked (authorized acceptance; runtime and original-media prerequisites)
+  blocker: Spielen remains disabled; Configuration OK/settings persistence and the ABANDONED synchronous callback are unqualified. No gameplay evidence; obsolete original-media/resume403 hold superseded.
+  worker: none (offline acceptance complete; coordinator assigns any future runtime test)
+  status: partial (original licence/install verified; launcher and one Configuration response accepted; gameplay pending)
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  Next: Ordinary Accept/Yes authorization persists from20261018; acceptedInGuest=false until observed. Recover/verify original installer, supporting assets and historical receipt, then use an authorized bounded runtime to observe acceptance and installed payload. Local exact-path observations and unknown remote availability are in docs/re-notes/dashboard-actionable-reconciliation-20261020.md.
-  Previous checkpoint (licence-decision hold superseded): Publisher Nov1999 CD index matches Archive gsscda1999/1999-11/GS1199.iso; remote-only download pins SHA1f985ca1349af958f886957aa662e87956a7db22d. Native1959files verified; originalSetup unpacked authenticengine, welcome->actual German licence screen reviewed in2221Z. No acceptance or installation; allPIDs absent22:23:28.352. Await user decision; Silver sourcepreflight replaces active lane.
-  Done: Original launch, ordinary player-controlled gameplay and reviewed screenshot with source/input/build identity; refill on exact blocker.
-  Authorization: docs/license-acceptance-authorization-20261018.json; acceptedInGuest=false until observed.
+  Next: Proposal only, no execution authorization: inspect original Configuration, press ordinary OK with existing defaults, trace callback completion and verify actual saved settings/reopen persistence; then inspect Spielen enablement and launch the original installed game only if enabled and separately authorized within the assigned bound. Stop on first precise blocker; never force-enable or spoof prerequisites.
+  Accepted: acceptedInGuest=true observed2026-10-22T20:01:25.326828Z (ordinary Ja, batch1191279, destination screen follows); installer ExitProcess(0), all1959 original payload hashes match. Historical authorization JSON remains unchanged. On2026-10-23 one original launcher session/one ordinary Konfiguration1024 action opened Configuration HWND0x10006; both genuine PNGs independently reviewed. Canonical SHA256ccd5b0a8e4fcb84d06bf539c8a4af28b377472072f3422750122048e9339f553; source/main58e90870.
+  Limits: Spielen disabled; no settings accepted/saved, gameplay, normal configuration/game guest exit, Windows/browser/audio/FPS qualification. ABANDONED wndproc after64rounds/yield15 remains a limitation; parent OSexit-9 is not a guest exit. bx_vufrds5w snapshot-STOPPED2026-10-23T01:26:26.642Z; coordinator owns lifecycle.
+  Evidence: docs/re-notes/shadow-man-launcher-evidence-accepted-20261023.md; scratch/runs/20261023-shadow-man-launcher-evidence-status-integrate/REPORT.md. Candidate340803e35428c88f1946e52112e322b1733fb346; restorationd6c7a71cad22bc37ebc73e586c92fd5497901689; original installba485e8a27ad8a0cc25a14d40427e8cbfd38eec3.
+  Done: Original launch, ordinary player-controlled gameplay and reviewed screenshot with source/input/build identity, or exact remaining blocker.
+  Authorization: docs/license-acceptance-authorization-20261018.json (historical authorization receipt; actual acceptance is separately observed above).
 
 - [~] Include all supported games in Wine Ops, including Outlaws
   id: TG98-OPS-SUPPORTED-GAMES-20261019
