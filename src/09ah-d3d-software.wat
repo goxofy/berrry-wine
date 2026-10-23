@@ -818,6 +818,13 @@
     (f32.mul (local.get $v) (f32.load (i32.add (local.get $b) (local.get $offset)))))
     (f32.mul (local.get $w) (f32.load (i32.add (local.get $c) (local.get $offset))))))
 
+;; A finite subnormal 1/W can have an infinite f32 reciprocal even when
+;; varyingOverW / (1/W) is finite. Keep the fast multiply for finite reciprocals.
+(func $d3d_software_perspective (param $value f32) (param $iw f32) (param $riw f32) (result f32)
+  (if (result f32) (f32.le (f32.abs (local.get $riw)) (f32.const 3.4028234663852886e38))
+    (then (f32.mul (local.get $value) (local.get $riw)))
+    (else (f32.div (local.get $value) (local.get $iw)))))
+
 (func $d3d_software_depth_pass (param $fn i32) (param $z f32) (param $old f32) (result i32)
   (block $always (block $ge (block $ne (block $gt (block $le (block $eq (block $lt (block $never
     (br_table $never $never $lt $eq $le $gt $ne $ge $always $never (local.get $fn)))
@@ -1264,14 +1271,15 @@
         (local.set $iw (call $d3d_software_interp (local.get $a) (local.get $b) (local.get $c) (i32.const 12) (local.get $u) (local.get $v) (local.get $w)))
         ;; Every varying is perspective-corrected by the SAME interpolated 1/W,
         ;; and there are 33 of them per lane (fog, 28 varyings, 4 specular). One
-        ;; reciprocal and 33 multiplies instead of 33 divides: an f32.div is an
+        ;; finite reciprocal and 33 multiplies instead of 33 divides: an f32.div is an
         ;; order of magnitude more expensive than an f32.mul here, and this loop
         ;; is the measured bulk of the per-quad setup that runs before coverage
         ;; is even known (tools/bench-raster.js, `sliver` arm). The result can
         ;; differ from the divide in the last ulp; it is then quantized to 8
         ;; bits by $d3d_software_channel, which is why the golden-image tests
         ;; are the check that this is invisible rather than an argument that it
-        ;; must be.
+        ;; must be. An overflowing reciprocal uses direct division in
+        ;; $d3d_software_perspective so finite tiny-RHW ratios survive.
         (local.set $riw (f32.div (f32.const 1) (local.get $iw)))
         (f32.store (i32.add (i32.add (local.get $ctx) (i32.const 264)) (i32.shl (local.get $lane) (i32.const 2)))
           (if (result f32) (local.get $glide)
@@ -1281,15 +1289,15 @@
             (else (if (result f32) (i32.load offset=280 (local.get $ctx))
             (then (call $d3d_software_table_fog_factor (i32.load offset=280 (local.get $ctx))
               (call $d3d_software_interp (local.get $a) (local.get $b) (local.get $c) (i32.const 8) (local.get $u) (local.get $v) (local.get $w)) (local.get $iw)))
-            (else (f32.mul (call $d3d_software_interp (local.get $a) (local.get $b) (local.get $c) (i32.const 128) (local.get $u) (local.get $v) (local.get $w)) (local.get $riw)))))))
+            (else (call $d3d_software_perspective (call $d3d_software_interp (local.get $a) (local.get $b) (local.get $c) (i32.const 128) (local.get $u) (local.get $v) (local.get $w)) (local.get $iw) (local.get $riw)))))))
         (local.set $j (i32.const 0))
         (loop $varyings
           (local.set $bank (select (i32.const 8224)
             (i32.add (i32.const 24608) (i32.shl (i32.and (i32.sub (local.get $j) (i32.const 4)) (i32.const 28)) (i32.const 4)))
             (i32.lt_u (local.get $j) (i32.const 4))))
           (local.set $value (if (result f32) (i32.and (i32.shr_u (local.get $vmask) (local.get $j)) (i32.const 1))
-            (then (f32.mul (call $d3d_software_interp (local.get $a) (local.get $b) (local.get $c)
-              (i32.add (i32.const 16) (i32.shl (local.get $j) (i32.const 2))) (local.get $u) (local.get $v) (local.get $w)) (local.get $riw)))
+            (then (call $d3d_software_perspective (call $d3d_software_interp (local.get $a) (local.get $b) (local.get $c)
+              (i32.add (i32.const 16) (i32.shl (local.get $j) (i32.const 2))) (local.get $u) (local.get $v) (local.get $w)) (local.get $iw) (local.get $riw)))
             (else (f32.const 0))))
           (if (i32.and (i32.ne (local.get $sprite) (i32.const 0)) (i32.ge_u (local.get $j) (i32.const 4))) (then
             (local.set $value (select (f32.const 1) (f32.const 0) (i32.eq (i32.and (local.get $j) (i32.const 3)) (i32.const 3))))
@@ -1312,8 +1320,8 @@
           (f32.store (i32.add (i32.add (local.get $vm) (i32.const 8288))
             (i32.add (i32.shl (local.get $j) (i32.const 4)) (i32.shl (local.get $lane) (i32.const 2))))
             (if (result f32) (i32.and (i32.shr_u (local.get $vmask) (i32.add (local.get $j) (i32.const 28))) (i32.const 1))
-              (then (f32.mul (call $d3d_software_interp (local.get $a) (local.get $b) (local.get $c)
-                (i32.add (i32.const 144) (i32.shl (local.get $j) (i32.const 2))) (local.get $u) (local.get $v) (local.get $w)) (local.get $riw)))
+              (then (call $d3d_software_perspective (call $d3d_software_interp (local.get $a) (local.get $b) (local.get $c)
+                (i32.add (i32.const 144) (i32.shl (local.get $j) (i32.const 2))) (local.get $u) (local.get $v) (local.get $w)) (local.get $iw) (local.get $riw)))
               (else (f32.const 0))))
           (local.set $j (i32.add (local.get $j) (i32.const 1))) (br_if $specular (i32.lt_u (local.get $j) (i32.const 4))))
       (block $outside
