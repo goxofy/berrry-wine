@@ -1999,6 +1999,16 @@
         (i32.add (i32.const 16) (i32.mul (local.get $i) (i32.const 16)))))
       (local.set $base (i32.atomic.load (local.get $rec)))
       (local.set $end (i32.load offset=4 (local.get $rec)))
+      ;; Only a free LARGE arena -- one block spanning the whole range, the
+      ;; $heap_large_alloc shape -- is released. Every instance on the memory
+      ;; keeps its own free lists and only ours can be purged here, so another
+      ;; instance may still link into the arena; once the range is reserved
+      ;; again such a link resolves against the new record. For a one-block
+      ;; arena that stays decidable (the link must be the record's base with
+      ;; no live bytes, which $heap_large_alloc checks); for a carved arena it
+      ;; is not, so those keep their range. The software D3D9 render worker is
+      ;; such an instance (test-heap-arena-cross-instance-release.js: without
+      ;; this, a guest-thread release let it hand out the guest's live block).
       (if (i32.and
             (i32.and
               (i32.ge_u (local.get $base) (call $virtual_alloc_min))
@@ -2007,18 +2017,29 @@
               (i32.eqz (i32.atomic.load offset=12 (local.get $rec)))
               (i32.ne (local.get $rec) (global.get $heap_sparse_record))))
         (then
-          (call $heap_free_list_purge (local.get $base) (local.get $end))
-          ;; Unpublish before the backing goes: a record with a zero base is
-          ;; invisible to $heap_arena_find, so nothing can validate a pointer
-          ;; into memory that is on its way back to the pool.
-          (i32.atomic.store (local.get $rec) (i32.const 0))
-          (i32.atomic.store offset=8 (local.get $rec) (i32.const 0))
-          (i32.store offset=4 (local.get $rec) (i32.const 0))
-          (i32.atomic.store offset=12 (local.get $rec)
-            (global.get $HEAP_ARENA_RECYCLED))
-          (drop (call $virtual_map_release (local.get $base)))
-          (local.set $freed (i32.add (local.get $freed)
-            (i32.sub (local.get $end) (local.get $base))))))
+          ;; Nested, not i32.and: both operands of an and are evaluated, and
+          ;; the claim must only ever be attempted on a one-block arena.
+          (if (i32.eq (i32.load (call $g2w (local.get $base)))
+                (i32.sub (local.get $end) (local.get $base)))
+            (then
+              ;; Claim before touching anything: an allocator taking the block
+              ;; claims the same word from zero, so exactly one of us wins.
+              (if (i32.eqz (i32.atomic.rmw.cmpxchg offset=12 (local.get $rec)
+                    (i32.const 0) (global.get $HEAP_ARENA_RECYCLED)))
+                (then
+                  (call $heap_free_list_purge (local.get $base) (local.get $end))
+                  ;; Unpublish before the backing goes: a record with a zero
+                  ;; base is invisible to $heap_arena_find, so nothing can
+                  ;; validate a pointer into memory on its way back to the
+                  ;; pool. The base goes last, because a zero base with the
+                  ;; recycled tag is what lets $heap_arena_register_once take
+                  ;; the slot again.
+                  (i32.atomic.store offset=8 (local.get $rec) (i32.const 0))
+                  (i32.store offset=4 (local.get $rec) (i32.const 0))
+                  (i32.atomic.store (local.get $rec) (i32.const 0))
+                  (drop (call $virtual_map_release (local.get $base)))
+                  (local.set $freed (i32.add (local.get $freed)
+                    (i32.sub (local.get $end) (local.get $base))))))))))
       (local.set $i (i32.add (local.get $i) (i32.const 1)))
       (br $scan)))
     (local.get $freed))
@@ -2443,8 +2464,17 @@
       (br_if $scanned (i32.eqz (local.get $cur)))
       (br_if $scanned (i32.gt_u (local.get $steps) (i32.const 1024)))
       (local.set $steps (i32.add (local.get $steps) (i32.const 1)))
-      ;; An unmappable link (its arena was released) ends the list there.
-      (if (i32.eqz (call $heap_arena_find (local.get $cur)))
+      ;; An unmappable link (its arena was released) ends the list there. So
+      ;; does one that maps but is not a free large block any more: another
+      ;; instance may have released this arena (only its OWN lists are purged)
+      ;; and the range been reserved again, and the stale link then resolves
+      ;; against the new record. A free large block is exactly its arena's
+      ;; base with no live bytes; anything else is someone else's memory.
+      (local.set $record (call $heap_arena_find (local.get $cur)))
+      (if (i32.or (i32.eqz (local.get $record))
+            (i32.or
+              (i32.ne (i32.atomic.load (local.get $record)) (local.get $cur))
+              (i32.ne (i32.atomic.load offset=12 (local.get $record)) (i32.const 0))))
         (then
           (if (local.get $prev_w)
             (then (i32.store offset=4 (local.get $prev_w) (i32.const 0)))
@@ -2472,11 +2502,21 @@
             (i32.load offset=4 (call $g2w (local.get $best)))))
           (else (global.set $heap_large_free
             (i32.load offset=4 (call $g2w (local.get $best))))))
-        (call $heap_arena_charge (call $heap_arena_find (local.get $best)) (local.get $best_size))
-        ;; Fresh pages, as a Windows VirtualAlloc-backed block would be.
-        (call $guest_memset (i32.add (local.get $best) (i32.const 4)) (i32.const 0)
-          (i32.sub (local.get $best_size) (i32.const 4)))
-        (return (local.get $best))))
+        ;; Take it by claiming the arena's live word from zero. A releaser
+        ;; claims the same word (0 -> $HEAP_ARENA_RECYCLED) before it unmaps
+        ;; anything, so exactly one of us wins; a lost race just means the
+        ;; block is gone, and a fresh arena serves the request.
+        ;; Nested, not i32.and: the claim must not run against record 0.
+        (local.set $record (call $heap_arena_find (local.get $best)))
+        (if (local.get $record)
+          (then
+            (if (i32.eqz (i32.atomic.rmw.cmpxchg offset=12 (local.get $record)
+                  (i32.const 0) (local.get $best_size)))
+              (then
+                ;; Fresh pages, as a Windows VirtualAlloc-backed block would be.
+                (call $guest_memset (i32.add (local.get $best) (i32.const 4)) (i32.const 0)
+                  (i32.sub (local.get $best_size) (i32.const 4)))
+                (return (local.get $best))))))))
     (local.set $base (call $virtual_reserve_down (local.get $chunk)))
     (if (i32.eqz (local.get $base))
       (then
