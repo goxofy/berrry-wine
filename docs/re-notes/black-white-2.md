@@ -9032,3 +9032,41 @@ Function indices for reading the profiles (same in both builds; `node tools/func
 | 10703 | `$heap_free` |
 | 7630 | `$d3d_software_create_mode` |
 | 7659 | `$d3d_software_step` |
+
+## 2026-10-23: the per-draw context arena, fixed (render worker −27–36% CPU per draw)
+
+Run `scratch/runs/20261023T1720Z-black_white_2_demo-claude84e-drawctx-reuse` (boat bx_qv9vszay, 4 vCPU, Node v20.20.2). This follows the lead in the previous section.
+
+**Cause.** `$heap_large_alloc` already has a reuse list: a freed whole-arena block goes on `$heap_large_free` and best-fit serves the next same-size request. Draw contexts never got there. Once setup finishes, `$d3d_software_compact` calls `$heap_shrink` on every context, trimming 288 + 768·1134 bytes down to about a seventh. On an ~852 KB block, which is its own large arena, that split the arena:
+- the freed context went to the small free list, not the large one;
+- the next draw's context reserved a fresh range (`$virtual_range_edge_locked`, a linear scan of both tables per step);
+- the split arenas were never one-block again, so `$heap_arena_release_free` could not hand them back until the render handoff coalesced them;
+- with the 1024-slot arena table full, every registration ran that release scan.
+
+**Fix.** `$heap_shrink` leaves a block alone when it is its whole `$heap_large_alloc` arena (the same test `$heap_free_impl` uses for the large list). The tail it used to free could only ever serve this instance's small allocations. The context's retained-bytes accounting (`+196`, `$d3d_software_retained_bound`) is unchanged. `test/test-d3d-software-ctx-arena-reuse.js` fails without it (block split 872448 → 120008) and passes with it. It also checks that three 768-index draws reuse one context block and render the same pixels.
+
+**A/B.** Control is f5329feb1 (wasm 43375d0f, the same code as main). The fix arm is that plus the patch (wasm 0570658b). Concurrent pairs, same route as the previous section. Render-worker ms per completed draw, control → fix:
+
+| window | rep 1 | rep 2 (both profiled) |
+|---|---|---|
+| 600–900 s (land load) | 102.72 → 103.35 | 90.90 → 81.51 |
+| 900–1200 s | 14.67 → 9.93 | 9.89 → 6.31 |
+| 1200–1500 s (Land3 intro) | 10.68 → 7.37 | 11.44 → 8.34 |
+
+- In the heavy windows draws/s go 85.9 → 119.4 (rep 1, 1200–1500 s) and 86.5 → 129.9 (rep 2, 900–1200 s). fps goes 0.156 → 0.203 (rep 1, 1200–1500 s).
+- 0 failed draws in all four runs.
+- The 600 s and 900 s captures are byte-identical between arms in rep 1. Later captures differ only because the fixed arm is further into the real-time intro; both show the same Land3 camera pan.
+
+**Profile** (render worker, rep 2, 1190–1490 s, inclusive, control → fix):
+
+| function | control | fix |
+|---|---|---|
+| `$virtual_range_edge_locked` | 13.5% | not sampled |
+| `$heap_large_alloc` | 22.8% | 1.7% |
+| `$d3d_software_create_mode` | 23.5% | 3.3% |
+| `$heap_arena_find` | 17.6% | 5.7% |
+| `$d3d_software_step` (the rasterizer) | 39.2% | 59.2% |
+
+What remains of the allocator is `$heap_free` (4.8%) plus `$heap_arena_find` validation. The worker is now mostly rasterizing.
+
+`test/test-d3d-software-compaction.js` fails identically on the control (main's code) and the fix, at line 91. When a context constructor is made to fail mid-draw (`failAt`), the multi-batch draw has already written pixels, so `readPixels()` differs from `before`. That failure is already on main, not caused by this change.

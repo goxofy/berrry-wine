@@ -3140,19 +3140,39 @@
   ;; Returns the original guest pointer, or zero for an invalid block/growth.
   ;; The original arena still covers both headers; only the unused suffix moves
   ;; to this instance's free list. Sub-minimum suffixes remain padding.
+  ;;
+  ;; A block that is its whole $heap_large_alloc arena is left whole. Splitting
+  ;; it carves the arena, and a carved arena is one neither $heap_free (large
+  ;; list) nor $heap_arena_release_free recognises any more: the freed block
+  ;; went to the small free list, the next request of the same size reserved
+  ;; a fresh range, and the table filled with dead arenas. The software D3D9
+  ;; backend compacts every ~852 KB draw context this way, and in
+  ;; Black & White 2's render worker that was ~30% of its CPU -- a linear
+  ;; address-space search ($virtual_range_edge_locked) plus a full release
+  ;; scan on every registration (docs/re-notes/black-white-2.md). The tail
+  ;; is no loss: only this instance's small allocations could have used it.
   (func $heap_shrink (param $guest_ptr i32) (param $size i32) (result i32)
     (local $block i32) (local $wa i32) (local $old i32) (local $need i32)
-    (local $tail i32) (local $remaining i32)
+    (local $tail i32) (local $remaining i32) (local $rec i32)
     (if (i32.or (i32.eqz (local.get $guest_ptr))
       (i32.gt_u (local.get $size) (i32.const 0x7FFFFFF0))) (then (return (i32.const 0))))
     (local.set $block (i32.sub (local.get $guest_ptr) (i32.const 4)))
-    (if (i32.eqz (call $heap_arena_find (local.get $block))) (then (return (i32.const 0))))
+    (local.set $rec (call $heap_arena_find (local.get $block)))
+    (if (i32.eqz (local.get $rec)) (then (return (i32.const 0))))
     (local.set $wa (call $g2w (local.get $block)))
     (local.set $old (i32.load (local.get $wa)))
     (if (call $heap_block_bad (local.get $block) (local.get $old)) (then (return (i32.const 0))))
     (local.set $need (i32.and (i32.add (local.get $size) (i32.const 11)) (i32.const -8)))
     (if (i32.lt_u (local.get $need) (i32.const 16)) (then (local.set $need (i32.const 16))))
     (if (i32.gt_u (local.get $need) (local.get $old)) (then (return (i32.const 0))))
+    ;; The same whole-arena test $heap_free_impl uses to pick the large list.
+    (if (i32.and
+          (i32.ge_u (local.get $old) (global.get $HEAP_LARGE))
+          (i32.and
+            (i32.eq (i32.atomic.load (local.get $rec)) (local.get $block))
+            (i32.eq (i32.load offset=4 (local.get $rec))
+              (i32.add (local.get $block) (local.get $old)))))
+      (then (return (local.get $guest_ptr))))
     (local.set $remaining (i32.sub (local.get $old) (local.get $need)))
     (if (i32.ge_u (local.get $remaining) (i32.const 16)) (then
       (local.set $tail (i32.add (local.get $block) (local.get $need)))
