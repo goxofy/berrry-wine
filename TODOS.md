@@ -1380,21 +1380,21 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   Evidence: scratch/gameplay-coverage-20261003/tasks/GAMEPLAY-arcanum-demo.json
   notes: Migration missing-file blocker cleared against current registered route: arcanum_demo. Historical missing-path report is superseded for this route; gameplay remains unverified.
 
-- [ ] Gameplay screenshot and FPS: Black & White 2 Demo
+- [x] Gameplay screenshot and FPS: Black & White 2 Demo
   id: GAMEPLAY-black_white_2_demo
-  status: ready
-  Next: Normal-route browser ended at fixed90minute deadline05:05:50Z, moving island flyover only. Final242 artifacts retained run20261009T0335Z-black-white2-staging-fix; no player-control/FPS credit. Diagnose current missing declaration binding/rendered right edge, then validate ordinary gameplay; old drive34 already ruled out SetFVF(0) for that route.
+  status: done
+  Next: Done 2026-10-23 on main bb9c496ed (wasm ccd5b0a8, software D3D9 CLI, boat bx_vug3ywn9), run 20261023T0422Z-black_white_2_demo-claude739-camera. Intro -> 'Click on the Gold Scroll' objective at ~5700s, 0 failed commands in 8000s. Wheel zoom attributed (idle 1.09% vs 28.8% land diff); Storehouse/Field selected by clicks. Objective scene, idle, fixed view: 27 presents/185s = 0.146 fps, ~641 draws/present (presents.ndjson). Open, retained in docs/re-notes/black-white-2.md 2026-10-23: drags not isolated (no-input drift after first input), Gold Scroll not consumed so no free play, and a harness-triggered raster -1 latch at ~787s (also on 0304a8549; the captured draw replays clean).
 
   candidate: black_white_2_demo
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  worker: root direct; no subagent (one-worker budget)
+  worker: claude:739271c7-9aa2-40cd-8d98-6d4e28e59674 (lane from claude:80aa9e95, 2026-10-23)
   prev-owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5 — Codex out of credits until 2026-10-12; its uncommitted shared-tree work is preserved on archive/codex-shared-tree-20261006 (see ops/handoffs/codex-release-review-20261006.md)
   created: 2026-10-03T08:42:45.967Z
   accepted: 2026-10-03T08:42:45.967Z
   accepted-by: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
   Done: Reviewed gameplay screenshot and scene-qualified frame measurement with raw samples, counter proof and tested build identity; retain explicit failures.
-  Evidence: scratch/gameplay-coverage-20261003/tasks/GAMEPLAY-black_white_2_demo.json
-  notes: Migration missing-file blocker cleared against current registered route: black_white_2_demo. Historical missing-path report is superseded for this route; gameplay remains unverified.
+  Evidence: scratch/runs/20261023T0422Z-black_white_2_demo-claude739-camera/result.json (earlier: scratch/gameplay-coverage-20261003/tasks/GAMEPLAY-black_white_2_demo.json)
+  notes: Migration missing-file blocker cleared against current registered route: black_white_2_demo. Reviewed post-intro gameplay and FPS recorded 2026-10-23; full free play past the Gold Scroll tutorial is still unverified.
 
 - [ ] Gameplay screenshot and FPS: Deus Ex demo
   id: GAMEPLAY-deus-ex-demo

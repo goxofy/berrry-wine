@@ -8777,3 +8777,37 @@ A script camera owns the view.
 So the camera works with our DirectInput mouse. The earlier "camera never moves" runs tested inside the intro, and some ran before 009c8ff11, when the wheel did not exist.
 
 Cursor note: the game cursor (`0x1d733e8+0xc4/+0xc8`) reads (311,345) while the hand is drawn at about (258,295) in the 640x480 capture, a scale of about 1.2 for the 800x600 back buffer.
+
+## 2026-10-23: current main reaches the objective, the camera answers, 0.146 fps
+
+Run `scratch/runs/20261023T0422Z-black_white_2_demo-claude739-camera` (boat bx_vug3ywn9, main bb9c496ed, wasm sha256 ccd5b0a8…, software D3D9, `--real-ticks`).
+
+**What passed** (8000 s, 0 failed render commands, no crash or unimplemented API):
+- Boot → profile → Land3 intro → the "Click on the Gold Scroll" objective. The objective is up in the 5703 s capture and was absent at 5403 s. That is ~1200 s later than the Oct 11 runs because the world renders slower here (below).
+- **Wheel zoom is player input.** Land-region diff (`tools/png-diff.js --tolerance=24 --region=0,60,330,320`):
+  - with no input, the 5703 s capture → `w0` over 3+ minutes: **1.09%** of pixels change;
+  - across `di-wheel:-360`, `w0` → `w1`: **28.8%**, and the view zooms out.
+- **World interaction works.** A left click selected the Storehouse (Food/Wood/Ore desire and stock panels). Another selected the Field (info panel, "Productivity 162"), with villagers walking.
+- **Frame rate.** The probe's `_submit` wrapper counts completed PRESENTs, sampled every 5 s into `presents.ndjson`. With the objective up, the view fixed and no input (5709–5894 s): **27 presents in 185 s = 0.146 fps, ~641 draws/present**.
+
+| window (s) | scene | fps | draws/present |
+|---|---|---|---|
+| 901–1497 | island flyover | 0.171 | 617 |
+| 3000–3596 | intro, village/advisors | 0.128 | 740 |
+| 4903–5598 | intro, Town Center close | 0.131 | 633 |
+| 5709–5894 | objective, idle | 0.146 | 641 |
+
+The render worker thread is CPU-bound: 75 min of CPU in 82 min of wall time on a 4-vCPU boat.
+
+**What did not pass, and is open:**
+- **The drags are not isolated.** After the first input the view keeps moving with **no** input: 22.6% between two idle frames 90 s apart, and 22.0% again ten minutes later. It creeps steadily toward the Town Center. So the middle drag (m0→m1, 21.1%) and the left drag (l0→l1, 24.8%) cannot be told apart from that motion.
+  - A live read at ~7840 s rules out stuck input. The wheel accumulator `[0x19a30e0]`, the pending button bits `[0x1d73544]` and the manager wheel `[0x1d734f4]` are all 0. The locks `[0x18ed55c]`/`[0x18ed558]` are 0. The poll gate `[0x17792d4]` is 1.
+  - Leading guess, unverified: camera momentum from the left drag, played out over very slow frames.
+  - To isolate a drag, wait for a static idle pair (≤ ~2%) first, then send one input.
+- **The Gold Scroll was not consumed.** The view moved between aiming and clicking, so both clicks landed on the storehouse and the field. The objective was still up when the 8000 s budget ended. The Field tutorial and later free play were not reached in this run.
+  - Next time, take the scroll before any camera input, while the view is still static. In `w0` the hand is at about (265,290) and the scroll sparkle at about (415,240), both in capture pixels. At ~0.65 capture px per relmousemove unit in x and 1:1 in y, that is about `relmousemove:230:-50`.
+- **A harness-triggered raster latch.** Four earlier attempts (same boat) used HTTP `--control` with `ctl.js` png/eval, captures every 120 s and shorter boot-input gaps. Each latched `D3D9 software: native raster execution failed (-1)` at ~787 s, on the first land draws.
+  - The same thing happened on **0304a8549**, so it is not a regression in 0304a8549..bb9c496ed. tr3's Oct 12 run of that build on the parent boat, with a stdin feed and 300 s captures, was clean to 900 s.
+  - The failing draw was captured through a `_retire` hook (`failures/*.json`): ps_1_1 + vs_1_1, SHORT4 position, stride 8, sampling RGB565 render target 65 into RGB565 RT 78 / D24X8.
+  - Replayed alone it draws cleanly, both with `tools/d3d9-replay-payload.js` and with a variant that keeps the real attachments and the RT texture (`scripts/bw2-replay-attach.js`). So the -1 depends on live render-worker state, probably its WAT heap, and on timing.
+  - The tr3-style stdin FIFO harness (`scripts/bw2-fifo-start.sh`) avoids it.
