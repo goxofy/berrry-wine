@@ -8915,3 +8915,60 @@ Tests and build:
 - Full build PASS, wasm 43375d0f.
 - Heap/virtual/render suite: 55 pass. The three failures (two need puppeteer, plus `test-d3d-render-wait-scheduler`) also fail without the fix.
 - Lock/thread/worker suite: 44 pass. Of the six failures, four fail identically on the unfixed build and two lack fixtures on the boat (puppeteer, a screensaver binary).
+
+## 2026-10-23: the Gold Scroll is consumed on current main (runtime check of the static plan)
+
+Run `scratch/runs/20261023T1030Z-black_white_2_demo-claudea7d5-goldscroll` (boat bx_6f7u7wm3, main aa09d05dc, wasm sha256 43375d0f…, software D3D9, `--real-ticks`, Node v20.20.2). Harness: the FIFO `bw2-fifo-start.sh` from the previous run, with `--seconds=10000`. Requests went in through `scripts/ctl.sh`, and `scripts/state.js` is the live state read.
+
+**What passed:**
+- 10000 s with 0 failed render commands and no raster latch. This is the first long run after f5329feb1.
+- The objective was absent at 8101 s and at about 8400 s, and present at 9088 s (`frames/w125325.png`). That is ~3400 s later than on bb9c496ed (below).
+- **The scroll was consumed** by the sixth left click:
+  - `f1`: the scroll box is gone and only the sparkle remains;
+  - `f2`: the gold beam over it has gone;
+  - `g1`: the objective box has gone, and a Field panel reads "Food in Field 660, Workers 0/…";
+  - `g3`–`g5` and `final-10000`: the scripted camera pans to the storehouse and field, as on Oct 11.
+- The budget ended ~600 s later. **Free play and the isolated drag were not reached.** On Oct 11 free play came ~2000 s after the scroll, so the next run needs about `--seconds=12500`.
+
+**Aim from the game's cursor.** `[0x1d733e8+0xc4/+0xc8]` holds the cursor as integers.
+- It moves **~0.93 per `relmousemove` unit on both axes** (244:-77 gave +228/-72). So there is no x/y split.
+- The poll scale `[0x17792c0]` is the float 0.75 after the intro (1.0 at boot).
+- From the cursor reading to a 640x480 capture pixel is about (x-52, y-55). The drawn hand is a 3D object on the pick point, so it is a poor reference.
+
+**Where the clicks went.** Six clicks were sent:
+
+| clicks | cursor | hover feedback | result |
+|---|---|---|---|
+| 1 (held 15 s), 2 (15 s), 3 (3 s), two `k` clicks (3–5 s) | (470,293) and (472,281) | tooltip "Starving villagers"; a Field hover panel follows | not consumed |
+| 6 (3 s) | (495,284), where `aim1` drew the game's mouse-button hint icon beside the hand | hint icon | consumed |
+
+Leading explanation: the clickable is to the right of where the tooltip appears, and the mouse-button hint icon marks it. A timing gate is not excluded, because there is only one success.
+
+**The click path, measured with hit counters** (`click*.out`). This corrects the static plan:
+- The poll `0x9b0880` and the consumer `0x60ed90` run once per frame.
+- On every press the consumer saw bit 1 (`0x60edad`), and the dispatcher `0x611fa0` ran action 1 → binding index 1. The binding table at `[[0x19504a8]+0x4e190c]` holds records of stride 0x30c, with the action at +0x208; the live map is {0:5, 1:1, 2:4, 3:3, 12:2}.
+- `0x611830(1)` then went `0x611897` → `0x6118c4` (controller not busy) → `0x6118f1` → `0x611aa7` → `0x611efd`. That is: binding 1 has **no case** in either jump table, so it returns 0 **by design**.
+  - `0x60edc3` ("accepted") is therefore 0 for every left click, and is not a test of anything.
+  - `0x611efd` is the shared return-0 epilogue, not a "busy controller" exit.
+- The press is really consumed by `0x64c510(record)`. For action 1 it jumps to `0x64c551`, which tests and clears bit 1 and returns 1. Its callers are the binding tests `0x64e190` (`0x64e1b7`) and `0x64e2a0` (`0x64e2c3`), which `0x60ed90` reaches through its fall-through path at `0x60ee7d`. They lead to `0x60ed10` / `0x60ec70` → `0x5f8e60(4/1)` → `0x661fb0`, the hand-controller command.
+- `0x60ed40` runs just before the consumer each frame (from `0x5f95c3`).
+- So the input path delivers every press. What the click does is decided by the world pick inside the controller command.
+
+**Frame rate: lower than on bb9c496ed; cause unknown.** PRESENT is `completed[12]` in `samples.ndjson.gz`.
+
+| window (s) | scene | fps | draws/present | draws/s |
+|---|---|---|---|---|
+| 4903–5598 | intro, still before the Town Center close | 0.081 | 741 | 60 |
+| 6000–6900 | intro, influence ring | 0.102 | 655 | 67 |
+| 8101–9080 | intro, Town Center close, fixed view | 0.090 | 629 | 57 |
+| 9090–9790 | objective up (clicks) | 0.092 | 635 | 58 |
+| 9810–10000 | scripted pan after the scroll | 0.089 | 573 | 51 |
+
+On bb9c496ed the comparable scenes ran at 0.13–0.15 fps, ~83–95 draws/s. In both runs the render worker thread is saturated: here one thread used 105 min of CPU in 116 min of wall time and the main thread 14 min.
+
+So draw throughput is ~35% lower. Candidate causes, none measured:
+- **Node v20.20.2 here vs v24.18.1 there.** That is a different V8, and the likeliest confounder.
+- A different boat host (this one is a Ryzen 9 9950X; the earlier boat's CPU was not recorded).
+- **Real lock contention:** since f5329feb1 the render worker excludes on shared-table locks instead of re-entering them.
+
+To separate them, rerun the same scene on one host with both Node versions, and with and without f5329feb1, and profile the worker for lock-spin time.
