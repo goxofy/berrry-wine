@@ -18,6 +18,21 @@ test('Claude persistent launch requires explicit identity and explicit permissio
   assert.throws(()=>options(['--session-id','bad']));
 });
 
+test('Claude fresh launch starts a new session id with an optional first prompt, never a resume',()=>{
+  const {options,claudeArgs}=require('./claude-tmux');
+  const ids=['--id','claude-new','--tmux','wine-claude-new'];
+  assert.throws(()=>options(ids),/session-id/,'resume still requires an explicit session');
+  const generated=options(['--new',...ids]);
+  assert.match(generated.sessionId,/^[a-f0-9-]{36}$/);
+  assert.notEqual(options(['--new',...ids]).sessionId,generated.sessionId);
+  const sid='1863d2b5-bc58-4c0b-9c15-00fc951f0256';
+  const o=options(['--new','--session-id',sid,...ids,'--prompt','brief.md','--dangerously-skip-permissions']);
+  assert.equal(o.prompt,'brief.md');
+  assert.deepEqual(claudeArgs(o,"Read the lane's brief"),['claude','--session-id',sid,'--dangerously-skip-permissions',"Read the lane's brief"]);
+  assert.deepEqual(claudeArgs(options(['--session-id',sid,...ids]),null),['claude','--resume',sid]);
+  assert.throws(()=>options(['--session-id',sid,...ids,'--prompt','brief.md']),/requires --new/);
+});
+
 test('Claude Linux registry proves machine, namespace, start ticks and wall start before matching PID',()=>{
   const {registryMatchesProcess,linuxStartTicks}=require('./processes');
   const started=new Date(Date.now()-3600000).toUTCString().replace(/^[^,]+, (\d+) (\w+) (\d+) (\S+) GMT$/,(_m,day,month,year,time)=>`Sat ${month} ${day} ${time} ${year}`),startedAt=Date.parse(started+' UTC')+434;

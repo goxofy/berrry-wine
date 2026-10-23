@@ -128,6 +128,12 @@ turn. The launcher waits for an existing run of the same session to finish;
 it never kills or duplicates that run. Use this launcher for subsequent resumes
 instead of starting headless copies of a session that already has a terminal.
 
+Add `--new` to start a fresh conversation instead (`claude --session-id UUID`;
+the UUID is generated when `--session-id` is omitted and is printed in the
+registered entry's `agentId`). `--prompt FILE` sends that file's text as the
+first message; it is refused without `--new`. Registration in
+`ops/terminals.json` is the same as for a resume.
+
 On the dedicated box, the user explicitly requested Claude permission bypass.
 Pass `--dangerously-skip-permissions` to the launcher for that mode; the default
 does not bypass permissions. This controls tool permission prompts, not task
