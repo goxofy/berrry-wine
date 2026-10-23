@@ -16,10 +16,6 @@
 // or the JS draw fallback was silently used).
 const fs = require('fs');
 const path = require('path');
-const { createCanvas } = require('../lib/canvas-compat');
-const { createHostImports } = require('../lib/host-imports');
-const { Win98Renderer } = require('../lib/renderer');
-const { fontMounts, BUNDLED_BITMAP_FONTS } = require('../lib/font-substitutions');
 
 // Mount the fonts a real host mounts. Every guest glyph now comes from a strike
 // the VFS supplies, so a harness with an empty font directory draws no text at
@@ -27,6 +23,7 @@ const { fontMounts, BUNDLED_BITMAP_FONTS } = require('../lib/font-substitutions'
 // prove behaviour with a face missing should delete that one mount, not rely on
 // the harness starting out bare.
 function mountBundledFonts(ctx, { scalable = true } = {}) {
+  const { fontMounts, BUNDLED_BITMAP_FONTS } = require('../lib/font-substitutions');
   if (!ctx || !ctx.vfs) return;
   const root = path.join(__dirname, '..');
   ctx.vfs.dirs.add('c:\\windows');
@@ -59,11 +56,11 @@ function mountBundledFonts(ctx, { scalable = true } = {}) {
 // which matched nothing and silently dropped every extraWat export.
 const harnessWasmCache = new Map();
 function compileHarnessWasm(extraWat, tailCalls) {
+  const { identity, extraWatTransform } = require('./render-artifact');
   const { compileSrcWasm } = require('./compile-src');
-  const key = JSON.stringify([extraWat, tailCalls]);
+  const key = JSON.stringify(identity({ extraWat: extraWat ? String(extraWat) : '', tailCalls: !!tailCalls }));
   if (harnessWasmCache.has(key)) return harnessWasmCache.get(key);
-  const bytes = compileSrcWasm(!extraWat ? null : (file, source) =>
-    (file === '13-exports.wat' ? `${source}\n${extraWat}\n` : source), { tailCalls });
+  const bytes = compileSrcWasm(extraWatTransform(extraWat), { tailCalls });
   harnessWasmCache.set(key, bytes);
   return bytes;
 }
@@ -73,9 +70,26 @@ async function bootRenderHarness({
   fonts = 'all', memory: suppliedMemory = null, tailCalls = true,
   prebuiltModule = null,
 } = {}) {
+  // Explicit commands can run the real test entrypoint to capture its unchanged
+  // extraWat. Preparation exits before host dependencies, memory or assertions.
+  const prepare = process.env.WINE_RENDER_ARTIFACT_PREPARE;
+  const artifact = process.env.WINE_RENDER_ARTIFACT;
+  if (prepare !== undefined && artifact !== undefined)
+    throw new Error('render artifact prepare and consume modes are mutually exclusive');
+  if ((prepare !== undefined || artifact !== undefined) && prebuiltModule !== null)
+    throw new Error('render artifact mode cannot be combined with prebuiltModule');
   if (prebuiltModule !== null && (!(prebuiltModule instanceof WebAssembly.Module) || extraWat))
     throw new Error('prebuiltModule requires a compiled WebAssembly.Module and no extraWat');
-  const wasmBytes = prebuiltModule || compileHarnessWasm(extraWat, tailCalls);
+  if (prepare !== undefined) {
+    require('./render-artifact').prepareArtifact(prepare, { extraWat, tailCalls });
+    process.exit(0);
+  }
+  const wasmBytes = prebuiltModule || (artifact !== undefined
+    ? require('./render-artifact').consumeArtifact(artifact, { extraWat, tailCalls })
+    : compileHarnessWasm(extraWat, tailCalls));
+  const { createCanvas } = require('../lib/canvas-compat');
+  const { createHostImports } = require('../lib/host-imports');
+  const { Win98Renderer } = require('../lib/renderer');
   const memory = suppliedMemory ||
     new WebAssembly.Memory({ initial: 8192, maximum: 8192, shared: true });
   const canvas = createCanvas(width, height);
