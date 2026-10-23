@@ -93,7 +93,12 @@ if(require.main===module)(async()=>{
  // Native admission is also authoritative if a descriptor is supplied directly.
  w.set([0x44465831,1,15,0,5,7,4,2,0,4,2,0,0,0,1,0,0,0,0,4,4]);f[22]=1;
  for(const slot of [2,6,7,8,9,10,11,14,15,16]){const old=w[slot];w[slot]=999;assert.strictEqual(e.d3d_fixed_compile_positiont(desc),0);w[slot]=old;}
+ for(const [min,max] of [[.2,.8],[.5,.5],[0,.8],[.2,1]]){
+  f[21]=min;f[22]=max;assert.strictEqual(e.d3d_fixed_compile_positiont(desc),0,'native nonidentity depth rejects');
+ }
+ f[21]=0;f[22]=1;
  const d=new Software({getExports:()=>e,getMemory:()=>memory.buffer,width:4,height:4,fixedCacheBytes:0,maxBytes:2*1024*1024});
+ const fallbackPrograms=d.fixedPrograms;
  d.fixedPrograms=()=>{throw Error('duplicate software fixed interpretation');};
  const draw=(input)=>{input.nativeFixed=native(input,e,memory);return d.draw(input);};
  s.vertexConstants=new Float32Array(1024).fill(NaN);s.pixelConstants=new Float32Array(32).fill(NaN);
@@ -132,7 +137,7 @@ if(require.main===module)(async()=>{
  assert.deepStrictEqual(order,['first','second']);assert.strictEqual(ticket.status,'completed');
  // Perspective/viewport DEF rebind and immutability; a compile after moving
  // viewport must alter native constants, leaving the first packet unchanged.
- const moved=snapshot();moved.viewport={x:1,y:1,width:2,height:2,minZ:.2,maxZ:.8};
+ const moved=snapshot();moved.viewport={x:1,y:1,width:2,height:2,minZ:0,maxZ:1};
  const next=native(moved,e,memory);assert.notDeepStrictEqual(next.vertex.nativeBytes,n.vertex.nativeBytes);
  assert.deepStrictEqual(n.vertex.nativeBytes,original);
  // Unequal RHW must affect interpolation. Independent barycentric weights at
@@ -152,6 +157,31 @@ if(require.main===module)(async()=>{
   draw(input);const fallback={...input};delete fallback.nativeFixed;legacy.draw(fallback);
   assert.deepStrictEqual(d.present().pixels,legacy.present().pixels,'shared clip IR matches native screen-space fallback pixels');
  }
+ // Independent review regressions: ordinary producer -> software draw must
+ // preserve all pixels AND the explicit depth decision. Nonidentity viewport
+ // depth takes the old screen-space fallback; default remains shared native IR.
+ const depthCases=[[.5,0,1,1,true],[.1,.2,.8,1,true],[.9,.2,.8,1,true],
+  [.25,.5,.5,.4,true],[.75,.5,.5,.6,false]];
+ d.fixedPrograms=fallbackPrograms;
+ let depthCompiles=0,depthAllocations=0;
+ const depthProducer={...e,guest_alloc(n){depthAllocations++;return e.guest_alloc(n);},
+  d3d_fixed_compile_positiont(p){depthCompiles++;return e.d3d_fixed_compile_positiont(p);}};
+ for(const [z,minZ,maxZ,clearDepth,red] of depthCases){
+  const input=solid([1,0,0,1],z);Object.assign(input.viewport,{minZ,maxZ});
+  input.nativeFixed=native(input,depthProducer,memory);
+  assert.strictEqual(!!input.nativeFixed,minZ===0&&maxZ===1,'honest shared admission/fallback');
+  d.clear([0,0,0,1],3,clearDepth);legacy.clear([0,0,0,1],3,clearDepth);
+  d.draw(input);const fallback={...input};delete fallback.nativeFixed;legacy.draw(fallback);
+  const expected=red?[0,0,255,255]:[0,0,0,255];
+  assert.deepStrictEqual(pixel(d),expected,'corrected independent POSITIONT depth oracle');
+  assert.deepStrictEqual(pixel(legacy),expected,'established screen-depth oracle');
+  assert.deepStrictEqual(d.present().pixels,legacy.present().pixels,'all depth-control pixels match');
+ }
+ assert.strictEqual(depthCompiles,1,'four regressions fall back before native allocation/compile');
+ assert.strictEqual(depthAllocations,1);
+ for(const z of [-.1,1.1,NaN])assert.strictEqual(native(solid([1,0,0,1],z),depthProducer,memory),null,'default viewport must not introduce depth clipping');
+ assert.strictEqual(depthCompiles,1);
+ assert.strictEqual(depthAllocations,1);
  legacy.destroy();
  // A separate production WebGL consumer sees those exact serialized programs.
  const rec=recordingGPU(),GPU=require('../lib/gpu-backend'),originalGPU=GPU.WebGLBackend;
@@ -167,5 +197,5 @@ if(require.main===module)(async()=>{
  assert(rec.events.some(e=>e[0]==='draw'&&e[1]===3));
  assert(!rec.events.some(e=>/readPixels|finish/.test(e[0])),'no new readback or completion');
  d.destroy();
- console.log('PASS shared POSITIONT native IR: differential bytes/DEF, immutable snapshots, 11 fallback profiles, 10 native rejects, native pixels/depth/blend and rejecting ADD control; production GPU recording only (no GPU pixels)');
+ console.log('PASS shared POSITIONT native IR: differential bytes/DEF, immutable snapshots, 11 existing fallback profiles, 10 existing + 4 depth native rejects, five corrected depth pixel controls, out-of-range depth fallback, native pixels/depth/blend and rejecting ADD control; production GPU recording only (no GPU pixels)');
 })().catch(error=>{console.error(error.stack);process.exitCode=1;});
