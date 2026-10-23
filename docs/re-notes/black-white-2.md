@@ -8889,3 +8889,29 @@ What our side delivers: buffered `GetDeviceData` records with guest-tick `dwTime
    - read that object live with the hand on the scroll and with it on the storehouse.
 6. If `0x60eda4` never fires, read the `0x60ed90` gate `[0x1d73678]` / `[0xd0ae4c]` live.
 7. As a timing control, repeat once with press and release 3 s apart (inside one frame), to rule out the same-frame press+release case.
+
+## 2026-10-23: the -1 raster latch was a lock shared by two threads (fixed f5329feb1)
+
+The "harness-triggered raster latch" above (`native raster execution failed (-1)` at ~787 s) is fixed. It was not the harness and not the draw: the harness only shifted thread timing.
+
+How it was found (boat bx_pfbppnmu):
+- The captured failing draw replays cleanly on its own, so the cause was live state.
+- A boat-only diagnostic in the backend's failure path named the route: the setup phase of a split draw, after clipping, then `$d3d_software_compact` → `$heap_shrink` refused.
+- The draw context was a live 852 KB large block in its own heap arena. `HEAP_ARENAS` record 891 was published with `live` = 872448, but **no `VIRTUAL_MAP_TABLE` record covered it**, so `$w2g(ctx)` returned 0.
+- Ruled out with targeted probes:
+  - cross-instance arena release (that was a real, separate bug, fixed in 32c0b9bcf with a two-instance test, but the latch remained);
+  - a guest `VirtualFree` of heap memory (0 refusals);
+  - `$virtual_map_release_one` removing an overlapping record (0 hits).
+
+Cause: `$lock_acquire` is recursive by owner id, and the owner id is `$current_thread_id`. The render worker runs only `d3dim_worker_init`, never `init_thread`, so it kept the default id 1. That is also the main guest thread's id (tid 0 + 1). So the worker "re-entered" `LOCK_VIRTUAL_MAP` while the guest held it, and the two threads edited the virtual-map table at the same time. The table removes records by swapping the last one into the freed slot, so a concurrent edit can drop a live record.
+
+Fix: `d3dim_worker_init` sets `$lock_identity = 0x40000000`, and `$lock_owner_id` ORs it in, as it already does the shadow bridge's bit. `test/test-render-worker-lock-identity.js` fails before the fix ("share lock owner id 1") and passes after.
+
+A/B, using the same HTTP-control harness on main:
+- before the fix: latched in 6 of 6 untraced runs (bb9c496ed, 0304a8549, 9e284393e plus the arena fix);
+- after the fix: 2 of 2 runs clean, 1200 s and 1157 s, 0 failed commands, land rendering.
+
+Tests and build:
+- Full build PASS, wasm 43375d0f.
+- Heap/virtual/render suite: 55 pass. The three failures (two need puppeteer, plus `test-d3d-render-wait-scheduler`) also fail without the fix.
+- Lock/thread/worker suite: 44 pass. Of the six failures, four fail identically on the unfixed build and two lack fixtures on the boat (puppeteer, a screensaver binary).
