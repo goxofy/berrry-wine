@@ -8811,3 +8811,81 @@ The render worker thread is CPU-bound: 75 min of CPU in 82 min of wall time on a
   - The failing draw was captured through a `_retire` hook (`failures/*.json`): ps_1_1 + vs_1_1, SHORT4 position, stride 8, sampling RGB565 render target 65 into RGB565 RT 78 / D24X8.
   - Replayed alone it draws cleanly, both with `tools/d3d9-replay-payload.js` and with a variant that keeps the real attachments and the RT texture (`scripts/bw2-replay-attach.js`). So the -1 depends on live render-worker state, probably its WAT heap, and on timing.
   - The tr3-style stdin FIFO harness (`scripts/bw2-fifo-start.sh`) avoids it.
+
+### 2026-10-23 (static): why the Gold Scroll click was not consumed
+
+This is static work only: the retained run (`scratch/runs/20261023T0422Z-black_white_2_demo-claude739-camera`, `camera/camera.log` and the PNGs) plus `tools/disasm_fn.js` on `BW2Demo.exe`. Nothing here has been checked against a live run.
+
+**Hypothesis: the click reached the game and was used; it was picked against the wrong object.** The likely cause is aim plus drift, not a broken input path.
+
+Evidence that the click is delivered and consumed:
+- The Oct 11 runs consumed the scroll with exactly this recipe: `di-mousedown:1`, ~3 s, then `di-mouseup:1`.
+- In this same run, that recipe selected the Storehouse at `s1` and the Field at `t`/`u`. So a left press goes poll → `[0x1d73544]` bit 1 → action 1 → a world pick → a selection.
+- `s1.png` shows the pick marker (small green cross) at about **(405,195)** capture px. The scroll sparkle's base is at about (415,230). The Oct 11 hit point was (405,225). So the hand sat **~30 px above** the scroll, over the sparkle column in front of the Storehouse, and the Storehouse won the pick.
+
+Why the aim was off:
+1. **The offset was computed from `w0`, but the cursor had moved since then.** `scripts/bw2-scroll.sh` sent `relmousemove:223:-60`, meant to be relative to the `w0` hand at (265,290). Between `w0` and `s0`, the camera test also sent `relmousemove:150:0:5` inside the middle drag and `relmousemove:0:-120:5` inside the left drag. That is +150/-120 units the aim did not count.
+2. **The y scale is suspect.** The Oct 11 note gives 0.65 capture px/unit in x but 1:1 in y. The game draws an 800x600 back buffer into 520x390, which is 0.65 on both axes. An aim that mixes the two scales lands vertically wrong.
+3. **The land keeps moving under the hand.** Idle frames 90 s apart differ by ~22% (the creep toward the Town Center). At 0.146 fps, one frame takes ~7 s.
+
+**The consumer runs at most one action per frame, and a refused press is dropped in that same frame** (`0x60ed90`, called with `ecx` = the input manager):
+
+| addr | what |
+|---|---|
+| `0x60ed90` | entry. `test [0x1d73678], byte [0xd0ae4c]` → `jnz 0x60ef3c` (return): a whole-consumer gate, not yet read live |
+| `0x60eda4` | bit 1 (left press) → `0x611fa0(0,0,1)`; on return 1, `0x60edc3` clears the bit and **returns** |
+| `0x60edcc` | bit 2 (right press) → action 5, cleared at `0x60edeb` |
+| `0x60edf4` | bit 0x40 (middle press) → action 2, cleared at `0x60ee13` |
+| `0x60ee1c` | wheel `[0x1d734f4]`: negative → action 4 (`0x60ee43`), positive → action 3 (`0x60ee6b`) |
+| `0x60ee7d` | only when nothing above fired: `0x56d480(this=0x18ed574)`, then the binding tests `0x64d7f0`/`0x64e2a0`/`0x64d830`/`0x64d740`/`0x64e190`/`0x64d780`, each calling a `0x60ec70`..`0x60ed10` helper. Probably the hold/drag/gesture path; unverified |
+| `0x60ef35` | `mov byte [0x1d73544], 0`: **every pending bit is cleared** |
+
+- The consumer does not test the release bits (4/8/0x80) itself.
+- If `0x611fa0` returns ≠ 1, the next press type is tried. If none is accepted, the path ends at `0x60ef35`, which clears the whole word.
+- So the game sees a left press in exactly one frame. At 0.146 fps that frame can start up to ~7 s after the press was queued, while the land creeps. This is another way to pick the Storehouse instead of the scroll.
+
+**`0x611830(binding)` returns 0 (press dropped) when:**
+- the active controller is busy: `0x5f8050()` → `[+0xc8]` indexes `[+0x98]`, and vcall `[+0x54]` ≠ 0 → `0x611efd`;
+- or the binding has no case: bindings `0x13..0x1f` go through jump table `0x611f08`, and `0xd..0x26` through byte map `0x611f7c` / table `0x611f3c`.
+
+**Other readers and clearers of `[0x1d73544]`** (`tools/xrefs.js`, 62 hits):
+- the gesture object at `0x18ed574` (`0x56d51e`..`0x56d5fd`, clear at `0x56da89`);
+- a full per-bit consumer at `0x64c525`..`0x64c60a`;
+- `0x61249d` / `0x6131d0` (bits 1|2);
+- `0x514600` (bit 0x10, double click);
+- **`0x70c815`**, a widget-style consumer. It stores the click into `[esi+0x30]` and `[esi+0x34]` and clears bits 1/2. It is a candidate for 2D/UI clicks, including the objective panel.
+
+Which of these runs before `0x60ed90` in a frame is not established. Whichever runs first wins the press.
+
+**The dispatcher `0x611fa0(a, b, action)`** (on the click path, `a` = `b` = 0):
+- It calls `0x718840` first, then goes to `0x611fff`.
+- `[0x18ed55c] != 0` → return 0.
+- Otherwise the binding is looked up with `0x64c250(action)` on `[[0x19504a8]+0x4e190c]`; -1 → return 0.
+- Otherwise it runs `0x611830(binding)` with `ecx` = the caller's object, and returns its result.
+- The world pick, i.e. what "the thing under the hand" is, happens below `0x611830`. That has not been read yet; it is the next static target.
+
+What our side delivers: buffered `GetDeviceData` records with guest-tick `dwTimeStamp`. A press and a release 3 s apart can both land in the same 7 s frame. The poll `0x9b0880` turns them into bits 1 and 4 together. That did not stop the Storehouse/Field selections, so it is probably harmless. Still, the test below checks it.
+
+**Runtime test plan (next boat, FIFO harness `scripts/bw2-fifo-start.sh`, not HTTP `--control`):**
+1. Boot to the objective with **no camera input at all**. Wait for a static idle pair: two PNGs 90 s apart, `tools/png-diff.js --tolerance=24 --region=0,60,330,320` ≤ ~2%.
+2. **Aim from the game's own cursor, not from pixels.**
+   - Read the cursor with `eval` `guest_read32(0x1d733e8+0xc4)` / `+0xc8`. It is in 800x600 back-buffer coordinates.
+   - Target = scroll capture px / 0.65. The sparkle base is (415,230) in `w0` and `s0`; re-measure it on the idle pair.
+   - Also read `[0x17792c0]` (the poll's motion scale) and convert the difference into `relmousemove` units.
+   - Send the move, re-read the cursor, and correct until it is within ~5 back-buffer px. This also settles the x/y scale question.
+3. Arm counters with `exports.set_count`:
+   - `0x60eda4` (consumer saw the left press);
+   - `0x60edc3` (left press accepted);
+   - `0x612032` (dispatcher refused);
+   - `0x611830` (binding run);
+   - `0x611efd` (binding refused);
+   - `0x70c81d` (widget took the left press);
+   - `0x64c55a` (per-bit consumer took it);
+   - `0x56d51e` (gesture object read it).
+4. Send `di-mousedown:1`, wait **≥ 2 frames (~15 s)**, then `di-mouseup:1`. Capture PNGs at +15 s, +120 s and +240 s.
+   - Expect: `0x60edc3` = 1, then the scroll consumed, the objective box gone, and the scripted pan over field and storehouse (as on Oct 11).
+5. If the counters show accepted but the objective stays up, the pick is the problem:
+   - disassemble `0x611830` for action 1 to find the hovered-object read;
+   - read that object live with the hand on the scroll and with it on the storehouse.
+6. If `0x60eda4` never fires, read the `0x60ed90` gate `[0x1d73678]` / `[0xd0ae4c]` live.
+7. As a timing control, repeat once with press and release 3 s apart (inside one frame), to rule out the same-frame press+release case.
