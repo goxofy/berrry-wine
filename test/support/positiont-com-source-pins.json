@@ -216,7 +216,7 @@
   "src/09ae-d3d9-resources.wat": "8554598ff15d677c4e505663828592c14ccda7c0",
   "src/09af-d3d-shader-ir.wat": "e82caff970a481a64389e38d6fc9a443e6c9bed5",
   "src/09ag-d3d-shader-vm.wat": "7711f22203101748665bee33013edd8db4a6254b",
-  "src/09ah-d3d-software.wat": "40c91282b9ba9d10bc26e75b6383b6005362d23c",
+  "src/09ah-d3d-software.wat": "538290c4241f9112ff5e16f5cd71735ab38edea9",
   "src/09ai-d3d-render-lifetime.wat": "0b4800ffc59971ac83aff54e11db854ad5383b1c",
   "src/09aj-d3d-fixed.wat": "5043f03f08b024535e55985b8d60db6643032d2f",
   "src/09ak-d3d-depth.wat": "febdcea8b726ec2751f8a5e66c791e65c0e14214",
