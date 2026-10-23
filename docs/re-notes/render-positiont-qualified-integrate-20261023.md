@@ -76,6 +76,17 @@ match the qualified candidate. The [proposed-tree proof](render-positiont-qualif
 contains the complete qualified closure and a digest of the preserved unrelated
 manifest. Publication also requires this verifier against actual commits.
 
+Reviewed merge commit `620cc1c290d88590b368e90db5d55bd96af4c51f` has parents
+fresh main and the exact accepted head. Its
+[committed-tree proof](render-positiont-qualified-integrate-20261023/committed-tree-proof.json)
+passes all 286 pin/blob checks, 290 closure mode/byte checks, fixture identity and
+unrelated-tree preservation checks. The
+[task backup receipt](render-positiont-qualified-integrate-20261023/task-backup.json)
+records an actual strict-remote match for this tested merge before main publication.
+A subsequent documentation-only commit retains this proof; its final committed
+tree receives the same verifier before publication, with the final receipt in the
+external publication directory below.
+
 The [static checks](render-positiont-qualified-integrate-20261023/static-checks.json)
 pass owned production/test/support/tier `git diff --check`; historical raw logs
 remain verbatim. No project JS was imported and no default compile path invoked.
