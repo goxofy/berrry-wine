@@ -90,6 +90,48 @@ function boundsOracle(factory) {
   f.run(); const row = f.finish(); assert.equal(row.arrival, null); assert.equal(bufferReads, 0);
   assert.equal(f.counters().unsafe, 0);
 }
+function disabledOptionsOracle(factory = o.createObserver, transform = o.transform) {
+  const sentinel = Error('unused disabled access');
+  const fail = () => { throw sentinel; };
+  const opaque = new Proxy({}, { get: fail, ownKeys: fail, getOwnPropertyDescriptor: fail });
+  const unusedTransform = ['lifecycle', 'exportsSource', 'schedulerSource', 'unused', Symbol('unused')];
+  const unusedObserver = ['startBatch', 'endBatch', 'maxInvocations', 'maxBytes', 'unused', Symbol('unused')];
+  // Missing, explicitly undefined and false all select the disabled path.
+  for (const enabled of [false, undefined, 'absent']) {
+    const options = keys => {
+      const value = enabled === 'absent' ? {} : { enabled };
+      for (const key of keys) Object.defineProperty(value, key, { enumerable: true, get: fail });
+      return value;
+    };
+    for (const opts of [options(unusedTransform), new Proxy(options([]), {
+      get(target, key) { if (key !== 'enabled') fail(); return target[key]; },
+      ownKeys: fail, getOwnPropertyDescriptor: fail,
+    })]) assert.equal(transform(opaque, opts), opaque);
+    for (const opts of [options(unusedObserver), new Proxy(options([]), {
+      get(target, key) { if (key !== 'enabled') fail(); return target[key]; },
+      ownKeys: fail, getOwnPropertyDescriptor: fail,
+    })]) {
+      const observer = factory(fail, opts);
+      assert.equal(observer.wrapInstance(opaque, opaque), opaque);
+      observer.setBatch(36164); observer.finish(); observer.finish();
+      assert.equal(observer.stats().calls, 0); assert.equal(observer.stats().records, 0);
+    }
+  }
+  assert.equal(transform(opaque), opaque);
+  const observer = factory(fail);
+  assert.equal(observer.wrapInstance(opaque, opaque), opaque); observer.finish();
+}
+disabledOptionsOracle();
+// Enabled invalid configuration must reject before touching source, pins or guest.
+{
+  let guestReads = 0;
+  const guest = new Proxy({}, { get() { guestReads++; throw Error('guest access'); } });
+  assert.throws(() => o.transform(guest, { enabled: true, lifecycle: { maxInvocations: 0 } }),
+    /invalid configuration/);
+  assert.throws(() => o.createObserver(() => {}, { enabled: true, maxBytes: 0 }).wrapInstance(guest, guest),
+    /invalid configuration/);
+  assert.equal(guestReads, 0);
+}
 const actualSummary = arrivalOracle(o.createObserver);
 for (const oracle of [retryOracle, returnOracle, unrelatedOracle, guardOracle, boundsOracle]) oracle(o.createObserver);
 for (const change of [f => { f.s.eip = 0x123456; }, f => { f.s.yield_reason = 10; },
@@ -116,11 +158,22 @@ for (const [name, from, to, oracle] of [
   ['disabled-path-wrapper', 'if (!enabled) return instance;', 'if (false) return instance;', guardOracle],
   ['direct-window-guard', 'start < 0x12000', 'false', boundsOracle],
   ['extra-clear', 'calls++;', 'e.clear_yield(); calls++;', retryOracle],
+  ['disabled-eager-option-read', 'enabled ? options : {}', 'options', disabledOptionsOracle],
 ]) {
   const source = o.createObserver.toString(); assert(source.includes(from), name);
   const factory = vm.runInNewContext('(' + source.replace(from, to) + ')', { Buffer });
   assert.throws(() => oracle(factory), undefined, name);
   receipts.push({ name, rejected: true });
+}
+{
+  const source = o.transform.toString();
+  const from = '  if (!enabled) return source;';
+  assert(source.includes(from));
+  const transform = vm.runInNewContext('(' + source.replace(from,
+    '  void options.lifecycle; void options.exportsSource;\n' + from) + ')',
+    { base: require('../tools/maelstrom-event-boundary-observer.cjs'), createObserver: o.createObserver });
+  assert.throws(() => disabledOptionsOracle(o.createObserver, transform));
+  receipts.push({ name: 'disabled-eager-transform-read', rejected: true });
 }
 if (process.argv.length > 2) {
   const [runner, exportsPath, scheduler] = process.argv.slice(2);

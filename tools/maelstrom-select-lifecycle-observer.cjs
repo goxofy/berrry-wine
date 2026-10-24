@@ -5,13 +5,15 @@ const base = require('./maelstrom-event-boundary-observer.cjs');
 // Self-contained for serialization into the pinned runner. One call identity,
 // constant-size aggregates, one output record. No API-result inference.
 function createObserver(emit, options = {}) {
-  const { enabled = false, startBatch = 36164, endBatch = 36180,
-    maxInvocations = 512, maxBytes = 4096 } = options;
-  if (typeof enabled !== 'boolean' || !Number.isSafeInteger(startBatch) || startBatch < 0 ||
+  const { enabled = false } = options;
+  // Disabled options are unused: do not read their getters or enumerate them.
+  const { startBatch = 36164, endBatch = 36180,
+    maxInvocations = 512, maxBytes = 4096 } = enabled ? options : {};
+  if (typeof enabled !== 'boolean' || enabled && (!Number.isSafeInteger(startBatch) || startBatch < 0 ||
       !Number.isSafeInteger(endBatch) || endBatch < startBatch || endBatch - startBatch > 4096 ||
       !Number.isInteger(maxInvocations) || maxInvocations < 1 || maxInvocations > 4096 ||
       !Number.isInteger(maxBytes) || maxBytes < 3072 || maxBytes > 8192 ||
-      Object.keys(options).some(k => !['enabled', 'startBatch', 'endBatch', 'maxInvocations', 'maxBytes'].includes(k)))
+      Object.keys(options).some(k => !['enabled', 'startBatch', 'endBatch', 'maxInvocations', 'maxBytes'].includes(k))))
     throw Error('select lifecycle: invalid configuration');
   let batch = null, calls = 0, finished = false, capped = false, closed = false;
   let identity = null, first = null, last = null, arrival = null, previousTick = null;
@@ -138,10 +140,13 @@ function createObserver(emit, options = {}) {
     stats: () => ({ calls, capped, records, bytes, failure }) };
 }
 
-function transform(source, { enabled = false, lifecycle = {}, ...pins } = {}) {
+function transform(source, options = {}) {
+  const { enabled = false } = options;
   if (!enabled) return source;
+  const { lifecycle = {} } = options;
   createObserver(() => {}, { ...lifecycle, enabled: true }); // reject before runner/guest execution
-  const transformed = base.transform(source, { ...pins, enabled: true });
+  const transformed = base.transform(source, { enabled: true,
+    exportsSource: options.exportsSource, schedulerSource: options.schedulerSource });
   return transformed.replace('  const maelstromEvents =',
     `  const maelstromSelect = (${createObserver.toString()})(line => process.stderr.write(line), ${JSON.stringify({ ...lifecycle, enabled: true })});\n  const maelstromEvents =`)
     .replace('maelstromEvents.wrapInstance(await WebAssembly.instantiate(wasmModule, imports), memory)',
