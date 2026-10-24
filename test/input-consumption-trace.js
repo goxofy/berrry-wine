@@ -7,6 +7,7 @@ function createInputConsumptionTrace({ enabled, logs, snapshot, limit = 1000 }) 
   let dequeueId = 0;
   let lastDequeueId = null;
   let enqueueId = 0;
+  let lastGuestTick = 'unavailable';
   const enqueued = new WeakMap();
   const emit = (prefix, detail) => {
     if (!enabled) return;
@@ -21,6 +22,14 @@ function createInputConsumptionTrace({ enabled, logs, snapshot, limit = 1000 }) 
   };
   const hex = n => `0x${(n >>> 0).toString(16)}`;
   return {
+    // Observe returns at the outermost clock reader, after startup mapping.
+    // Never reconstruct a past return with today's mapping or spend a probe.
+    get lastGuestTick() { return lastGuestTick; },
+    observeTicks: ticks => enabled ? function (...args) {
+      const value = Reflect.apply(ticks, this, args);
+      lastGuestTick = value;
+      return value;
+    } : ticks,
     schedule: ev => emit('[input-schedule]',
       `scheduledBatch=${ev.batch} action=${ev.action || 'raw'} correlation=unavailable`),
     enqueue: (evt, ev) => {

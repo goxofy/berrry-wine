@@ -160,10 +160,12 @@ function testConsumptionTiming() {
   assert(c.logs.at(-1).includes('scheduledBatch=1'));
   assert(c.logs.at(-1).includes('batch=11 guestMs=2022 clock=batch'));
   let wall = 500;
+  // Install a fresh production observer for the real clock, as initialization
+  // does; replacing the clock on an existing trace would retain its old read.
   c.guestClock = createGuestClockSource({ realTicks: true, clockOrigin: 500, now: () => wall });
+  vm.runInContext('{' + setup + 'globalThis.realTrace = inputConsumptionTrace;}', c);
   wall = 623;
-  c.scheduledInput = [{ batch: 2, action: 'keyup' }];
-  vm.runInContext('{' + schedule + '}', c);
+  c.realTrace.schedule({ batch: 2, action: 'keyup' });
   assert(c.logs.at(-1).includes('batch=11 guestMs=123 clock=real lastGuestTick=unavailable'));
 
   // Hard volume cap; disabled trace never even samples the clock.

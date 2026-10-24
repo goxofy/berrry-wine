@@ -4465,13 +4465,16 @@ async function main() {
         `guest ${Math.round(startupClock.map(raw))} ms`);
     };
   }
-  h.get_ticks = guestClock.ticks;
+  // Resolve the reader at call time so the optional observer below sees the
+  // same mapped return as GetTickCount/timeGetTime/QueryPerformanceCounter.
+  h.get_ticks = () => guestClock.ticks();
   const inputConsumptionTrace = createInputConsumptionTrace({
     enabled: TRACE_INPUT_DISPATCH, logs,
     snapshot: () => ({ batch: tickState.batch, guestMs: guestClock.publish(),
       clock: guestClock.realTicks ? 'real' : 'batch',
-      lastGuestTick: guestClock.realTicks ? 'unavailable' : tickState.lastTick }),
+      lastGuestTick: inputConsumptionTrace.lastGuestTick }),
   });
+  guestClock.ticks = inputConsumptionTrace.observeTicks(guestClock.ticks);
   // Every OTHER import table in this process is built from `ctx` — one per
   // guest thread, in makeWorkerImports — and createHostImports derives its
   // get_ticks from ctx.guestNowMs. Overriding only `h` above therefore left

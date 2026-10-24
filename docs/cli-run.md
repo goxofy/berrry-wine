@@ -17,9 +17,14 @@ execution.
 
 Each record includes the observed `batch` and a non-advancing `guestMs` from
 the existing guest clock's publish path. `clock=batch` means its current batch
-base, including clock rebases/pauses; `lastGuestTick` is the last tick read by
-the main guest, which may differ within a batch or be stale. `clock=real` uses
-the existing scaled/mapped elapsed clock and reports `lastGuestTick=unavailable`.
+base, including clock rebases/pauses. `clock=real` uses the existing
+scaled/mapped elapsed clock. `lastGuestTick` records the last actual return
+through the main host's guest-clock reader, after startup dilation or other
+mapping, in either mode. Before its first observed call it is `unavailable`.
+This value can be stale, including across startup release: publishing time does
+not change it. Host hooks that share this reader also update the observation;
+it does not report independent worker threads' last API reads or QPC's separate
+microsecond interpolation. It is never the raw underlying batch-clock state.
 Neither value is computed from the scheduled batch, and tracing spends no
 guest clock probe. Raw enqueues retain `enqueueId`/`scheduledBatch` at dequeue
 only by object identity. Renderer actions may suppress, combine or generate
