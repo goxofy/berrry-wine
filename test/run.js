@@ -49,6 +49,7 @@ const { CliVideoRecorder } = require('../lib/cli-recorder');
 const { renderTinySynthNotes } = require('../lib/tinysynth-offline');
 const { createBatchClock } = require('../lib/batch-clock');
 const { createGuestClockSource } = require('../lib/guest-clock');
+const { createInputConsumptionTrace } = require('./input-consumption-trace');
 const { createStartupClock } = require('../lib/startup-clock');
 const { parseShellLaunchCommand, resolveShellLaunchPath } = require('../host.js');
 // Fixed memory-map addresses, from the map declared in src/00-regions.wat.
@@ -305,7 +306,7 @@ const TRACE_API_PAUSED = hasFlag('trace-api-paused');
 const TRACE_API_DEDUP = hasFlag('trace-api-dedup'); // --trace-api-dedup: collapse N consecutive identical lines into "(xN)"
 const TRACE_API_COUNTS = hasFlag('trace-api-counts'); // --trace-api-counts: print histogram of API call names at end
 const TRACE_MOUSE_STATE = hasFlag('trace-mouse-state'); // --trace-mouse-state: log renderer mouse state changes seen by host imports
-const TRACE_INPUT_DISPATCH = hasFlag('trace-input-dispatch'); // --trace-input-dispatch: log mouse/key MSGs entering DispatchMessage
+const TRACE_INPUT_DISPATCH = hasFlag('trace-input-dispatch'); // bounded schedule/dequeue/route/DispatchMessage timing
 // --trace-stack[=N|=Name1,Name2|=Name:N,...]: walk EBP chain on matched API calls
 const TRACE_STACK_RAW = args.find(a => a === '--trace-stack' || a.startsWith('--trace-stack='));
 const TRACE_STACK = !!TRACE_STACK_RAW;
@@ -3381,7 +3382,7 @@ async function main() {
         if ((msgMsg >= 0x0100 && msgMsg <= 0x0108) ||
             (msgMsg >= 0x0200 && msgMsg <= 0x020D) ||
             (msgMsg >= 0x00A0 && msgMsg <= 0x00AD)) {
-          logs.push(`[dispatch-input] ${t} hwnd=0x${msgHwnd.toString(16)} msg=0x${msgMsg.toString(16)} wParam=0x${msgWP.toString(16)} lParam=0x${(msgLP >>> 0).toString(16)}`);
+          inputConsumptionTrace.dispatch(t, msgHwnd, msgMsg, msgWP, msgLP);
         }
       } catch (_) {}
     }
@@ -4465,6 +4466,12 @@ async function main() {
     };
   }
   h.get_ticks = guestClock.ticks;
+  const inputConsumptionTrace = createInputConsumptionTrace({
+    enabled: TRACE_INPUT_DISPATCH, logs,
+    snapshot: () => ({ batch: tickState.batch, guestMs: guestClock.publish(),
+      clock: guestClock.realTicks ? 'real' : 'batch',
+      lastGuestTick: guestClock.realTicks ? 'unavailable' : tickState.lastTick }),
+  });
   // Every OTHER import table in this process is built from `ctx` — one per
   // guest thread, in makeWorkerImports — and createHostImports derives its
   // get_ticks from ctx.guestNowMs. Overriding only `h` above therefore left
@@ -4511,12 +4518,16 @@ async function main() {
   let lastInputEvent = null;
   h.check_input = () => {
     let evt = null;
+    let source;
     if (inputEvent) {
+      source = 'pending';
       evt = inputEvent;
       inputEvent = null;
     } else if (crossThreadMsgs.length > 0) {
+      source = 'cross-thread';
       evt = crossThreadMsgs.shift();
     } else if (inputQueue && inputQueue.length > 0) {
+      source = 'button-queue';
       // Delay button clicks while on "Installing Files" page (let extraction thread work)
       if (installingFiles) return 0;
       const id = inputQueue.shift();
@@ -4526,10 +4537,12 @@ async function main() {
       // menu commands because the edit child's wndproc is WNDPROC_BUILTIN.
       else evt = { msg: 0x0111, wParam: id, lParam: 0, hwnd: 0 };
     } else if (renderer) {
+      source = 'renderer';
       evt = renderer.checkInput();
     }
     if (!evt) return 0;
     lastInputEvent = evt;
+    inputConsumptionTrace.dequeue(evt, source);
     const packed = (evt.wParam << 16) | (evt.msg & 0xFFFF);
     logs.push(`[check_input] msg=0x${evt.msg.toString(16)} wParam=0x${evt.wParam.toString(16)} lParam=0x${(evt.lParam >>> 0).toString(16)} packed=0x${packed.toString(16)}`);
     return packed;
@@ -4544,9 +4557,13 @@ async function main() {
   // won the input FIFO (Moorhuhn's WinSock thread, whenever the main thread
   // sat in a present-cap sleep) was told the key was the main window's and
   // routed it, while the browser told it 0 and it kept the key.
-  h.check_input_hwnd = (focusHwnd) => inputEventHwnd(lastInputEvent,
-    { get_focus_hwnd: () => focusHwnd | 0 },
-    (why) => logs.push(`[check_input_hwnd] ${why}`));
+  h.check_input_hwnd = (focusHwnd) => {
+    const hwnd = inputEventHwnd(lastInputEvent,
+      { get_focus_hwnd: () => focusHwnd | 0 },
+      (why) => logs.push(`[check_input_hwnd] ${why}`));
+    inputConsumptionTrace.route(focusHwnd, hwnd);
+    return hwnd;
+  };
   h.check_input_lparam = () => (lastInputEvent ? (lastInputEvent.lParam || 0) : 0);
   h.check_input_wparam = () => (lastInputEvent ? (lastInputEvent.wParam || 0) : 0);
   let lastMouseTracePos = -1;
@@ -7565,6 +7582,7 @@ async function main() {
     // Inject scheduled input events at the right batch
     while (scheduledInput.length && scheduledInput[0].batch <= batch) {
       const ev = scheduledInput.shift();
+      inputConsumptionTrace.schedule(ev);
       injectedInputThisBatch = true;
       // Start the input->blit clock on events a user would perform. The
       // wrapped gdi_surface_upload stops it at the first blit that follows.
@@ -10217,10 +10235,12 @@ async function main() {
         // the run idle with its control channel unanswered.
         logs.push(`[input] ${ev.action} dropped at batch ${batch}: no renderer`);
       } else if (renderer) {
-        renderer.inputQueue.push({ type: 'key', hwnd: 0, msg: ev.msg, wParam: ev.wParam, lParam: ev.lParam });
+        renderer.inputQueue.push(inputConsumptionTrace.enqueue(
+          { type: 'key', hwnd: 0, msg: ev.msg, wParam: ev.wParam, lParam: ev.lParam }, ev));
         logs.push(`[input] injected msg=0x${ev.msg.toString(16)} wParam=0x${ev.wParam.toString(16)} at batch ${batch}`);
       } else {
-        inputEvent = { msg: ev.msg, wParam: ev.wParam, lParam: ev.lParam, hwnd: 0 };
+        inputEvent = inputConsumptionTrace.enqueue(
+          { msg: ev.msg, wParam: ev.wParam, lParam: ev.lParam, hwnd: 0 }, ev);
         logs.push(`[input] injected msg=0x${ev.msg.toString(16)} wParam=0x${ev.wParam.toString(16)} at batch ${batch}`);
       }
     }
