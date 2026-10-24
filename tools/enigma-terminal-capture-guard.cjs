@@ -37,6 +37,24 @@ function transformCapture(source) {
   return once(source, anchors.capture,
     `  try { ${anchors.capture.trim()} } catch (error) { ${call}.reject(error); }`);
 }
+// Explicit opt-in for the pinned real capture source. Default transform and all
+// original receipt/supervisor identities remain unchanged.
+function transformLosslessCapture(source) {
+  assert.equal(sha256(source), pins.capture, 'terminal capture preload hash');
+  const start = source.indexOf('function encode(buf) {');
+  const end = source.indexOf('\nmodule.exports={encode};', start);
+  assert(start >= 0 && end > start, 'lossless capture encode anchors');
+  const encoder = JSON.stringify(path.join(__dirname, 'lossless-capture-png.cjs'));
+  source = source.slice(0, start) + `function encode(buf) {
+  ${call}.rethrow();
+  try { return require(${encoder}).encode(PNG, buf); }
+  catch (error) { ${call}.reject(error); }
+}` + source.slice(end);
+  // Latch frame/cumulative/writer failures too, before a later intercepted write.
+  source = once(source, '    if(typeof file', `    ${call}.rethrow();\n    try {\n    if(typeof file`);
+  return once(source, '    return write.call(this,file,data,...args);',
+    `    return write.call(this,file,data,...args);\n    } catch (error) { ${call}.reject(error); }`);
+}
 function transformSupervisor(source) {
   assert.equal(sha256(source), pins.supervisor, 'terminal capture supervisor hash');
   const helper = `def terminal_capture():
@@ -102,7 +120,7 @@ function reject(error) {
   throw terminal;
 }
 function rethrow() { if (terminal) throw terminal; }
-function install(root, capture, receipt) {
+function install(root, capture, receipt, lossless = false) {
   for (const value of [root, capture, receipt]) assert(value && path.isAbsolute(value), 'terminal capture absolute paths required');
   root = fs.realpathSync(root);
   capture = fs.realpathSync(capture);
@@ -117,11 +135,12 @@ function install(root, capture, receipt) {
   const original = Module.prototype._compile;
   Module.prototype._compile = function(source, file) {
     if (file === runner) source = transformRunner(source);
-    if (file === capture) source = transformCapture(source);
+    if (file === capture) source = lossless ? transformLosslessCapture(source) : transformCapture(source);
     return original.call(this, source, file);
   };
 }
-module.exports = { pins, sha256, anchors, once, transformRunner, transformCapture, transformSupervisor, reject, rethrow, install };
+module.exports = { pins, sha256, anchors, once, transformRunner, transformCapture, transformLosslessCapture, transformSupervisor, reject, rethrow, install };
 if (process.env.ENIGMA_TERMINAL_CAPTURE_INSTALL === '1') {
-  install(process.env.ENIGMA_RUNNER_ROOT, process.env.ENIGMA_CAPTURE_PATH, process.env.ENIGMA_TERMINAL_RECEIPT);
+  install(process.env.ENIGMA_RUNNER_ROOT, process.env.ENIGMA_CAPTURE_PATH, process.env.ENIGMA_TERMINAL_RECEIPT,
+    process.env.ENIGMA_LOSSLESS_CAPTURE === '1');
 }
