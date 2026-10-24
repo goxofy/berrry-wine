@@ -1,6 +1,6 @@
 'use strict';
 // Preload BEFORE enigma-quiet-filesystem.cjs, then the original capture.cjs.
-// No guest, renderer, filesystem, or guard-limit changes. Disabled is inert.
+// Disabled is inert. Capture profiles are explicit, named and bounded.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -39,7 +39,8 @@ function transformCapture(source) {
 }
 // Explicit opt-in for the pinned real capture source. Default transform and all
 // original receipt/supervisor identities remain unchanged.
-function transformLosslessCapture(source) {
+function transformLosslessCapture(source, profile = 'default') {
+  const limits = require(path.join(path.dirname(__filename), 'lossless-capture-png.cjs')).profileLimits(profile);
   assert.equal(sha256(source), pins.capture, 'terminal capture preload hash');
   const start = source.indexOf('function encode(buf) {');
   const end = source.indexOf('\nmodule.exports={encode};', start);
@@ -47,9 +48,15 @@ function transformLosslessCapture(source) {
   const encoder = JSON.stringify(path.join(__dirname, 'lossless-capture-png.cjs'));
   source = source.slice(0, start) + `function encode(buf) {
   ${call}.rethrow();
-  try { return require(${encoder}).encode(PNG, buf); }
+  try { return require(${encoder}).encode(PNG, buf, ${JSON.stringify(profile)}); }
   catch (error) { ${call}.reject(error); }
 }` + source.slice(end);
+  if (profile !== 'default') {
+    source = once(source, "assert(++frames<=3,'capture frame limit')",
+      `assert(++frames<=${limits.maxFrames},'capture frame limit')`);
+    source = once(source, "assert(total<=393216,'capture cumulative byte limit')",
+      `assert(total<=${limits.cumulativeBytes},'capture cumulative byte limit')`);
+  }
   // Latch frame/cumulative/writer failures too, before a later intercepted write.
   source = once(source, '    if(typeof file', `    ${call}.rethrow();\n    try {\n    if(typeof file`);
   return once(source, '    return write.call(this,file,data,...args);',
@@ -67,7 +74,12 @@ function transformSupervisor(source) {
  assert record.get('reason')=='capture-byte-limit' and record.get('artifactAccepted') is False
  assert record.get('runnerSHA256')=='${pins.runner}'
  assert record.get('captureSHA256')=='${pins.capture}'
- assert record.get('code')=='ERR_ASSERTION' and record.get('message')=='capture byte limit'
+ assert record.get('code')=='ERR_ASSERTION'
+ assert record.get('profile') in (None,'default','single-frame')
+ if record.get('profile')=='single-frame':
+  assert record.get('message') in ('capture byte limit','capture frame limit','capture cumulative byte limit')
+ else:
+  assert record.get('message')=='capture byte limit'
  return record
 `;
   source = once(source, anchors.supervisorHelper, helper + anchors.supervisorHelper);
@@ -84,6 +96,7 @@ function transformSupervisor(source) {
 }
 let terminal = null;
 let receiptPath = null;
+let selectedProfile = 'default';
 // Capture the receipt primitives before capture.cjs installs its PNG writer.
 const io = Object.fromEntries(['openSync', 'writeSync', 'fsyncSync', 'closeSync', 'linkSync', 'unlinkSync'].map(k => [k, fs[k].bind(fs)]));
 function reject(error) {
@@ -91,7 +104,14 @@ function reject(error) {
     terminal = error; // identity, not message/regex classification
     try {
       assert(receiptPath, 'terminal capture receipt is not configured');
-      const record = JSON.stringify({ version: 1, terminal: true, reason: 'capture-byte-limit',
+      const diagnostic = error.captureDiagnostic;
+      const metadata = selectedProfile === 'single-frame' ? { profile: selectedProfile } : {};
+      if (diagnostic && ['default', 'single-frame'].includes(diagnostic.profile) &&
+          Array.isArray(diagnostic.candidateBytes) && diagnostic.candidateBytes.length <= 2 &&
+          diagnostic.candidateBytes.every(n => Number.isSafeInteger(n) && n >= 0 && n <= 2097152)) {
+        metadata.encoding = { profile: diagnostic.profile, candidateBytes: diagnostic.candidateBytes };
+      }
+      const record = JSON.stringify({ ...metadata, version: 1, terminal: true, reason: 'capture-byte-limit',
         runnerSHA256: pins.runner, captureSHA256: pins.capture,
         name: String(error.name).slice(0, 80), code: String(error.code).slice(0, 80),
         message: String(error.message).slice(0, 256), artifactAccepted: false }) + '\n';
@@ -120,7 +140,9 @@ function reject(error) {
   throw terminal;
 }
 function rethrow() { if (terminal) throw terminal; }
-function install(root, capture, receipt, lossless = false) {
+function install(root, capture, receipt, lossless = false, profile = 'default') {
+  require(path.join(path.dirname(__filename), 'lossless-capture-png.cjs')).profileLimits(profile);
+  assert(profile === 'default' || lossless === true, 'capture profile requires lossless capture');
   for (const value of [root, capture, receipt]) assert(value && path.isAbsolute(value), 'terminal capture absolute paths required');
   root = fs.realpathSync(root);
   capture = fs.realpathSync(capture);
@@ -132,15 +154,17 @@ function install(root, capture, receipt, lossless = false) {
   assert(!fs.existsSync(receipt + '.pending'), 'terminal capture pending receipt must be fresh');
   fs.realpathSync(path.dirname(receipt));
   receiptPath = receipt;
+  selectedProfile = profile;
   const original = Module.prototype._compile;
   Module.prototype._compile = function(source, file) {
     if (file === runner) source = transformRunner(source);
-    if (file === capture) source = lossless ? transformLosslessCapture(source) : transformCapture(source);
+    if (file === capture) source = lossless ? transformLosslessCapture(source, profile) : transformCapture(source);
     return original.call(this, source, file);
   };
 }
 module.exports = { pins, sha256, anchors, once, transformRunner, transformCapture, transformLosslessCapture, transformSupervisor, reject, rethrow, install };
 if (process.env.ENIGMA_TERMINAL_CAPTURE_INSTALL === '1') {
   install(process.env.ENIGMA_RUNNER_ROOT, process.env.ENIGMA_CAPTURE_PATH, process.env.ENIGMA_TERMINAL_RECEIPT,
-    process.env.ENIGMA_LOSSLESS_CAPTURE === '1');
+    process.env.ENIGMA_LOSSLESS_CAPTURE === '1',
+    process.env.ENIGMA_CAPTURE_PROFILE === undefined ? 'default' : process.env.ENIGMA_CAPTURE_PROFILE);
 }

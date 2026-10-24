@@ -27,6 +27,14 @@ def body(source):
     # No reconstruction of the finalization: include the actual try/finally EOF.
     return 'try:\n' + source[start:]
 
+# Feed real receipts from the actual pinned capture _compile + writer into
+# the complete transformed supervisor, rather than constructing new receipts.
+profile_tests = subprocess.run(['node', '--max-old-space-size=256',
+    str(repo / 'test/test-enigma-single-frame-profile.js')],
+    capture_output=True, timeout=30, check=True)
+assert len(profile_tests.stdout) + len(profile_tests.stderr) < 65536
+actual_outcomes = json.loads(profile_tests.stdout)['outcomes']
+actual_receipts = {o['mode']: o['receipt'] for o in actual_outcomes if 'receipt' in o}
 results = []
 with tempfile.TemporaryDirectory(prefix='enigma-supervisor-exit-') as tmp:
     root = pathlib.Path(tmp)
@@ -47,7 +55,17 @@ with tempfile.TemporaryDirectory(prefix='enigma-supervisor-exit-') as tmp:
     old = subprocess.run(['node', '--max-old-space-size=256', '-e',
         'process.stdout.write(require(process.argv[1]).transformSupervisor(require("fs").readFileSync(process.argv[2],"utf8")))',
         str(old_adapter), str(sourcefile)], capture_output=True, timeout=10, check=True).stdout.decode()
-    assert reverted == old
+    # Normalize only the new allowlisted single-frame branch; the complete
+    # historical transformation must still match the retained old oracle.
+    new_validation = """ assert record.get('code')=='ERR_ASSERTION'
+ assert record.get('profile') in (None,'default','single-frame')
+ if record.get('profile')=='single-frame':
+  assert record.get('message') in ('capture byte limit','capture frame limit','capture cumulative byte limit')
+ else:
+  assert record.get('message')=='capture byte limit'"""
+    old_validation = " assert record.get('code')=='ERR_ASSERTION' and record.get('message')=='capture byte limit'"
+    assert reverted.count(new_validation) == 1
+    assert reverted.replace(new_validation, old_validation) == old
 
     def run(name, source, raw, poll='running', failure='', configured=True, output=b''):
         case = root / name
@@ -104,16 +122,32 @@ p=Child();time=Clock();start=0;why='natural';offset=0;tail=b'';log=Log()
         results.append(result)
         return result
 
-    def denial(result):
+    def denial(result, expected=receipt):
         assert result['exit'] == 1 and not result['dependentRan']
         assert result['receipt']['reason'] == 'capture-byte-limit'
-        assert result['receipt']['captureTerminal'] == receipt
+        assert result['receipt']['captureTerminal'] == expected
         assert result['cleanupTrace'] == [['killpg',12345,15],['killpg',12345,0],
             ['killpg',12345,9],['wait'],['waitpid',-1,1],['killpg',12345,0],['log.close']]
         assert result['receipt']['remainingGroup'] is False
 
     for poll in ['running', 'success', 'failed']:
         denial(run('denial-' + poll, transformed, json.dumps(receipt), poll=poll))
+    for mode in ['default', 'frames', 'cumulative']:
+        actual = actual_receipts[mode]
+        for poll in ['running', 'success', 'failed']:
+            denial(run('actual-' + mode + '-' + poll, transformed, json.dumps(actual), poll=poll), actual)
+    for message in ['capture byte limit', 'capture frame limit', 'capture cumulative byte limit']:
+        single = dict(receipt, profile='single-frame', message=message)
+        for poll in ['running', 'success', 'failed']:
+            denial(run('single-' + message.replace(' ', '-') + '-' + poll,
+                       transformed, json.dumps(single), poll=poll), single)
+    for name, changes in [('writer', dict(code='EIO', message='writer failure')),
+                          ('unrelated-assert', dict(message='unrelated assertion')),
+                          ('invalid-profile', dict(profile='unbounded', message='capture byte limit'))]:
+        rejected = run('single-invalid-' + name, transformed,
+                       json.dumps(dict(dict(receipt, profile='single-frame'), **changes)))
+        assert rejected['exit'] == 1 and not rejected['dependentRan']
+        assert 'AssertionError' in rejected['stderr']
     mutant = run('revert-exit-guard', reverted, json.dumps(receipt))
     try:
         denial(mutant)

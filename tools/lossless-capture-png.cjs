@@ -3,6 +3,14 @@ const assert = require('node:assert/strict');
 const zlib = require('node:zlib');
 const signature = Buffer.from('89504e470d0a1a0a', 'hex');
 const MAX_BYTES = 131072;
+const PROFILES = Object.freeze({
+  default: Object.freeze({ maxBytes: MAX_BYTES, cumulativeBytes: 393216, maxFrames: 3 }),
+  'single-frame': Object.freeze({ maxBytes: 2097152, cumulativeBytes: 2097152, maxFrames: 1 }),
+});
+function profileLimits(name = 'default') {
+  assert(typeof name === 'string' && Object.hasOwn(PROFILES, name), 'capture profile');
+  return PROFILES[name];
+}
 const STRATEGIES = Object.freeze([3, 0]);
 
 // Canvas capture contract: bounded, non-interlaced 8-bit RGBA. No palette,
@@ -40,18 +48,28 @@ function decode(PNG, buf) {
   return image;
 }
 
-function encode(PNG, buf) {
+function encode(PNG, buf, profile = 'default') {
+  const limits = profileLimits(profile);
+  const candidateBytes = [];
   const image = decode(PNG, buf);
   // At most two level-9 encodes, in stable order; never retain all candidates.
   for (const deflateStrategy of STRATEGIES) {
     const result = PNG.sync.write({ width: image.width, height: image.height, data: image.data },
       { deflateLevel: 9, deflateStrategy, colorType: 6, inputColorType: 6, inputHasAlpha: true });
-    if (result.length > MAX_BYTES) continue;
+    candidateBytes.push(result.length);
+    if (result.length > limits.maxBytes) continue;
     const decoded = decode(PNG, result);
     assert.deepEqual(decoded.data, image.data, 'capture pixel identity');
     assert.equal(decoded.width, image.width); assert.equal(decoded.height, image.height);
     return result;
   }
-  assert.fail('capture byte limit');
+  try { assert.fail('capture byte limit'); }
+  catch (error) {
+    // Sizes only: never attach a rejected encoded or decoded pixel payload.
+    Object.defineProperty(error, 'captureDiagnostic', { value: Object.freeze({
+      profile, candidateBytes: Object.freeze(candidateBytes),
+    }) });
+    throw error;
+  }
 }
-module.exports = { encode, MAX_BYTES, STRATEGIES };
+module.exports = { encode, MAX_BYTES, STRATEGIES, profileLimits };
