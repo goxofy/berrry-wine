@@ -164,12 +164,16 @@ scope.update(p=Process(),time=Clock(),start=0,why='natural',E=pathlib.Path(sys.a
 (scope['E']/'output.log').write_bytes(b'')
 exec('if True:\n'+loop,scope)
 assert scope['why']=='capture-byte-limit'
-exec('if True:\n'+final,scope)
+def finalize():
+ try:exec('if True:\n'+final,scope)
+ except SystemExit as error:assert error.code==1
+ else:raise AssertionError('terminal supervisor must fail after finalization')
+finalize()
 assert scope['receipt']['reason']=='capture-byte-limit'
 assert scope['receipt']['captureTerminal']==scope['terminal_capture']()
 # The child may have exited before the first poll; finalization still classifies.
 scope.update(why='natural',log=io.StringIO())
-exec('if True:\n'+final,scope)
+finalize()
 assert scope['receipt']['reason']=='capture-byte-limit'
 original=pathlib.Path(sys.argv[2]).read_text()
 for data in ['{}','x'*1025,original.replace('capture byte limit','not the denial')]:
@@ -213,7 +217,7 @@ assert scope['terminal_capture']() is None
     const fn = name === 'runner' ? base.a.transformRunner : name === 'capture' ? base.a.transformCapture : base.a.transformSupervisor;
     assert.throws(() => fn(source+' '));
     const selected = name === 'runner' ? [base.a.anchors.png,base.a.anchors.batch] : name === 'capture' ? [base.a.anchors.capture] :
-      [base.a.anchors.supervisorHelper,base.a.anchors.supervisorLoop,base.a.anchors.supervisorFinal];
+      [base.a.anchors.supervisorHelper,base.a.anchors.supervisorLoop,base.a.anchors.supervisorFinal,base.a.anchors.supervisorExit];
     for (const anchor of selected) {
       assert.throws(() => base.a.once(source.replace(anchor,''),anchor,'x'));
       assert.throws(() => base.a.once(source+anchor,anchor,'x'));
