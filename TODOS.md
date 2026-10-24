@@ -1866,8 +1866,8 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 
 - [ ] Resolve original Mad Bomber SDL WinMM error-text dependency
   id: MADBOMBER-WINMM-ERROR-TEXT-20261019
-  blocker: Existing sandbox.resume 403 api_key_action_forbidden; requires documented authorized runtime access change and coordinator allocation, not a retry.
-  status: blocked (implementation on main; exact-source fullVM qualification pending)
+  status: partial (historical exact-source fullVM public API qualification accepted; original SDL observation separate)
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  worker: none (source review complete)
-  Next: Implementation7fd352855 already main; independent reviewfe540cf2 passed host+48cases and dispatch/API/import mirrors, no production changes. Next authorized exact-source normalbuild and public native wave API tests with module SHA, then original SDL observation; source checks do not qualify the guest.
+  worker: none (independent historical API review complete)
+  Evidence: Implementation7fd352855 and source reviewfe540cf2; retained native qualification01dfb0d98 independently accepted in docs/re-notes/madbomber-winmm-native-independent-review-20261024.md. Exact historicalb41a7c5 normal module8fac3993: unchanged public A/W native fixture exit0, host exit0, wrong-hash rejection exit1 before compile/memory. This does not qualify the current-main module or original SDL.
+  Next: Coordinator-owned original SDL observation remains outside this API evidence; keep this checkbox open until its exact requirement is reviewed. Existing original gameplay acceptance under NEW-GAME-MADBOMBER-20261018 remains intact. No runtime allocation or retry is implied.
