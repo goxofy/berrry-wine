@@ -64,6 +64,24 @@ function transformLosslessCapture(source, profile = 'default') {
 }
 function transformSupervisor(source) {
   assert.equal(sha256(source), pins.supervisor, 'terminal capture supervisor hash');
+  // Validate before spawning. The only larger file allowance is the already
+  // accepted explicit PNG profile; retained output has its own pipe boundary.
+  const profiles = Object.fromEntries(['default', 'single-frame'].map(name =>
+    [name, require(path.join(path.dirname(__filename), 'lossless-capture-png.cjs')).profileLimits(name).maxBytes]));
+  const transport = fs.readFileSync(path.join(path.dirname(__filename), 'enigma-supervisor-output.py'), 'utf8');
+  source = once(source, 'resource.setrlimit(resource.RLIMIT_FSIZE,(131072,131072))',
+    'resource.setrlimit(resource.RLIMIT_FSIZE,(artifact_file_limit,artifact_file_limit))');
+  source = once(source, 'deadline=time.monotonic()+5\n while time.monotonic()<deadline:',
+    'deadline=time.monotonic()+1\n while time.monotonic()<deadline:');
+  source = once(source, 'stdout=log,stderr=log,start_new_session=True',
+    'stdout=subprocess.PIPE,stderr=subprocess.STDOUT,start_new_session=True');
+  source = once(source, "start=time.monotonic()\n(E/'command.json')",
+    "start=time.monotonic();output=RetainedOutput(p.stdout,log)\n(E/'command.json')");
+  source = once(source, "  n=(E/'output.log').stat().st_size\n  if n>=131072:why='output-guard';break\n  with open(E/'output.log','rb') as f:f.seek(offset);part=f.read(8192);offset+=len(part)",
+    "  part=output.drain()\n  if output.capped:why='output-guard';break");
+  // Drain after stop/reap too: poll() may observe exit before any loop turn.
+  source = once(source, " receipt=stop(p);receipt.update(reason=why,",
+    " receipt=stop(p)\n try:\n  output.drain()\n  if output.capped and why=='natural':why='output-guard'\n  if output.fault and why=='natural':why='first-observable-fault'\n finally:output.close()\n receipt.update(reason=why,");
   const helper = `def terminal_capture():
  name=os.environ.get('ENIGMA_TERMINAL_RECEIPT')
  if not name or not os.path.exists(name):return None
@@ -82,7 +100,11 @@ function transformSupervisor(source) {
   assert record.get('message')=='capture byte limit'
  return record
 `;
-  source = once(source, anchors.supervisorHelper, helper + anchors.supervisorHelper);
+  source = once(source, anchors.supervisorHelper, helper + transport + '\n' +
+    `artifact_profiles=${JSON.stringify(profiles)}\n` +
+    "artifact_profile=os.environ.get('ENIGMA_CAPTURE_PROFILE','default')\n" +
+    "assert artifact_profile in artifact_profiles,'capture profile'\n" +
+    "artifact_file_limit=artifact_profiles[artifact_profile]\n" + anchors.supervisorHelper);
   source = once(source, anchors.supervisorLoop,
     " while p.poll() is None:\n  if terminal_capture() is not None:why='capture-byte-limit';break\n  if time.monotonic()-start>60:");
   // Also inspect after natural child exit: a fast rejection can beat the poll.
@@ -92,7 +114,8 @@ function transformSupervisor(source) {
   // the log and published the receipt. Keep this OUTSIDE finally so an earlier
   // exception (including cleanup/publication failure) retains its own failure.
   return once(source, anchors.supervisorExit,
-    anchors.supervisorExit + "if capture_terminal is not None:raise SystemExit(1)\n");
+    anchors.supervisorExit + "if capture_terminal is not None:raise SystemExit(1)\n" +
+    "if capture_terminal is None and (why!='natural' or p.returncode):raise SystemExit(1)\n");
 }
 let terminal = null;
 let receiptPath = null;

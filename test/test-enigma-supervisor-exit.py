@@ -45,7 +45,7 @@ with tempfile.TemporaryDirectory(prefix='enigma-supervisor-exit-') as tmp:
         str(adapter), str(sourcefile)], capture_output=True, timeout=10, check=True).stdout.decode()
     helper = transformed[transformed.index('def terminal_capture():'):transformed.index('H=pathlib.Path')]
     original_stop = original[original.index('def stop(p):'):original.index('def limits():')]
-    assert original_stop in transformed, 'all watchdog cleanup source must remain byte-exact'
+    assert original_stop.replace('monotonic()+5', 'monotonic()+1') in transformed, 'cleanup must retain TERM/KILL/reaping with a shorter grace'
     exit_guard = 'if capture_terminal is not None:raise SystemExit(1)\n'
     assert transformed.count(exit_guard) == 1
     reverted = transformed.replace(exit_guard, '')
@@ -65,7 +65,12 @@ with tempfile.TemporaryDirectory(prefix='enigma-supervisor-exit-') as tmp:
   assert record.get('message')=='capture byte limit'"""
     old_validation = " assert record.get('code')=='ERR_ASSERTION' and record.get('message')=='capture byte limit'"
     assert reverted.count(new_validation) == 1
-    assert reverted.replace(new_validation, old_validation) == old
+    # Compare the receipt helper against the old oracle independently of the
+    # newly tested transport. Keep the entire original terminal validation.
+    def receipt_helper(s):
+        return s[s.index('def terminal_capture():'):s.index('# Retained-output transport') if '# Retained-output transport' in s else s.index('H=pathlib.Path')].rstrip()
+    assert receipt_helper(reverted).replace(new_validation, old_validation) == receipt_helper(old)
+    assert exit_guard not in reverted and exit_guard in transformed
 
     def run(name, source, raw, poll='running', failure='', configured=True, output=b''):
         case = root / name
@@ -105,7 +110,12 @@ class Log:
  def close(self):
   trace.append(['log.close']);save()
   if FAILURE=='publication':(E/'terminal.json').mkdir()
-p=Child();time=Clock();start=0;why='natural';offset=0;tail=b'';log=Log()
+class Output:
+ capped=False
+ fault=False
+ def drain(self):return b''
+ def close(self):pass
+p=Child();time=Clock();start=0;why='natural';offset=0;tail=b'';log=Log();output=Output()
 '''.replace('CASE', repr(str(case))).replace('CHILDCODE', '1' if poll == 'failed' else '0').replace('POLL', repr(poll)).replace('FAILURE', repr(failure))
         # Actual stop() runs here using only fake OS interfaces above.
         script.write_text(prelude + helper + original_stop + body(source))
@@ -155,8 +165,8 @@ p=Child();time=Clock();start=0;why='natural';offset=0;tail=b'';log=Log()
         assert mutant['exit'] == 0 and mutant['dependentRan']
     else:
         raise AssertionError('reverting mutation accepted')
-    # Disabled/missing receipt and unrelated child outcomes retain historical
-    # semantics, including its historical exit0 for an unrelated child exit1.
+    # Receipt classification stays identical. Guards and nonzero child exit
+    # now also prevent dependent shell work (formerly silently returned zero).
     for name, raw, configured, poll in [
         ('natural-success', None, True, 'success'),
         ('missing-receipt', None, True, 'running'),
@@ -164,8 +174,11 @@ p=Child();time=Clock();start=0;why='natural';offset=0;tail=b'';log=Log()
         ('unrelated-child-failure', None, True, 'failed')]:
         result = run(name, transformed, raw, poll=poll, configured=configured)
         baseline = run(name + '-original', original, raw, poll=poll, configured=configured)
-        assert result == dict(baseline, name=name), (result, baseline)
-        assert result['exit'] == 0 and result['dependentRan']
+        expected_nonzero = poll in ('running', 'failed')
+        assert result['receipt'] == baseline['receipt']
+        assert result['cleanupTrace'] == baseline['cleanupTrace']
+        assert result['exit'] == int(expected_nonzero)
+        assert result['dependentRan'] is (not expected_nonzero)
     for failure in ['poll', 'cleanup', 'publication']:
         result = run('exception-' + failure, transformed, json.dumps(receipt), failure=failure)
         assert result['exit'] == 1 and not result['dependentRan']
@@ -179,5 +192,5 @@ p=Child();time=Clock();start=0;why='natural';offset=0;tail=b'';log=Log()
         result = run(name, transformed, raw)
         assert result['exit'] != 0 and not result['dependentRan']
         assert 'AssertionError' in result['stderr']
-    print(json.dumps(dict(passTests=True, actualTransformedSource=True, originalStopUnchanged=True,
-        revertingMutationRejected=True, historicalUnrelatedSemanticsPreserved=True, results=results), indent=2))
+    print(json.dumps(dict(passTests=True, actualTransformedSource=True, cleanupStructurePreserved=True,
+        revertingMutationRejected=True, receiptClassificationPreserved=True, nonzeroChildExitPreserved=True, results=results), indent=2))

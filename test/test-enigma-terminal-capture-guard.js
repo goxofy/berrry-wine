@@ -159,8 +159,13 @@ class Process:
  def poll(self):return None
 class Clock:
  def monotonic(self):return 0
+class Output:
+ capped=False
+ fault=False
+ def drain(self):return b''
+ def close(self):pass
 scope.update(p=Process(),time=Clock(),start=0,why='natural',E=pathlib.Path(sys.argv[2]).parent,
- stop=lambda p:dict(returncode=1,remainingGroup=False),log=io.StringIO(),offset=0,tail=b'')
+ stop=lambda p:dict(returncode=1,remainingGroup=False),log=io.StringIO(),offset=0,tail=b'',output=Output())
 (scope['E']/'output.log').write_bytes(b'')
 exec('if True:\n'+loop,scope)
 assert scope['why']=='capture-byte-limit'
