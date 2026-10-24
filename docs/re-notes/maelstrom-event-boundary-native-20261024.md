@@ -122,3 +122,11 @@ Wasm copy is required or implied. Native execution is already consumed.
 No assigned box exists. `bx_69aem736` was not stopped or otherwise mutated;
 historical `bx_qp99542b` was untouched. Coordinator retains host lifecycle ownership.
 No authoritative new box-state query was performed by this task.
+
+Publication payload `51161eeeeb061d741e4f2455b3a08ba999cb03b7` was pushed and
+verified through the exact trusted SSH configuration. Initial commit creation
+failed because the fresh checkout lacked author identity; copying the donor's
+local `Codex <codex@users.noreply.github.com>` settings into this owned checkout
+resolved it. The first failure and changed-configuration success remain in the
+publication receipts. Final accounting/publication receipts are a separate
+follow-up commit; they neither modify the test nor repeat native execution.
