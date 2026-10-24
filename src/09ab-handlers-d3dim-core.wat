@@ -653,7 +653,7 @@
     (if (i32.or (i32.eqz (local.get $rt)) (i32.eqz (local.get $state)))
       (then (return (i32.const 0))))
     (local.set $out (i32.add (call $d3dim_gpu_buffer) (i32.const 64)))
-    (call $zero_memory (local.get $out) (i32.const 156))
+    (call $zero_memory (local.get $out) (i32.const 180))
     (i32.store offset=0 (local.get $out) (local.get $rt))
     (i32.store offset=4 (local.get $out) (i32.load16_u offset=12 (local.get $rt)))
     (i32.store offset=8 (local.get $out) (i32.load16_u offset=14 (local.get $rt)))
@@ -742,6 +742,11 @@
     ;; Field 40 is explicit DX7 COLORKEYBLENDENABLE, not an inferred default.
     (i32.store offset=160 (local.get $out)
       (i32.eq (call $gl32 (i32.add (local.get $state) (i32.const 832))) (i32.const 1)))
+    ;; Fields 41-44: raw stage-0 arguments, including selector modifiers.
+    (i32.store offset=164 (local.get $out) (call $d3dim_tss_load (local.get $state) (i32.const 0) (i32.const 2)))
+    (i32.store offset=168 (local.get $out) (call $d3dim_tss_load (local.get $state) (i32.const 0) (i32.const 3)))
+    (i32.store offset=172 (local.get $out) (call $d3dim_tss_load (local.get $state) (i32.const 0) (i32.const 5)))
+    (i32.store offset=176 (local.get $out) (call $d3dim_tss_load (local.get $state) (i32.const 0) (i32.const 6)))
     (local.get $out))
 
   ;; Texture $tex decoded to RGBA8 bytes in a reused scratch buffer (result is
@@ -4986,12 +4991,55 @@
       (i32.or (i32.shl (local.get $r) (i32.const 16))
         (i32.or (i32.shl (local.get $g) (i32.const 8)) (local.get $b)))))
 
-  ;; D3DTOP_SELECTARG1=2, SELECTARG2=3, MODULATE=4. MW3 supplies TEXTURE as
-  ;; ARG1 and DIFFUSE as ARG2, switching SELECTARG1/MODULATE between passes.
+  ;; Store real defaults, so explicit DIFFUSE=0 is never an unset sentinel.
+  ;; CURRENT=1 is diffuse at stage zero (there is no preceding stage).
+  (func $d3dim_tss_init (param $state i32)
+    (local $stage i32) (local $p i32)
+    (block $done (loop $lp
+      (br_if $done (i32.ge_u (local.get $stage) (i32.const 8)))
+      (local.set $p (i32.add (call $g2w (local.get $state))
+        (i32.add (global.get $D3DIM_OFF_TSS_STATE) (i32.shl (local.get $stage) (i32.const 5)))))
+      (i32.store offset=4 (local.get $p)
+        (if (result i32) (i32.eqz (local.get $stage)) (then (i32.const 4)) (else (i32.const 1))))
+      (i32.store offset=8 (local.get $p) (i32.const 2))
+      (i32.store offset=12 (local.get $p) (i32.const 1))
+      (i32.store offset=16 (local.get $p) (i32.const 2))
+      (i32.store offset=20 (local.get $p) (i32.const 2))
+      (i32.store offset=24 (local.get $p) (i32.const 1))
+      (local.set $stage (i32.add (local.get $stage) (i32.const 1)))
+      (br $lp))))
+
+  ;; Internal raster operation word: low byte is D3DTOP; bit 8 selects
+  ;; diffuse for ARG1, bit 9 selects texture for ARG2. Raw legacy op callers
+  ;; retain TEXTURE/DIFFUSE. Only exact DIFFUSE/TEXTURE and stage-0 CURRENT
+  ;; are implemented; other selectors/modifiers retain the legacy fallback.
+  (func $d3dim_stage_operation (param $state i32) (param $type i32) (result i32)
+    (i32.or (call $d3dim_tss_load (local.get $state) (i32.const 0) (local.get $type))
+      (i32.or
+        (i32.shl (i32.le_u (call $d3dim_tss_load (local.get $state) (i32.const 0)
+          (i32.add (local.get $type) (i32.const 1))) (i32.const 1)) (i32.const 8))
+        (i32.shl (i32.eq (call $d3dim_tss_load (local.get $state) (i32.const 0)
+          (i32.add (local.get $type) (i32.const 2))) (i32.const 2)) (i32.const 9)))))
+
+  ;; D3DTOP_SELECTARG1=2, SELECTARG2=3, MODULATE=4, independent RGB/alpha.
   (func $d3dim_texture_stage_combine
     (param $tex i32) (param $diffuse i32) (param $colorop i32) (param $alphaop i32)
     (result i32)
-    (local $mod i32) (local $rgb i32) (local $alpha i32)
+    (local $mod i32) (local $rgb i32) (local $alpha i32) (local $arg1 i32) (local $arg2 i32)
+    (local.set $arg1 (i32.or
+      (i32.and (if (result i32) (i32.and (local.get $colorop) (i32.const 256))
+        (then (local.get $diffuse)) (else (local.get $tex))) (i32.const 0x00ffffff))
+      (i32.and (if (result i32) (i32.and (local.get $alphaop) (i32.const 256))
+        (then (local.get $diffuse)) (else (local.get $tex))) (i32.const 0xff000000))))
+    (local.set $arg2 (i32.or
+      (i32.and (if (result i32) (i32.and (local.get $colorop) (i32.const 512))
+        (then (local.get $tex)) (else (local.get $diffuse))) (i32.const 0x00ffffff))
+      (i32.and (if (result i32) (i32.and (local.get $alphaop) (i32.const 512))
+        (then (local.get $tex)) (else (local.get $diffuse))) (i32.const 0xff000000))))
+    (local.set $tex (local.get $arg1))
+    (local.set $diffuse (local.get $arg2))
+    (local.set $colorop (i32.and (local.get $colorop) (i32.const 255)))
+    (local.set $alphaop (i32.and (local.get $alphaop) (i32.const 255)))
     (if (i32.eqz (local.get $colorop)) (then (local.set $colorop (i32.const 4))))
     (if (i32.eqz (local.get $alphaop)) (then (local.set $alphaop (i32.const 4))))
     ;; Modulating by opaque white is exactly the identity: div255(x*255) == x
@@ -7146,8 +7194,8 @@
       ;; D3DRENDERSTATE_DITHERENABLE=26, ANTIALIAS=2.
       (local.set $dither (call $gl32 (i32.add (local.get $state) (i32.const 360))))
       (local.set $antialias (call $gl32 (i32.add (local.get $state) (i32.const 264))))
-      (local.set $colorop (call $d3dim_tss_load (local.get $state) (i32.const 0) (i32.const 1)))
-      (local.set $alphaop (call $d3dim_tss_load (local.get $state) (i32.const 0) (i32.const 4)))
+      (local.set $colorop (call $d3dim_stage_operation (local.get $state) (i32.const 1)))
+      (local.set $alphaop (call $d3dim_stage_operation (local.get $state) (i32.const 4)))
       (local.set $address_u (call $d3dim_tss_load (local.get $state) (i32.const 0) (i32.const 13)))
       (local.set $address_v (call $d3dim_tss_load (local.get $state) (i32.const 0) (i32.const 14)))
       (local.set $filter (call $d3dim_tss_load (local.get $state) (i32.const 0) (i32.const 16)))

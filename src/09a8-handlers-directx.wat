@@ -13528,6 +13528,7 @@
     (local $wa i32) (local $i i32)
     (local.set $wa (call $g2w (local.get $state_guest)))
     (call $zero_memory (local.get $wa) (i32.const 4096))
+    (call $d3dim_tss_init (local.get $state_guest))
     ;; Identity matrices at world(+0), view(+64), projection(+128), scratch(+192).
     (local.set $i (i32.const 0))
     (block $done (loop $lp
