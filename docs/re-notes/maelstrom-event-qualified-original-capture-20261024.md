@@ -77,9 +77,15 @@ lacked complete outer CPU/wall wrappers, and correcting an accidental manifest
 SHA literal reran setup after its first SQLite baseline. Full WAL is therefore
 conservatively charged; no retroactive full-compliance claim. Historical producer
 oversized fetch/history and prior deficiencies remain charged in their original
-receipts, not reset here. There was no donor fetch, broad clone, pack or full tree.
+receipts, not reset here. There was no donor fetch, broad clone, repack or full tree.
 
 Guest process22113/PGID22113 naturally returned0, TERM/KILL unnecessary, group
 absent and wait reaped. Remote postguest process scan empty, local watcher absent,
 locks free. Box `bx_qa9ex5bu` remains RUNNING (API state idle), expiry
 2026-10-24T19:28:30.484Z; coordinator owns shutdown19:23UTC. No other box touched.
+
+Publication packaging had an initial sparse-path git-add rejection and an inherited
+supervisor whitespace check failure. Explicit owned-path --sparse staging and
+JSON encoding of the exact executed supervisor source resolved them without
+changing the executed code, weakening checks or repeating the guest. Raw source
+SHA is preserved in supervise-source.json. Publication receipts seal the payload.
