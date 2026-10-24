@@ -151,12 +151,12 @@ function gpu(){
 }
 const {d:gd,events}=gpu();gd.clearCommand(desc);
 assert.deepStrictEqual(events,[['bindColor',7,{key:11,width:4,height:4,bits:16}],['depthMask',true],
-  ['depth',.25],['mask',true,false,true,false],['capability',1,true],['scissor',0,0,3,3],
-  ['clear',[1,.5,.25,.75],6]]);
+  ['mask',true,false,true,false],['capability',1,true],['scissor',0,0,3,3],
+  ['clear',[1,.5,.25,.75],6,.25,undefined]]);
 assert.strictEqual(gd.colorTargets.get(7).revision,2);
 events.length=0;gd.clear([1,0,0,1],1,1,[[1,0,3,1]],null);
 assert.deepStrictEqual(events.at(-2),['scissor',1,3,2,1]);
-assert.deepStrictEqual(events.at(-1),['clear',[1,0,0,1],2]);
+assert.deepStrictEqual(events.at(-1),['clear',[1,0,0,1],2,1,undefined]);
 
 // Authentic host memory-descriptor producer -> CommandQueue -> software and
 // host GPU consumers. No guest/native API execution is implied by this fixture.
