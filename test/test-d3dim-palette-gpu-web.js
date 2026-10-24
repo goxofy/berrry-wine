@@ -38,7 +38,7 @@ const saveEvidence = evidence => {
     evidence.error=error.stack || String(error);saveEvidence(evidence);throw error;
   }
   evidence.wasmSha256=sha256(wasm);evidence.stage='browser setup';
-  const scripts = ['gpu-backend','d3d9-shader','d3d9-fixed','d3d9-backend','d3dim-gpu']
+  const scripts = ['gpu-backend','d3d9-shader','d3d9-fixed','render-clear','d3d9-backend','d3dim-gpu']
     .map(name=>`lib/${name}.js`).concat('test/helpers/palette-gpu-browser.js');
   const assets = new Map(scripts.map(name=>['/'+name,fs.readFileSync(path.join(
     name.startsWith('test/') ? root : sourceRoot,name))]));
