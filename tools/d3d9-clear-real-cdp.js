@@ -4,9 +4,10 @@
 const fs=require('node:fs'), path=require('node:path'), crypto=require('node:crypto');
 const {spawn,execFileSync}=require('node:child_process');
 const assert=require('node:assert/strict');
-const output=path.resolve(process.argv[2]),root=path.resolve(__dirname,'..');
+const root=path.resolve(__dirname,'..');
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const read=s=>fs.readFileSync(path.join(root,s),'utf8');
+function assemble(){
 const currentGpu=read('lib/gpu-backend.js'),currentDevice=read('lib/d3d9-backend.js');
 const old=(revision,file)=>execFileSync('git',['show',`${revision}:${file}`],{
   cwd:root,env:{...process.env,GIT_NO_LAZY_FETCH:'1'},stdio:['ignore','pipe','ignore'],maxBuffer:131072}).toString();
@@ -21,6 +22,31 @@ const variants=[
   {name:'reject-rectangles',gpu:currentGpu,device:currentDevice.replace(needle,
     'for(const [left,top,right,bottom]of [[0,0,g.canvas.width,g.canvas.height]])'),expected:'fail'}
 ];
+return {variants,dependencies:['lib/render-clear.js','lib/d3d9-shader.js','lib/d3d9-fixed.js']
+  .map(file=>({file,source:read(file)})),fixture:read('test/fixtures/d3d9-clear-real-pixels.js')};
+}
+function classify(results){
+  const targets=[null,['wrapper-default-one-after-quarter','adapter-quarter-after-half-rejects'],
+    ['named-80-fresh-quarter-rejects-half','named-75-fresh-stencil-52'],
+    ['clipped-top-left-red-channel','depth-rectangle-and-stencil-retention']];
+  if(!Array.isArray(results)||results.length!==4)return false;
+  const valid=r=>r&&Array.isArray(r.checks)&&r.checks.length>=50&&
+    new Set(r.checks.map(c=>c.name)).size===r.checks.length&&
+    Array.isArray(r.errors)&&r.errors.length===0&&Array.isArray(r.identities)&&r.identities.length===1&&
+    r.checks.every(c=>typeof c.name==='string'&&typeof c.pass==='boolean'&&
+      (c.kind==='pixels'?c.pixels===64&&Number.isInteger(c.mismatch)&&c.mismatch>=0&&c.mismatch<=64&&
+        c.pass===(c.mismatch===0):c.kind==='capability'||c.kind==='validation'));
+  if(!results.every(valid))return false;
+  const names=results[0].checks.map(c=>c.name+'|'+c.kind).sort().join('\n');
+  if(results.some(r=>r.checks.map(c=>c.name+'|'+c.kind).sort().join('\n')!==names))return false;
+  return results[0].checks.every(c=>c.pass)&&results.slice(1).every((r,i)=>
+    r.checks.every(c=>c.pass||c.kind==='pixels')&&
+    r.checks.some(c=>!c.pass&&c.kind==='pixels'&&targets[i+1].includes(c.name)));
+}
+module.exports={assemble,classify};
+if(require.main===module){
+const output=path.resolve(process.argv[2]);
+const {variants,dependencies,fixture}=assemble();
 const profile=path.join(output,'p');fs.mkdirSync(profile);
 const log=fs.openSync(path.join(output,'chrome.log'),'w');
 const chromeArgs=['--headless=new','--remote-debugging-address=127.0.0.1','--remote-debugging-port=0',
@@ -55,10 +81,11 @@ async function main(){
   async function evaluate(expression){const r=await cdp.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
     if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;}
   const browser=await cdp.send('Browser.getVersion');
-  const deps=['lib/render-clear.js','lib/d3d9-shader.js','lib/d3d9-fixed.js'];
-  for(const s of deps)await evaluate(read(s));
-  const fixture=read('test/fixtures/d3d9-clear-real-pixels.js'),results=[];
+  const results=[];
   for(const v of variants){
+    // Every variant receives its complete immutable source snapshot. No require
+    // cache or network module cache participates in these browser evaluations.
+    for(const d of dependencies)await evaluate(d.source);
     await evaluate(v.gpu);await evaluate(v.device);
     const result=await evaluate(fixture);assert(result&&Array.isArray(result.checks));
     for(const img of result.images){
@@ -68,18 +95,12 @@ async function main(){
     delete result.images;
     Object.assign(result,{variant:v.name,expected:v.expected,revision:v.revision??null,
       sources:{gpu:hash(v.gpu),device:hash(v.device),fixture:hash(fixture),
-        dependencies:Object.fromEntries(deps.map(s=>[s,hash(read(s))]))},browser,node:process.version});
+        dependencies:Object.fromEntries(dependencies.map(d=>[d.file,hash(d.source)]))},browser,node:process.version});
     fs.writeFileSync(path.join(output,`${v.name}.json`),JSON.stringify(result,null,2)+'\n');
     results.push(result);
   }
-  const [candidate,producerResult,intermediateResult,reject]=results;
   const failedNames=r=>r.checks.filter(c=>!c.pass).map(c=>c.name);
-  // Nonzero expected controls must fail the intended pixel oracle, not startup.
-  const control=(r,names)=>r.errors.length===0&&names.some(n=>failedNames(r).includes(n));
-  const accepted=candidate.failed===0&&candidate.checks.length>=50&&candidate.identities.length===1&&
-    control(producerResult,['wrapper-default-one-after-quarter','adapter-quarter-after-half-rejects'])&&
-    control(intermediateResult,['named-80-fresh-quarter-rejects-half','named-75-fresh-stencil-52'])&&
-    control(reject,['clipped-top-left-red-channel','depth-rectangle-and-stencil-retention']);
+  const accepted=classify(results);
   const summary={accepted,browser,chromeArgs,results:results.map(r=>({variant:r.variant,passed:r.passed,
     failed:r.failed,errors:r.errors,failedNames:failedNames(r)}))};
   fs.writeFileSync(path.join(output,'summary.json'),JSON.stringify(summary,null,2)+'\n');
@@ -90,3 +111,4 @@ main().catch(e=>{console.error(e.stack);process.exitCode=2;}).finally(async()=>{
   await Promise.race([new Promise(r=>chrome.once('exit',r)),delay(1000)]);fs.closeSync(log);
   // Supervisor TERM/KILLs process group + adopted descendants and reaps them.
 });
+}
