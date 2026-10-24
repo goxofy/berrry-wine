@@ -2,6 +2,8 @@
 // Deliberately small source evaluator, NOT WebAssembly or a runtime qualifier.
 // Operands, writes and calls are evaluated from the transformed WAT AST.
 const assert = require('node:assert/strict');
+// Per-invocation private identity. Catching never inspects imported exceptions.
+const frames = new WeakMap();
 function parse(s) {
   const tokens = s.replace(/;;[^\n]*/g, '').match(/"(?:\\.|[^"\\])*"|[()]|[^\s()]+/g) || [];
   const root = [], stack = [root];
@@ -67,8 +69,11 @@ class Model {
       if (x[0] === 'local') locals[x[1]] = 0;
     }
     let result;
+    const previous = frames.get(this), frame = { signal: Object.freeze({}), value: undefined };
+    frames.set(this, frame);
     try { for (const x of f.slice(2)) if (!['param', 'local', 'result'].includes(x[0])) result = this.eval(x, locals); }
-    catch (e) { if (e && e.modelReturn) return e.value; throw e; }
+    catch (e) { if (e === frame.signal) return frame.value; throw e; }
+    finally { if (previous) frames.set(this, previous); else frames.delete(this); }
     return result;
   }
   eval(n, l) {
@@ -82,7 +87,11 @@ class Model {
       return;
     }
     if (op === 'local.set' || op === 'local.tee') { const v = e(args[1]); l[args[0]] = v; return op === 'local.tee' ? v : undefined; }
-    if (op === 'return') throw { modelReturn: true, value: args.length ? e(args[0]) : undefined };
+    if (op === 'return') {
+      const frame = frames.get(this); assert(frame, 'return outside model invocation');
+      frame.value = args.length ? e(args[0]) : undefined;
+      throw frame.signal;
+    }
     if (op === 'if') {
       const branch = e(args[0]) ? args[1] : args[2];
       if (branch) for (const x of branch.slice(1)) e(x);

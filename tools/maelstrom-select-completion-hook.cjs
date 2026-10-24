@@ -3,6 +3,7 @@
 // Offline source transformer. No compiler, guest, runner, clocks or host imports.
 // Enabled output requires a NEW canonical diagnostic build and qualification.
 const { createHash } = require('node:crypto');
+const { isProxy } = require('node:util').types;
 const PINS = Object.freeze({
   'src/09d-winsock.wat': 'c281da4763624a29910386d2d6b05a66f98ca92b2a9194827d880c0234ba89ab',
   'src/09b-dispatch.wat': '55812e1cf277c3bb0daa6524f38f3723433c6a23878be96451a676412a11ee00',
@@ -127,18 +128,47 @@ function transform(sources, options = {}) {
   return { ...input, 'src/09b-dispatch.wat': d, 'src/09d-winsock.wat': w };
 }
 
-// One bounded oracle per actual module instance. This does NOT turn synthetic
-// snapshots into runtime evidence. A poll missing any attempt is rejected.
-function createOracle(instance) {
+// snapshot() is a trusted capture boundary, not a record-signing API for
+// untrusted exports. Its input must be the actual diagnostic export object
+// supplied by the host (or the explicitly synthetic source model in tests).
+// Private state never comes from the returned, mutable inspection record.
+const captures = new WeakMap();
+const sources = new WeakMap();
+const object = x => x !== null && (typeof x === 'object' || typeof x === 'function');
+
+// owner is a routing identity, NOT evidence of module ownership. Captures are
+// authenticated by private identity and bound to their export source. Supply
+// that source explicitly to pin it before the first observation; otherwise the
+// first authentic capture binds it. One bounded oracle per trusted source.
+// A poll missing any attempt is rejected. No synthetic input proves runtime.
+function createOracle(instance, source) {
   if ((typeof instance !== 'object' && typeof instance !== 'function') || instance === null)
     throw Error('instance identity required');
   let last = { token: 0, entries: 0, parks: 0, completions: 0, phase: 0 };
   let pending = null, closed = false;
+  let boundSource = source;
+  const lease = {};
   function reject() { closed = true; return { kind: 'rejected' }; }
   const keys = ['api', 'thunk', 'thread', 'regs', 'pre', 'ret', 'token'];
   return Object.freeze({
-    accept(owner, s) {
+    accept(owner, record) {
       if (closed || owner !== instance) return reject();
+      // No reads, enumeration or coercion of arbitrary caller records: proxies,
+      // copies and invented snapshots cannot enter the validation path.
+      const capture = object(record) && captures.get(record);
+      if (!capture || capture.used || capture.source.failed || capture.source.capturing ||
+          (capture.source.lease && capture.source.lease !== lease) || capture.serial !== capture.source.serial ||
+          (boundSource !== undefined && boundSource !== capture.exports)) return reject();
+      const s = capture.state;
+      // Allow inspection-record mutation for compatibility, but never accept it
+      // as a new observation. Known records are ordinary objects we allocated.
+      for (const k of FIELDS) {
+        const d = Object.getOwnPropertyDescriptor(record, k);
+        if (!d || !Object.hasOwn(d, 'value') || d.value !== s[k]) return reject();
+      }
+      boundSource = capture.exports;
+      capture.used = true;
+      capture.source.lease = lease;
       if (!s || FIELDS.some(k => !Number.isInteger(s[k]) || s[k] < 0 || s[k] > 0xffffffff)) return reject();
       if (s.started !== 1 || s.fault || s.capped || s.token > CAP || s.entries !== s.token || s.api !== 934 ||
           s.completions > 1 || s.entries !== s.parks + s.completions + s.active ||
@@ -160,7 +190,7 @@ function createOracle(instance) {
         } else if (s.completions !== last.completions + 1 || s.parks !== last.parks || s.post !== s.pre + 24) return reject();
         pending = null;
       }
-      last = { ...s };
+      last = s;
       if (s.phase === 3) closed = true;
       return s.phase === 3 ? { kind: 'completion', attempt: s.token, result: s.result, identity: { ...s } } :
         { kind: s.phase === 2 ? 'park' : 'entry', attempt: s.token };
@@ -171,7 +201,49 @@ function createOracle(instance) {
 // Called explicitly at a known safe host boundary; never wraps run/instantiate.
 // No emission, guest memory access, setters, clock or scheduler operations.
 function snapshot(exports) {
-  return Object.fromEntries(FIELDS.map(n => [n, exports['msc_' + n]() >>> 0]));
+  if (!object(exports) || isProxy(exports)) throw Error('trusted diagnostic exports required');
+  let source = sources.get(exports);
+  if (!source) {
+    source = { serial: 0, failed: false, capturing: false, functions: null };
+    sources.set(exports, source);
+  }
+  if (source.failed) throw Error('diagnostic capture closed');
+  if (source.capturing) {
+    source.failed = true;
+    throw Error('reentrant diagnostic capture');
+  }
+  source.capturing = true;
+  try {
+    // Inspect own data properties only. Do not execute getters, including
+    // inherited accessors. Pin function identity on the first capture.
+    const functions = FIELDS.map(n => {
+      const d = Object.getOwnPropertyDescriptor(exports, 'msc_' + n);
+      if (!d || !Object.hasOwn(d, 'value') || typeof d.value !== 'function' || isProxy(d.value))
+        throw Error('own diagnostic function required: ' + n);
+      return d.value;
+    });
+    if (source.functions && functions.some((f, i) => f !== source.functions[i]))
+      throw Error('diagnostic export identity changed');
+    source.functions = functions;
+    const state = Object.create(null);
+    for (let i = 0; i < FIELDS.length; i++) {
+      const value = Reflect.apply(functions[i], exports, []);
+      // Wasm i32 exports are signed JS integers. Never coerce hostile values.
+      if (!Number.isInteger(value) || value < -0x80000000 || value > 0xffffffff)
+        throw Error('invalid diagnostic i32');
+      state[FIELDS[i]] = value >>> 0;
+    }
+    if (source.failed) throw Error('diagnostic capture closed');
+    Object.freeze(state);
+    const record = { ...state };
+    captures.set(record, { exports, source, serial: ++source.serial, state });
+    return record;
+  } catch (e) {
+    source.failed = true; // Preserve even null/primitive exception identity.
+    throw e;
+  } finally {
+    source.capturing = false;
+  }
 }
 
 module.exports = { transform, createOracle, snapshot, PINS, FIELDS, CAP };
