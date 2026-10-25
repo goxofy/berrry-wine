@@ -20,10 +20,9 @@
 // in the tree reads that field.
 //
 // The address of a mip record is the cache key, and a released texture's
-// address can be handed to a new one whose sequence starts over -- so a hit
-// also re-checks a sparse sample of the source bytes. That sample is a
-// backstop against reuse, NOT a change detector: the last section here draws
-// the boundary on purpose, so nobody later mistakes it for one.
+// address can be handed to a new one whose sequence starts over. A different
+// device incarnation or texture-allocation generation always decodes anew.
+// Within one allocation, the dirty sequence is the change detector.
 const assert = require('assert');
 const { Bridge } = require('../lib/d3d9-host');
 const { bootRenderHarness } = require('./render-helper');
@@ -198,11 +197,11 @@ const drawnPixels = command => drawnLevel(command).pixels;
     assert.strictEqual(e.dirty_seq(t, 0) >>> 0, armed, 'and bumps nothing either');
   }
 
-  // ---- The boundary the fingerprint does NOT cover ----------------------
+  // ---- The dirty-sequence boundary within one allocation ----------------
   {
-    // The sparse sample exists to catch a mip record address reused by a NEW
-    // texture, not to notice a write into an existing one. Pinning that here
-    // on purpose: a texture written behind the emulator's back, with no lock
+    // Allocation generations catch a mip record address reused by a NEW
+    // texture, not a write into an existing one. Pinning that here on
+    // purpose: a texture written behind the emulator's back, with no lock
     // and no AddDirtyRect, keeps the old snapshot. That is not a hole in this
     // cache -- guest code cannot reach these texels without a lock -- but it
     // is exactly the assumption a future change could break silently.
@@ -211,28 +210,27 @@ const drawnPixels = command => drawnLevel(command).pixels;
     f.initialized.resolve(); await tick();
     f.bridge.call(0x30001, f.desc, 0); await f.flush();
     const kept = f.bridge._textureSnapshots.get(f.mip).pixels;
-    // Halfway through a chunk-sized gap, where nothing is sampled.
+    // This offset was also outside the historical sparse fingerprint.
     new Uint8Array(f.memory, f.texels + 1000, 64).fill(0x1f);
     f.bridge.call(0x30001, f.desc, 0); await f.flush();
     assert.strictEqual(f.bridge._textureSnapshots.get(f.mip).pixels, kept,
-      'an unsampled write with no lock behind it is NOT noticed -- the dirty sequence is the contract');
+      'a write with no lock behind it is NOT noticed -- the dirty sequence is the contract');
 
     // Between texture creations the device's generation word (+25596) and
-    // the dirty sequence are the whole proof: even a sampled rewrite with no
-    // lock and no new texture is not re-walked.
+    // the dirty sequence are the whole proof: even a full rewrite with no
+    // lock and no new texture is not re-read.
     new Uint8Array(f.memory, f.texels, f.bytes).fill(0x1f);
     f.bridge.call(0x30001, f.desc, 0); await f.flush();
     assert.strictEqual(f.bridge._textureSnapshots.get(f.mip).pixels, kept,
-      'no texture was created, so the snapshot is trusted without sampling');
+      'no texture was created, so the snapshot is trusted');
 
-    // What the sample does cover: the same address, the same sequence, a
-    // different texture. Creating it bumps the generation
-    // ($d3d9_texture_create_kind), and then a new allocation reusing a freed
-    // mip record cannot pass unless its bytes match everywhere sampled.
+    // The same address and sequence can name a different texture. Creating
+    // it bumps the generation ($d3d9_texture_create_kind), so this must decode
+    // again, regardless of whether any historical sparse sample would match.
     f.set(f.program + 25596, 1);
     f.bridge.call(0x30001, f.desc, 0); await f.flush();
     assert.notStrictEqual(f.bridge._textureSnapshots.get(f.mip).pixels, kept,
-      'replacement content at the same address and sequence is caught by the sample');
+      'replacement content at the same address and sequence gets a fresh snapshot');
     await f.bridge.close();
   }
 
