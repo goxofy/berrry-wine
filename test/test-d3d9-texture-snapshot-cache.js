@@ -16,16 +16,17 @@
 // locked, and UnlockRect bumps the mip record's dirty sequence at +28 (so does
 // AddDirtyRect). So an unchanged sequence on a drawable level means no guest
 // write has landed since the snapshot. That invariant needed no new code -- it
-// needed a test, because the cache now silently depends on it and nothing else
-// in the tree reads that field.
+// needed a test. Full source-byte comparison now additionally guards against
+// wrapped allocation or dirty counters.
 //
 // The address of a mip record is the cache key, and a released texture's
 // address can be handed to a new one whose sequence starts over. A different
 // device incarnation or texture-allocation generation always decodes anew.
-// Within one allocation, the dirty sequence is the change detector.
+// A full source-byte comparison also rejects counter ABA between draws.
 const assert = require('assert');
 const { Bridge } = require('../lib/d3d9-host');
-const { bootRenderHarness } = require('./render-helper');
+const jsOnly = process.argv.includes('--js-only');
+const bootRenderHarness = jsOnly ? null : require('./render-helper').bootRenderHarness;
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const deferred = () => { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; };
@@ -82,7 +83,7 @@ const drawnPixels = command => drawnLevel(command).pixels;
     assert.strictEqual(f.bridge._textureSnapshots.size, 1, 'the decoded level is kept');
     const first = f.bridge._textureSnapshots.get(f.mip).pixels;
     assert.strictEqual(first.byteLength, 16 * 16 * 4, 'kept as decoded RGBA');
-    assert.strictEqual(f.bridge._textureSnapshotBytes, first.byteLength, 'and charged to the budget');
+    assert.strictEqual(f.bridge._textureSnapshotBytes, first.byteLength + f.bytes, 'RGBA and source charged to the budget');
 
     f.bridge.call(0x30001, f.desc, 0); await f.flush();
     assert.strictEqual(f.bridge._textureSnapshots.get(f.mip).pixels, first,
@@ -109,16 +110,16 @@ const drawnPixels = command => drawnLevel(command).pixels;
     // 0x1f1f: r=3 -> 24, g=56 -> 227, b=31 -> 255.
     assert.deepStrictEqual(Array.from(drawnPixels(draws(f)[2]).slice(0, 4)), [24, 227, 255, 255],
       'and the new picture is what is drawn');
-    assert.strictEqual(f.bridge._textureSnapshotBytes, second.byteLength,
+    assert.strictEqual(f.bridge._textureSnapshotBytes, second.byteLength + f.bytes,
       'the replaced snapshot is not charged twice');
     await f.bridge.close();
   }
 
   // ---- The budget: a cache that cannot grow without bound ---------------
   {
-    // Room for exactly one 16x16 RGBA level, so the second texture must evict
+    // Room for exactly one 16x16 RGBA plus source, so the second texture must evict
     // the first rather than keeping both.
-    const f = fixture({ maxTextureSnapshotBytes: 16 * 16 * 4 });
+    const f = fixture({ maxTextureSnapshotBytes: 16 * 16 * 6 });
     new Uint8Array(f.memory, f.texels, f.bytes).fill(0x5a);
     f.initialized.resolve(); await tick();
     f.bridge.call(0x30001, f.desc, 0); await f.flush();
@@ -135,7 +136,7 @@ const drawnPixels = command => drawnLevel(command).pixels;
     f.bridge.call(0x30001, f.desc, 0); await f.flush();
     assert.strictEqual(f.bridge._textureSnapshots.size, 1, 'the budget evicts rather than grows');
     assert.ok(f.bridge._textureSnapshots.has(other + 64), 'and keeps the one just used');
-    assert.strictEqual(f.bridge._textureSnapshotBytes, 16 * 16 * 4, 'the charge follows the eviction');
+    assert.strictEqual(f.bridge._textureSnapshotBytes, 16 * 16 * 6, 'the charge follows the eviction');
 
     // A level too big for the whole budget is drawn but never kept: keeping it
     // would evict everything and then be evicted itself on the next draw.
@@ -151,7 +152,7 @@ const drawnPixels = command => drawnLevel(command).pixels;
   }
 
   // ---- The WAT half: unlock is what bumps the sequence ------------------
-  {
+  if (!jsOnly) {
     const { exports: e } = await bootRenderHarness({ fonts: 'none', extraWat: `
       (func (export "new_device") (result i32)
         (local $device i32)
@@ -199,12 +200,9 @@ const drawnPixels = command => drawnLevel(command).pixels;
 
   // ---- The dirty-sequence boundary within one allocation ----------------
   {
-    // Allocation generations catch a mip record address reused by a NEW
-    // texture, not a write into an existing one. Pinning that here on
-    // purpose: a texture written behind the emulator's back, with no lock
-    // and no AddDirtyRect, keeps the old snapshot. That is not a hole in this
-    // cache -- guest code cannot reach these texels without a lock -- but it
-    // is exactly the assumption a future change could break silently.
+    // Metadata alone cannot distinguish an unchanged allocation from a
+    // replacement after 2**32 allocations. Exact source comparison must
+    // notice changed bytes even when neither numeric counter changes.
     const f = fixture({}, 256, 256);
     new Uint8Array(f.memory, f.texels, f.bytes).fill(0x5a);
     f.initialized.resolve(); await tick();
@@ -213,16 +211,14 @@ const drawnPixels = command => drawnLevel(command).pixels;
     // This offset was also outside the historical sparse fingerprint.
     new Uint8Array(f.memory, f.texels + 1000, 64).fill(0x1f);
     f.bridge.call(0x30001, f.desc, 0); await f.flush();
-    assert.strictEqual(f.bridge._textureSnapshots.get(f.mip).pixels, kept,
-      'a write with no lock behind it is NOT noticed -- the dirty sequence is the contract');
+    assert.notStrictEqual(f.bridge._textureSnapshots.get(f.mip).pixels, kept,
+      'changed bytes reject matching metadata');
 
-    // Between texture creations the device's generation word (+25596) and
-    // the dirty sequence are the whole proof: even a full rewrite with no
-    // lock and no new texture is not re-read.
+    // A full rewrite must also reject matching metadata.
     new Uint8Array(f.memory, f.texels, f.bytes).fill(0x1f);
     f.bridge.call(0x30001, f.desc, 0); await f.flush();
-    assert.strictEqual(f.bridge._textureSnapshots.get(f.mip).pixels, kept,
-      'no texture was created, so the snapshot is trusted');
+    assert.notStrictEqual(f.bridge._textureSnapshots.get(f.mip).pixels, kept,
+      'source identity is checked even without a new observed generation');
 
     // The same address and sequence can name a different texture. Creating
     // it bumps the generation ($d3d9_texture_create_kind), so this must decode
@@ -234,5 +230,5 @@ const drawnPixels = command => drawnLevel(command).pixels;
     await f.bridge.close();
   }
 
-  console.log('PASS test-d3d9-texture-snapshot-cache');
+  console.log('PASS test-d3d9-texture-snapshot-cache' + (jsOnly ? ' JS-only; WAT omitted' : ''));
 })().catch(error => { console.error(error); process.exit(1); });
