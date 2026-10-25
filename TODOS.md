@@ -1224,6 +1224,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [~] Run DOSBox-packaged games directly in ToyVM for the dedicated DOS production route
   id: TOYVM-DOS-NATIVE-GAMEPLAY-20261007
   status: active
+  Browser input: absolute mouse position, button transitions and polling deltas wired through shared launchers; focused DOM/INT33-state fixtures only. No browser gameplay acceptance, pointer lock/relative input, wheel, guest-programmed ranges or mouse callbacks. Native gameplay and existing per-title blockers remain open.
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
   worker: /root
   created: 2026-10-07T09:08:16.475Z
