@@ -198,3 +198,14 @@ advisory remains visible. See the [repair report](../reviews/hock-registered-tim
 for exact source/module identity, negative controls, failed exploratory steps,
 evidence and same-box recovery. Independent review is required before merging
 `task/hock-registered-timeout-repair-oct21`.
+
+## Offline scoring publication qualification (2026-10-25)
+
+The [scoring report](../reviews/hock-scoring-runtime-20261021.md) and exact sealed
+archive were already present on pinned main `eeb4b337`; independent review
+accepts historical explicit-EXE real-input 0/20 → 5/20 evidence only. The
+5,017-input mapping joins historical runtime `776d37d5` to historical main
+`d2034ccf`, not today's build. Exact target/collision, completion, audio, FPS,
+Windows parity and broad goal completion remain unqualified. No runtime access,
+new build or registration qualification was performed; the former scoring box
+is coordinator-reported stopped.
