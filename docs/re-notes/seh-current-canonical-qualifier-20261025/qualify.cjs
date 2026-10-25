@@ -3,14 +3,43 @@
 // Run with the pinned --require byte guard; never instantiate or execute guests.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),assert=require('node:assert/strict');
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+const CONTRACT_SHA256='4aca68bf97038d771390dd499703fac2e559146186d23f34e6e27425a5083a4b';
+const SOURCE_REVISION='a3fe340b962da3f31df249881074afe41d6c69a2';
+const SOURCE_CLOSURE_SHA256='e9c212ccd85445de89271af25660b331b548f8cb2d40ffa5271b312c6c0e699d';
+const COMPILER_SHA256='d04ed1d5ca74fc1b6f10357576a38e726d58f0ad908ccf34a29de35052aa1a33';
 function pinned(row){const b=fs.readFileSync(row.path);assert.equal(sha(b),row.sha256,`pinned hash: ${row.path}`);if(row.bytes!==undefined)assert.equal(b.length,row.bytes);return b;}
 function load(contractPath){
- const c=JSON.parse(fs.readFileSync(contractPath));assert.equal(c.version,1);
+ // This authority is part of the reviewed qualifier, never supplied by the
+ // contract it authenticates. Exact bytes include every input identity/path.
+ // Provenance: candidate 806117a11f1b347340b5cc44fb52b79d0ac200e5,
+ // independently sealed source receipt and complete canonical build inventory.
+ const contractBytes=fs.readFileSync(contractPath);
+ assert.equal(sha(contractBytes),CONTRACT_SHA256,'independent contract authority');
+ const c=JSON.parse(contractBytes);assert.equal(c.version,1);
  for(const p of Object.values(c.inputs))pinned(p);
  pinned(c.helper);pinned(c.guard);pinned(c.qualifierHistorical);
  const binding=JSON.parse(pinned(c.sourceBinding));assert.equal(binding.passed,true);assert.equal(binding.candidate,c.candidate);
  const expected=JSON.parse(pinned(c.inputs['expected-abi-layout.json']));
  const statics=JSON.parse(pinned(c.inputs['static-abi.json']));
+ const closure=JSON.parse(pinned(c.inputs['closure.json']));
+ assert.equal(c.candidate,SOURCE_REVISION,'source revision');
+ assert.equal(closure.candidate,SOURCE_REVISION,'closure source revision');
+ assert.equal(binding.candidate,SOURCE_REVISION,'receipt source revision');
+ assert.equal(closure.closureSHA256,SOURCE_CLOSURE_SHA256,'source closure identity');
+ const closureRows=closure.files.map(r=>`${r.path} ${r.sha256}`).sort();
+ assert.equal(new Set(closure.files.map(r=>r.path)).size,closure.files.length,'unique source inventory');
+ assert.equal(sha(Buffer.from(closureRows.join('\n')+'\n')),SOURCE_CLOSURE_SHA256,'complete source inventory');
+ assert.equal(binding.closureSHA256,SOURCE_CLOSURE_SHA256,'receipt closure identity');
+ assert.equal(binding.sourceFilesVerified,closure.files.length,'receipt verified source inventory');
+ assert.equal(binding.combinedSHA256,closure.combinedSHA256,'receipt expanded source identity');
+ assert.equal(closure.compilerFullSHA256,COMPILER_SHA256,'closure compiler identity');
+ assert.equal(binding.compilerSHA256,COMPILER_SHA256,'receipt compiler identity');
+ assert.equal(binding.compilerPath,closure.compilerPath,'receipt compiler path');
+ pinned({path:binding.compilerPath,sha256:COMPILER_SHA256});
+ pinned(binding.historicalSourceEvidence);
+ assert.deepEqual(binding.diagnosticExportsAbsent,['set_null_diag','null_diag_field','null_diag_token','null_diag_root'],'source diagnostic absence inventory');
+ for(const name of binding.diagnosticExportsAbsent)assert(!Object.hasOwn(expected.exports,name),'uninstrumented source exports');
+ assert.equal(binding.layout.entries,expected.regions.length,'receipt complete layout inventory');
  assert.equal(binding.layout.hash,expected.layout);assert.equal(binding.sourceDerivedImports,expected.imports.length);assert.equal(binding.sourceDerivedFunctionExports,Object.keys(expected.exports).length);
  assert.equal(sha(Buffer.from(expected.serialization)).slice(0,16),expected.layout);assert.equal(expected.regions.length,269);
  return {c,expected,statics};

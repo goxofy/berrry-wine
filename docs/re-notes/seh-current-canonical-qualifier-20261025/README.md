@@ -1,5 +1,13 @@
 # Canonical Module qualifier repaired: tail and compat PASS
 
+Trust-anchor correction (2026-10-25): the qualifier now authenticates the exact
+contract against an independent digest fixed in its reviewed code. See
+[repair and static evidence](../seh-qualifier-streamed-trust-repair-20261025/README.md).
+The Module-return receipts and `evidence/seal.json` below are frozen evidence
+from candidate `806117a11f1b347340b5cc44fb52b79d0ac200e5`; that historical seal
+describes the original README and qualifier at that commit. The repair has its
+own seal. No native call was repeated for this correction.
+
 Current source `a3fe340b962da3f31df249881074afe41d6c69a2`; retained build-evidence candidate `9d85af30e9ed0c19bac7f9ba99d1b540a508f4e4`. Both genuine uninstrumented binaries were reused in place without rebuild, source/runtime edits, instrumentation, diagnostic exports, ABI weakening or binary patches.
 
 The historical helper required an instrumented interface: `set_null_diag(i32)->()`, `null_diag_field(i32)->i32`, `null_diag_token()->i64` (invocation_current), and `null_diag_root()->i64` (invocation_root). Its retained source-boundaries.json records those declarations. All four are absent from the complete current source ABI. The prior genuine tail Module constructor returned and the helper then rejected missing set_null_diag; compat was not attempted. That was an interface mismatch, not evidence of native Module rejection. This task leaves the historical helper and evidence unchanged.
