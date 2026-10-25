@@ -7664,9 +7664,16 @@
       "name": "$seh_fault_sync",
       "writes": 2,
       "boundaryCalls": [
+        "$invocation_ensure",
+        "$invocation_current",
         "$sync_depth_enter",
+        "$invocation_current",
         "$run",
-        "$sync_depth_leave"
+        "$invocation_current",
+        "$invocation_current",
+        "$invocation_current",
+        "$sync_depth_leave",
+        "$invocation_current"
       ],
       "exports": [],
       "targets": [
@@ -7679,7 +7686,7 @@
           "$old_eip"
         ]
       ],
-      "sha256": "db09b436efed69f6727e47d63db4c37a2be952e1c339ff2b49395893ef5a8282",
+      "sha256": "2e99233f80d3dd2a5f9c96e6636612caf3f59b020d0e70ed71311e3eadd625eb",
       "kind": "mixed-dispatch",
       "reason": "Potential callback entry, completion, redirect or park; each listed EIP target remains pending retained-context ownership review.",
       "ownership": "pending"
