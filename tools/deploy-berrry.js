@@ -259,6 +259,9 @@ const neverPublish = p => {
 // this demonstration version ... to your friends, as long as you don't sell
 // it." Same footing as the RCT shareware already live.
 const PUBLISHABLE_OUTSIDE_BINARIES = [
+  // Half-Life Uplink demo installed payload, including its original readme.
+  // Keep the installer and other Half-Life editions outside this prefix.
+  'test/binaries/candidates/half-life-uplink-installer/installed/',
   // Original Quake III 1.11 demo installation, including its bundled EULA
   // and documentation. Desktop preparation requested 2026-10-14; no retail
   // pak files or installer sibling directories are included.

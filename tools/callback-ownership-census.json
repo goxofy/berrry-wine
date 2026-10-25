@@ -283,9 +283,9 @@
     {
       "file": "lib/apps.js",
       "name": "host-file",
-      "sha256": "5a438ebd6c312a99f0f638d3cc57336885d4daa707b9bb03d227de008cafbd54",
+      "sha256": "5d312480dc18012af6f56b688dcd613b3d03323e7818f1e28ba965e859e46615",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Review 20261021: Mad Bomber metadata previously reviewed. Entire delta from seal at 2ae81e402 to 80f8278a adds only Hock local selector/EXE/required manifest data (b000885e); no executable callback producer, restoration or lifetime change. Whole-file inventory and ownership pending retained. See docs/reviews/army-host-census-reconcile-20261021.md. Integration 20261022: Expanded worker cache review: WC3 configuration adds a boolean layout opt-in only; no callback or context restoration.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Review 20261021: Mad Bomber metadata previously reviewed. Entire delta from seal at 2ae81e402 to 80f8278a adds only Hock local selector/EXE/required manifest data (b000885e); no executable callback producer, restoration or lifetime change. Whole-file inventory and ownership pending retained. See docs/reviews/army-host-census-reconcile-20261021.md. Integration 20261022: Expanded worker cache review: WC3 configuration adds a boolean layout opt-in only; no callback or context restoration. Uplink desktop review 20261023: moves the existing app ID from local candidates to public desktop metadata; launch configuration, callbacks and ownership remain unchanged.",
       "ownership": "pending"
     },
     {

@@ -1210,3 +1210,54 @@ menu exists.
   `hw.dll+0x1000a8f1/a85d/a869`, which make three `call [qgl slot]` calls per
   vertex into GetProcAddress-filled GL pointers. These are host API calls, not
   guest ones.
+
+## Desktop release candidate (2026-10-25)
+
+Prepared from main `5406777ec` in `release/2026-10-23-uplink`. The existing
+`halflife_uplink` entry moves from localhost candidates to the desktop as
+**Half-Life: Uplink Demo**. The original installer remains local-only. Deployment
+allows only its installed demo directory, not other Half-Life packages. The
+65 distinct required files total 93,140,232 bytes, including the original
+readme; the 79,150,544-byte PAK is published as eight hosting-size parts.
+No renderer, input implementation, game files or launch settings changed.
+
+Full build passes. Candidate WASM SHA-256:
+`0570658b178d0ba4a77787f328ebc3407dd9e16953d1ecf4832dd9d71a9b7da3`;
+layout `9a3bc9149d58209c`. All 1,304 registry-derived deployment assets exist.
+The complete deployment dry run considers 2,592 files, without missing assets.
+Build-output coverage, retail exclusion and existing Quake III asset checks
+pass. This is preparation only; no public deployment or production membership
+snapshot update has happened.
+
+Current real Chrome gameplay evidence: `20261025-uplink-gameplay`. Launch the
+desktop app, wait for the menu's gold badge and another five seconds, click
+New Game at guest `(110,193)`, then Easy at `(110,152)`, allow 90 seconds for
+loading, and hold W for three seconds. Reviewed captures show the first-person
+corridor with HUD followed by the stairs after movement. The actual fetched
+WASM matches the candidate, no browser page errors were recorded, and one app
+remains running. This run is cooperative (`crossOriginIsolated=false`). It does
+not qualify sound, Safari/mobile, sustained FPS, or completion of the demo.
+
+Retained unsuccessful attempts are important: the first fixture server refused
+external asset symlinks (HTTP 403); an explicit shared-corpus allowlist fixed
+that fixture. Two legacy smoke attempts failed to find difficulty control 26.
+A fixed-time real-input attempt clicked during the intro; the visual checkpoint
+fixed menu timing. The subsequent Easy click at `(70,152)` did not activate
+the button; clicking inside it at `(110,152)` reached gameplay. These are input
+route/fixture findings, not evidence that the guest crashed. Temporary changes
+to the old smoke test were reverted; its failure remains recorded.
+
+Artifacts and package identities: `20261023-uplink-release`,
+`20261023-uplink-release-retry`, `20261023-uplink-release-gameplay`,
+`20261024-uplink-interactive`, `20261024-uplink-menu-ready`, and
+`20261025-uplink-gameplay`. The root worktree's pending brightness changes are
+excluded from the candidate.
+
+Final Worker check: `20261025-uplink-worker` asserts cross-origin isolation
+before launch, records `guestWorker=true`, and logs guest main execution in a
+Worker. Reviewed corridor and post-W stairs captures pass with no page errors
+and the same fetched WASM hash. `20261025-uplink-isolated` is an earlier
+cooperative repeat despite its name: the fixture option was initially wrong;
+its recorded `crossOriginIsolated=false` is preserved. Only the final Worker
+run qualifies the threaded route. The isolated preview is served on
+`http://127.0.0.1:52670/index.html` while the release checkout is retained.
