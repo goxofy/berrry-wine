@@ -730,9 +730,13 @@ function bindInput(canvas, getRun, win = globalThis, doc = win.document) {
     const y = Math.max(0, Math.min(height - 1, Math.floor((e.clientY - rect.top) * height / rect.height)));
     const sameGrid = last && last.width === width && last.height === height;
     const dx = sameGrid ? x - last.x : 0, dy = sameGrid ? y - last.y : 0;
-    // Only a fresh down may introduce buttons. Hover/late up after a retry
-    // must not transfer a still-held physical button into the replacement run.
-    held = kind === 'down' ? (e.buttons & 7) : held & e.buttons & 7;
+    // Pointer Events report additional button edges as pointermove, even with
+    // unchanged coordinates. Accept that edge only inside this run's owned
+    // gesture and only for the changed button. Hover/late up after blur or a
+    // retry must not transfer still-held physical buttons into a new gesture.
+    const changedButton = e.button === 0 ? 1 : e.button === 2 ? 2 : e.button === 1 ? 4 : 0;
+    const chord = pointer && kind === 'move' && held ? changedButton & e.buttons : 0;
+    held = kind === 'down' ? (e.buttons & 7) : (held & e.buttons & 7) | chord;
     activePointer = held && pointer ? e.pointerId : null;
     if (kind === 'down') canvas.focus();
     r.mouseInput(x, y, held, dx, dy);

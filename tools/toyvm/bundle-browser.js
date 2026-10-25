@@ -77,12 +77,19 @@ function moduleList(roots = ROOTS) {
     if (!fs.existsSync(file)) throw new Error(`bundle: ${id} does not exist`);
     const text = fs.readFileSync(file, 'utf8');
     for (const m of text.matchAll(REQUIRE_RE)) {
+      // A full-line documentation example is not a dependency (disasm.js
+      // documents require('./tools/disasm') for callers in the repo root).
+      const lineStart = text.lastIndexOf('\n', m.index) + 1;
+      if (text.slice(lineStart, m.index).trimStart().startsWith('//')) continue;
       let dep = path.posix.join(path.posix.dirname(id), m[2]);
       if (!fs.existsSync(path.join(ROOT, dep))) dep += '.js';
-      // A require the page never reaches is not an error: fnt-read.js pulls
-      // pngjs out of node_modules when it is asked to write a PNG, which is a
-      // CLI path. It just cannot be bundled.
-      if (!fs.existsSync(path.join(ROOT, dep))) continue;
+      // Relative literals are required source dependencies, including lazy
+      // ones (the ROM font loader is used only when a Machine is created).
+      // Bare Node packages and computed CLI-only requires, such as fnt-read's
+      // optional PNG writer, remain outside this literal-source walk.
+      if (!fs.existsSync(path.join(ROOT, dep))) {
+        throw new Error(`bundle: ${id} requires missing literal dependency ${m[2]} (resolved ${dep})`);
+      }
       visit(dep);
     }
     order.push(id);           // dependencies first, for a readable listing
