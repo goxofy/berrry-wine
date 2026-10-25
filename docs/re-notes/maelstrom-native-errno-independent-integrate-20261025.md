@@ -8,7 +8,7 @@ JavaScript transform's source identity binding, not an observed native result.
 ## Reproducible defect
 
 `tools/maelstrom-native-errno-latch.cjs` reads `sources[p]` once for its type,
-again for SHA-256, and a third time for assignment to `input[p]` (lines 221–223).
+again for SHA-256, and a third time for assignment to `input[p]` (lines 176–177).
 A source getter can return the authentic pinned `src/07-decoder.wat` twice and
 then return a decoder whose CALL-register handler emission changes 119 to 120.
 The composed select transform does not repin this additional decoder input.
