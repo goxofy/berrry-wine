@@ -283,17 +283,17 @@
     {
       "file": "lib/apps.js",
       "name": "host-file",
-      "sha256": "5a438ebd6c312a99f0f638d3cc57336885d4daa707b9bb03d227de008cafbd54",
+      "sha256": "25c20e4468e55ae997f4d13b4efc08226efe3f7fac6899d72f90d236645a8a0d",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Review 20261021: Mad Bomber metadata previously reviewed. Entire delta from seal at 2ae81e402 to 80f8278a adds only Hock local selector/EXE/required manifest data (b000885e); no executable callback producer, restoration or lifetime change. Whole-file inventory and ownership pending retained. See docs/reviews/army-host-census-reconcile-20261021.md. Integration 20261022: Expanded worker cache review: WC3 configuration adds a boolean layout opt-in only; no callback or context restoration.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Review 20261021: Mad Bomber metadata previously reviewed. Entire delta from seal at 2ae81e402 to 80f8278a adds only Hock local selector/EXE/required manifest data (b000885e); no executable callback producer, restoration or lifetime change. Whole-file inventory and ownership pending retained. See docs/reviews/army-host-census-reconcile-20261021.md. Integration 20261022: Expanded worker cache review: WC3 configuration adds a boolean layout opt-in only; no callback or context restoration. Review 20261025: complete delta from seal 8b6d676c to 27e2a785 adds only Airstrike/Penguin selector and pinned required-media metadata plus synchronous DLL-name map aliases; no guest entry, callback or restoration change. See docs/reviews/host-census-four-row-reconcile-oct25.md; ownership remains pending.",
       "ownership": "pending"
     },
     {
       "file": "lib/browser-shell.js",
       "name": "host-file",
-      "sha256": "91bc8086de848cf900a8f96fe0e187458776cbb108271acc5cedb07c70cf0eb2",
+      "sha256": "ee958a3b4f7e5d9006a03ce6f4823653e17f6bb48342c59b304d977b79658890",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Startup review a339395: pending queue retains launch options; only bypassSingleApp tracked children bypass parent-exit scheduling. Entire delta from seal at 2ae81e402 to 80f8278a is nullish launchOpts normalization (52c165ee): supplied object/callback identity and showCmd zero survive; queue, restart, cancellation, beforeRun and onExit paths unchanged. No new guest continuation identity or ownership certification. See docs/reviews/army-host-census-reconcile-20261021.md.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Startup review a339395: pending queue retains launch options; only bypassSingleApp tracked children bypass parent-exit scheduling. Entire delta from seal at 2ae81e402 to 80f8278a is nullish launchOpts normalization (52c165ee): supplied object/callback identity and showCmd zero survive; queue, restart, cancellation, beforeRun and onExit paths unchanged. No new guest continuation identity or ownership certification. See docs/reviews/army-host-census-reconcile-20261021.md. Review 20261025: complete delta from seal 8b6d676c to 27e2a785 moves manifest validation before init, revalidates pinned launches, retains checked EXE/DLL/required-file bytes, and scopes temporary Blob URLs to awaited loadFiles with finally revocation. Abort checkpoints precede publication; queue/restart options, beforeRun/onExit and guest entry ordering reviewed, without an ownership-complete claim. See docs/reviews/host-census-four-row-reconcile-oct25.md; ownership remains pending.",
       "ownership": "pending"
     },
     {
@@ -315,9 +315,9 @@
     {
       "file": "lib/guest-worker.js",
       "name": "host-file",
-      "sha256": "41f0e60e1a826b6ee472b133626aa7de6737a7b3a4eff3f4b3dec52b6d7b1b1a",
+      "sha256": "d1ae471298f667510b5fb3fbec56157e50f706896ededd4ca3450429f48af062",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. CS park-EIP reporting reads an existing diagnostic export after a slice; it creates no guest context or continuation. Named-wait review 20261021: retains import transport and reports current sequence; completeWait rejects active thread-send frames or mismatched/already-consumed sequence before guest register/stack restoration. Exactly one successful consumption per named wait; callback/nonlocal coverage remains pending. Integration 20261022: Retry-yield review: clear_yield runs only for the explicit slice retry flag and live yield 9, after both incoming-send guards. A changed nonzero yield returns its normal diagnostic snapshot without sync callbacks, wait resume, guest execution, sleep flag consumption or detach callbacks; incoming-send skipped slices retain their owned frames.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. CS park-EIP reporting reads an existing diagnostic export after a slice; it creates no guest context or continuation. Named-wait review 20261021: retains import transport and reports current sequence; completeWait rejects active thread-send frames or mismatched/already-consumed sequence before guest register/stack restoration. Exactly one successful consumption per named wait; callback/nonlocal coverage remains pending. Integration 20261022: Retry-yield review: clear_yield runs only for the explicit slice retry flag and live yield 9, after both incoming-send guards. A changed nonzero yield returns its normal diagnostic snapshot without sync callbacks, wait resume, guest execution, sleep flag consumption or detach callbacks; incoming-send skipped slices retain their owned frames. Review 20261025: complete delta from seal 8b6d676c to 27e2a785 adds only versioned render-clear.js before d3d9-backend.js in the lazy browser D3DIM import list. No slice, wait completion, callback, cancellation or register restoration edits. See docs/reviews/host-census-four-row-reconcile-oct25.md; ownership remains pending.",
       "ownership": "pending"
     },
     {
@@ -379,9 +379,9 @@
     {
       "file": "lib/renderer.js",
       "name": "host-file",
-      "sha256": "3b7b3efb1dc48b73de6d24d0c01e10650b0cc84b0b8cd80df2b49baa3680b2b2",
+      "sha256": "b1f6f1abbee443875e5d6d2cfcc67c4a077f89b522631749fe226b294cb9de03",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Startup review a339395: SW_FORCEMINIMIZE joins existing non-child minimization path; existing window object and restoration rectangle ownership unchanged.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Startup review a339395: SW_FORCEMINIMIZE joins existing non-child minimization path; existing window object and restoration rectangle ownership unchanged. Review 20261025: complete delta from seal 71d9c29a to 27e2a785 separates isChild traversal from popup owner links and adds ancestor clipping with save/try/finally/restore for single-source child composition. Reviewed recursive wasm/memory alias restoration, surface snapshots and window lifetimes; no guest ownership certification. See docs/reviews/host-census-four-row-reconcile-oct25.md; ownership remains pending.",
       "ownership": "pending"
     },
     {
