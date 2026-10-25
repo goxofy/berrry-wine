@@ -173,8 +173,11 @@ function transform(sources, options = {}) {
   if (options.enabled !== true) return sources; // Inert: no pins/options inspected.
   const input = {};
   for (const [p, pin] of Object.entries(PINS)) {
-    if (typeof sources[p] !== 'string' || sha(sources[p]) !== pin) throw Error('source pin: ' + p);
-    input[p] = sources[p];
+    // Read once: accessors/proxies may return a different value on every read.
+    // Validate and compose precisely this captured, immutable string.
+    const source = sources[p];
+    if (typeof source !== 'string' || sha(source) !== pin) throw Error('source pin: ' + p);
+    input[p] = source;
   }
   const a = verifyBinaries(options.binaries);
   const base = options.crtLoadedBase;
