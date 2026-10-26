@@ -64,6 +64,10 @@
     "docs/reviews/enigma-presented-frame-controller-repair-oct26/incidents.json": {
       "bytes": 1009,
       "sha256": "8b6e838ba5a6e46de609add2af61f6524692d28584248e14d963fc86649c2e1f"
+    },
+    "docs/reviews/enigma-presented-frame-controller-repair-oct26/publication-recovery.json": {
+      "bytes": 3690,
+      "sha256": "8b438480a0f839cadc526a610b0bd37d6026dd46189a72e2d270b22fbb2f023d"
     }
   }
 }
