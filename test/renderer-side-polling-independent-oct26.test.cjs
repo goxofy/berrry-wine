@@ -18,7 +18,7 @@ for(const [aggregate,name,left,right] of families) for(const start of [0,1]) {
    const d=new Device(), owners=new Set(), pending=new Set();
    const step=(s,down)=>{
     const was=owners.has(s);
-    if(down){owners.add(s);if(!was)pending.add(sides[s]);pending.add(aggregate);press(d,s);}
+    if(down){owners.add(s);if(!was){pending.add(sides[s]);pending.add(aggregate);}press(d,s);}
     else{owners.delete(s);release(d,s);}
     drain(d);
     const high=k=>k===aggregate?(owners.size?H:0):(owners.has(sides.indexOf(k))?H:0);
@@ -36,14 +36,14 @@ for(const [aggregate,name,left,right] of families) for(const start of [0,1]) {
   press(d,start);press(d,1-start);release(d,start);press(d,start);release(d,1-start);release(d,start);
   assert.deepEqual(values(d,'peekKeyDownState',keys),[0,0,0]);
   // All physical presses have arrived; low bits belong independently to each VK.
-  // Legacy aggregate dispatch rearms its low bit; side dispatch must not.
+  // Neither aggregate nor side delivery can rearm the consumed physical press.
   for(const k of [sides[start],aggregate,sides[1-start]]){assert.equal(d.getAsyncKeyState(k)&1,1);assert.equal(d.getAsyncKeyState(k)&1,0);}
   const states=[];let mask=0;
   for(const [s,down] of [[start,true],[1-start,true],[start,false],[start,true],[1-start,false],[start,false]]) {
    mask=down?(mask|(1<<s)):(mask&~(1<<s));
    states.push([mask?H:0,mask&1?H:0,mask&2?H:0]);
   }
-  for(const expected of states){assert.ok(d.takeInput());assert.deepEqual(values(d,'peekAsyncKeyState',keys),expected);const legacyAggregate=[...expected]; if(expected===states[0] || expected===states[1] || expected===states[3])legacyAggregate[0]|=1; assert.deepEqual(values(d,'getAsyncKeyState',keys),legacyAggregate);assert.deepEqual(values(d,'getAsyncKeyState',keys),expected);assert.deepEqual(values(d,'peekKeyDownState',keys),[0,0,0]);}
+  for(const expected of states){assert.ok(d.takeInput());assert.deepEqual(values(d,'peekAsyncKeyState',keys),expected);assert.deepEqual(values(d,'getAsyncKeyState',keys),expected);assert.deepEqual(values(d,'getAsyncKeyState',keys),expected);assert.deepEqual(values(d,'peekKeyDownState',keys),[0,0,0]);}
   assert.equal(d.takeInput(),null);
  });
  test(`${name}/${start}: numeric reset during overlap leaves pending press bits consumable then admits a fresh side`,()=>{

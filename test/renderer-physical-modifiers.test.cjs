@@ -161,8 +161,8 @@ test('press latch, ordinary repeat and release ordering remain intact', () => {
   down(r, 16, 'ShiftLeft');
   assert.equal(r.getAsyncKeyState(16), 0x8001);
   assert.equal(r.getAsyncKeyState(16), 0x8000);
-  r.takeInput(); // Dispatch also publishes the press latch, as before.
-  assert.equal(r.getAsyncKeyState(16), 0x8001);
+  r.takeInput(); // Delivery cannot republish an already consumed physical press.
+  assert.equal(r.getAsyncKeyState(16), 0x8000);
   down(r, 16, 'ShiftRight'); r.takeInput();
   up(r, 16, 'ShiftLeft'); r.takeInput();
   assert.equal(r._shiftDown, true);
