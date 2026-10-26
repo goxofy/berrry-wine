@@ -186,7 +186,10 @@ function literalRequires(source, importer) {
         else if (value === '{') {
           // A brace after a control head, statement boundary or arrow is a
           // statement body; a brace in an operand position is an object.
-          const block = previous === ')' || previous === '=>' || previous === 'else' || previous === 'do' || previous === 'try' || previous === 'finally' || previous === ';' || previous === '' || previous === '{' || previous === '}';
+          // Optional catch bindings have no parenthesized control head. Their
+          // body is still a statement block, so its closing brace admits a
+          // regexp statement just like catch (error) {} does.
+          const block = previous === ')' || previous === '=>' || previous === 'else' || previous === 'do' || previous === 'try' || previous === 'catch' || previous === 'finally' || previous === ';' || previous === '' || previous === '{' || previous === '}';
           if (pendingClass && parens.length === pendingClass.depth) { functionBody = pendingClass; pendingClass = null; }
           const endExpression = previous === '=>' || functionBody?.expression;
           // A colon may introduce either a label or an object value. Keep an
