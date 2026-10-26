@@ -21,6 +21,12 @@ const BINARY_PINS = Object.freeze({
 const FIELDS = Object.freeze(['status', 'event', 'token', 'thread', 'regs', 'pre', 'post',
   'selectRet', 'parks', 'result', 'nativeEntry', 'callBlock', 'sourceBlock', 'pc',
   'esp', 'eax', 'ebp', 'errno', 'caller', 'socketSet', 'timeout']);
+// Separate from captured errno/caller fields. Zero means no completion diagnostic.
+// Stable ABI: first failing predicate in the existing mne_complete guard order.
+const REJECTION_REASONS = Object.freeze({ 1: 'code16', 2: 'block-exec', 3: 'uop',
+  4: 'select-return', 5: 'phase', 6: 'completions', 7: 'fault', 8: 'active', 9: 'capped' });
+const DIAGNOSTIC_FIELDS = Object.freeze(['rejectReason', 'rejectModes', 'rejectExpectedRet',
+  'rejectObservedRet', 'rejectPhase', 'rejectCompletions', 'rejectFault', 'rejectActive', 'rejectCapped']);
 // These VAs are hypotheses until verifyBinaries binds every consumed byte.
 const NET_ANCHORS = Object.freeze({
   0x100012b0: '81ec1401000033c9538b9c241c0100005556', // locals + EBX/EBP/ESI
@@ -29,6 +35,12 @@ const NET_ANCHORS = Object.freeze({
   0x10001362: '8be8ffd783380474a2',
   0x1000139c: '8bc55e5d5b81c414010000c3',
 });
+// Original PE guest mapping, already required by the binary/loaded-image
+// verifiers. These are not allocator-selected emulator memory region bases.
+// Keep the return predicate and its host decoder on this same pinned mapping.
+const NET_LAYOUT = Object.freeze({ preferredBase: 0x10000000,
+  loadedBase: 0x7a2000, selectReturnVA: 0x10001362 });
+const SELECT_RETURN = NET_LAYOUT.loadedBase + NET_LAYOUT.selectReturnVA - NET_LAYOUT.preferredBase;
 function once(s, a, b) {
   if (s.split(a).length !== 2) throw Error('missing/ambiguous exact anchor: ' + a.slice(0, 80));
   return s.replace(a, b);
@@ -78,13 +90,13 @@ function verifyBinaries(binaries) {
   for (const [name, pin] of Object.entries(BINARY_PINS))
     if (!Buffer.isBuffer(binaries[name]) || sha(binaries[name]) !== pin) throw Error('binary pin: ' + name);
   const net = pe(binaries.net), crt = pe(binaries.crt), exe = pe(binaries.exe);
-  if (net.base !== 0x10000000 || crt.base !== 0x78000000) throw Error('preferred base');
+  if (net.base !== NET_LAYOUT.preferredBase || crt.base !== 0x78000000) throw Error('preferred base');
   for (const [va, hex] of Object.entries(NET_ANCHORS)) net.check(Number(va), hex);
   if (JSON.stringify(net.imported(0x10002010)) !== '["MSVCRT.dll","_errno"]') throw Error('authentic native errno import');
   crt.check(0x7800c430, 'e82274ffff83c008c3'); // _getptd(); add eax,8; ret
   exe.check(0x40e125, 'e8c253000083c40885c0756e');
-  return Object.freeze({ successor: 0x7a2000 + (0x10001366 - net.base),
-    selectRet: 0x7a2000 + (0x10001362 - net.base), frame: 0x114 + 4 * 4,
+  return Object.freeze({ successor: NET_LAYOUT.loadedBase + (0x10001366 - net.base),
+    selectRet: SELECT_RETURN, frame: 0x114 + 4 * 4,
     crtEntryRva: 0x7800c430 - crt.base, crtTailRva: 0x7800c435 - crt.base,
     crtRetRva: 0x7800c438 - crt.base });
 }
@@ -97,6 +109,15 @@ const any = xs => xs.reduce((a, b) => `(i32.or ${a} ${b})`, c(0));
 const reject = `${set('status', c(5))} (return)`;
 const check = x => `(if ${x} (then ${reject}))`;
 function storage(a, crtBase) {
+  const modeFlags = ['code16', 'block_exec_enabled', 'uop_enabled'].map(n => ne(`(global.get $${n})`, c(0)));
+  const modeBits = any(modeFlags.map((flag, i) => `(i32.shl ${flag} ${c(i)})`));
+  const completionChecks = [...modeFlags,
+    ne(m('ret'), c(a.selectRet)), ne(m('phase'), c(3)), ne(m('completions'), c(1)),
+    ne(m('fault'), c(0)), ne(m('active'), c(0)), ne(m('capped'), c(0))];
+  const completionReject = reason => [set('rejectReason', c(reason)), set('rejectModes', modeBits),
+    set('rejectExpectedRet', c(a.selectRet)), set('rejectObservedRet', m('ret')),
+    ...['phase', 'completions', 'fault', 'active', 'capped'].map(n =>
+      set('reject' + n[0].toUpperCase() + n.slice(1), m(n))), reject].join('\n  ');
   const modes = any(['code16', 'block_exec_enabled', 'uop_enabled'].map(n => `(i32.ne (global.get $${n}) ${c(0)})`));
   const owner = any([ne('(global.get $current_thread_id)', g('thread')), ne('(global.get $reg_base)', g('regs'))]);
   const stale = any([ne(m('token'), g('token')), ne(m('phase'), c(3)), ne(m('completions'), c(1)),
@@ -104,8 +125,8 @@ function storage(a, crtBase) {
     ne(m('pre'), g('pre')), ne(m('post'), g('post')), ne(m('ret'), g('selectRet')),
     ne(m('result'), g('result')), ne(m('thread'), g('thread')), ne(m('regs'), g('regs'))]);
   const wa = ga => `(call $mne_wa ${ga} ${c(4)})`;
-  return FIELDS.map(n => `(global $mne_${n} (mut i32) ${c(0)})`).join('\n') + '\n' +
-    FIELDS.map(n => `(func (export "mne_${n}") (result i32) ${g(n)})`).join('\n') + `
+  return [...FIELDS, ...DIAGNOSTIC_FIELDS].map(n => `(global $mne_${n} (mut i32) ${c(0)})`).join('\n') + '\n' +
+    [...FIELDS, ...DIAGNOSTIC_FIELDS].map(n => `(func (export "mne_${n}") (result i32) ${g(n)})`).join('\n') + `
 ;; Status: 0 inert, 1 awaiting select, 2 completed, 3 native call, 4 captured,
 ;; 5 rejected. No reset. Event 3 means completion -> authentic CALL -> RET.
 (func (export "mne_start")
@@ -130,9 +151,8 @@ function storage(a, crtBase) {
   (local.get $wa))
 (func $mne_complete
   (if ${ne(g('status'), c(1))} (then (return)))
-  ${check(modes)}
-  ${check(any([ne(m('ret'), c(a.selectRet)), ne(m('phase'), c(3)), ne(m('completions'), c(1)),
-    ne(m('fault'), c(0)), ne(m('active'), c(0)), ne(m('capped'), c(0))]))}
+  ;; Scalar-only first rejection; status guard makes this immutable after status 5.
+  ${completionChecks.map((predicate, i) => `(if ${predicate} (then ${completionReject(i + 1)}))`).join('\n  ')}
   ${['token', 'thread', 'regs', 'pre', 'post', 'parks', 'result'].map(n => set(n, m(n))).join('\n  ')}
   ${set('selectRet', m('ret'))} ${set('event', c(1))} ${set('status', c(2))})
 (func $mne_call (param $ret i32) (param $target i32) (param $reg i32)
@@ -205,7 +225,7 @@ function transform(sources, options = {}) {
   out['src/05-alu.wat'] = alu.slice(0, start) + ret + alu.slice(end);
   return out;
 }
-module.exports = { transform, verifyBinaries, PINS, BINARY_PINS, FIELDS, NET_ANCHORS, pe, once, storage };
+module.exports = { transform, verifyBinaries, PINS, BINARY_PINS, FIELDS, DIAGNOSTIC_FIELDS, REJECTION_REASONS, NET_ANCHORS, NET_LAYOUT, SELECT_RETURN, pe, once, storage };
 
 if (require.main === module) {
   const fs = require('node:fs'), path = require('node:path');
