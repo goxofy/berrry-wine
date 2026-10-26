@@ -43,5 +43,7 @@ changes, workers, or gameplay claims. Box ID/state/expiry: not assigned;
 coordinator retains lifecycle ownership. Remaining acceptance: coordinator
 review and integration under main ownership; browser/gameplay unqualified.
 
-Source commit and verified remote publication are recorded in the subsequent
-publication receipt and final task ops/result.json. No task replacement.
+Source repair commit: `0ebb852e339fe755f3c18a19f32f1dfe4da427b4`, pushed with trusted SSH and exact remote
+branch equality verified. See evidence/publication.json and final task
+ops/result.json. The final closeout commit changes documentation/evidence only.
+No task replacement.

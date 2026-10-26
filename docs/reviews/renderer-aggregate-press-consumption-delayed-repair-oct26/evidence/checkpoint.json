@@ -1,5 +1,5 @@
 {
-  "candidate": "c3d394149406189cf1c5dbbc434491f0130666c9",
+  "candidate": "0ebb852e339fe755f3c18a19f32f1dfe4da427b4",
   "source": "e7b59c046f63b504a0aba256b644a42c01f820fde9a0f9e5fee3961dae397f78",
   "fixtures": {
     "test/renderer-side-modifier-polling.test.cjs": "98ab85c8859f8ada4efd222f08abf4164f2b3b240f37837c3179607bd15db222",
@@ -176,7 +176,6 @@
     }
   ],
   "remaining": [
-    "docs manifest",
-    "commit push verify"
+    "coordinator review/main integration; runtime and gameplay not qualified"
   ]
 }
