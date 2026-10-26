@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
+const Module = require('node:module');
 const { createProcessObserver } = require('./processes');
 const { classifyCandidate } = require('./corpus-categories');
 const { inventory } = require('./corpus-inventory');
@@ -476,8 +477,30 @@ function createReader(options = {}) {
     try {
       const registryFile = await safeFile(inventoryRoot, 'lib/apps.js');
       if (registryFile) {
-        delete require.cache[require.resolve(registryFile)];
-        const registry = require(registryFile);
+        // A disposable parent keeps retired registries out of this long-lived
+        // reader's children. Use the native loader for cyclic partial exports,
+        // loaded flags, dependency caching and circular-warning cleanup.
+        // Read before changing global loader state; evaluation is synchronous.
+        const registrySource = await readText(registryFile);
+        const registryParent = new Module(registryFile);
+        const hadCached = Object.prototype.hasOwnProperty.call(require.cache, registryFile);
+        const cached = require.cache[registryFile];
+        const jsLoader = Module._extensions['.js'];
+        let registry;
+        try {
+          // Only this exact registry consumes the already bounded source.
+          // All dependencies retain their normal extension/path/cache behavior.
+          Module._extensions['.js'] = function(loaded, filename) {
+            return filename === registryFile
+              ? loaded._compile(registrySource, filename) : jsLoader.call(this, loaded, filename);
+          };
+          delete require.cache[registryFile];
+          registry = registryParent.require(registryFile);
+        } finally {
+          Module._extensions['.js'] = jsLoader;
+          if (hadCached) require.cache[registryFile] = cached;
+          else delete require.cache[registryFile];
+        }
         let assessments = [];
         try { assessments = JSON.parse(await readText(path.join(root, 'ops/corpus-status.json'), MB)).entries || []; }
         catch (e) { if (e.code !== 'ENOENT') warnings.push(`Registry associations: ${e.message}`); }
