@@ -4,6 +4,11 @@
 No donor hard links, symlinks, full-file buffers, or persistent transfer payloads.
 The destination and its parent must be coordinator-owned and not concurrently
 modified. Published fonts are read-only; consumers must not chmod/write them.
+Independent non-font files preserve ordinary source rwx bits, irrespective of
+umask: standing regular files use st_mode & 0777; Git regular blobs use 0644
+or 0755 from the pinned tree. Special bits (setuid/setgid/sticky), ownership,
+ACLs and timestamps are not copied. Source metadata must remain stable while
+staging, like the exclusively owned destination parent.
 """
 import argparse
 import contextlib
@@ -85,6 +90,36 @@ def consume(row, stream, output=None):
         raise ValueError('input identity changed: ' + row['target'])
 
 
+def regular_mode(row):
+    """Return only ordinary permission bits; reject non-regular sources.
+
+    Git records only regular/non-regular type and the executable distinction.
+    Literal pathspecs and NUL records preserve commas, tabs and newlines.
+    """
+    if row['kind'] == 'file':
+        mode = os.stat(row['path'], follow_symlinks=False).st_mode
+        if not stat.S_ISREG(mode):
+            raise ValueError('non-regular file input: ' + row['path'])
+        return mode & 0o777
+    if row['kind'] == 'git':
+        revision = row['revision']
+        if not re.fullmatch('[0-9a-f]{40}', revision):
+            raise ValueError('full Git revision required')
+        entry = subprocess.check_output(
+            ['git', '--literal-pathspecs', '-C', row['donor'], 'ls-tree', '-z',
+             revision, '--', row['path']], stderr=subprocess.DEVNULL)
+        records = entry.split(b'\0')
+        if len(records) != 2 or records[1]:
+            raise ValueError('missing/ambiguous Git regular input: ' + row['path'])
+        metadata, path = records[0].split(b'\t', 1)
+        mode, kind, _oid = metadata.split(b' ')
+        if (path != os.fsencode(row['path']) or kind != b'blob' or
+                mode not in (b'100644', b'100755')):
+            raise ValueError('non-regular Git input: ' + row['path'])
+        return 0o755 if mode == b'100755' else 0o644
+    raise ValueError('unsupported input kind')
+
+
 def inventory(root):
     """Logical paths versus allocated inodes, including all owned directories.
 
@@ -126,6 +161,7 @@ def stage(rows, destination, opener=source, share_fonts=True):
     canonical = {}
     try:
         for row in rows:
+            mode = None if font(row['target']) else regular_mode(row)
             target = temp / row['target']
             target.parent.mkdir(parents=True, exist_ok=True)
             key = row['bytes'], row['sha256']
@@ -141,6 +177,10 @@ def stage(rows, destination, opener=source, share_fonts=True):
             elif font(row['target']):
                 target.chmod(0o444)
                 canonical[key] = target
+            else:
+                # Apply after closing/flushing so writes cannot clear bits.
+                # chmod is independent of umask and never targets a donor/alias.
+                target.chmod(mode)
         receipt = inventory(temp)
         # Parent is exclusively owned; do not run concurrent publishers here.
         if os.path.lexists(destination):

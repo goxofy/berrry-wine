@@ -6,6 +6,11 @@ It requires a separate fresh resource admission; never run that option on the
 repair worker. For API transfer, send each canonical font once and create its
 listed aliases inside the owned target, then rehash EVERY target there. Do not
 use donor links or skip verification of a required duplicate source.
+Independent non-font files must retain ordinary source rwx bits, regardless of
+umask (standing regular file st_mode & 0777; pinned Git tree 0644/0755).
+The helper applies this contract locally. Any later transfer must preserve and
+verify these modes as well as bytes/aliases; strip setuid/setgid/sticky bits,
+and never chmod font aliases. Source metadata must remain stable during staging.
 """
 import argparse
 import gzip
