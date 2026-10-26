@@ -1,0 +1,4 @@
+cd /tmp/enigma-start-game-menu-click-api-oct26 && env MAELSTROM_CAPTURE_INSTALL=1 ENIGMA_RUNNER_ROOT=/tmp/enigma-verified-input-menu-gameplay-api-oct26/runner ENIGMA_FINDFIRST_RUNNER_ROOT=/tmp/enigma-verified-input-menu-gameplay-api-oct26/runner ENIGMA_TERMINAL_CAPTURE_INSTALL=1 ENIGMA_CAPTURE_PATH=/tmp/enigma-verified-input-menu-gameplay-api-oct26/capture.cjs ENIGMA_TERMINAL_RECEIPT=/tmp/enigma-start-game-menu-click-api-oct26/guest/capture-terminal.json ENIGMA_LOSSLESS_CAPTURE=1 ENIGMA_CAPTURE_PROFILE=single-frame ENIGMA_OWNED_OUTPUT=/tmp/enigma-start-game-menu-click-api-oct26/guest python3 supervise.py guest
+
+Actual controls: initial snapshot; step100000; direct read-only canvas eval; snapshot; input predicate rejected; final PNG; quit.
+No mouse move/down/up/click or F1 was sent.

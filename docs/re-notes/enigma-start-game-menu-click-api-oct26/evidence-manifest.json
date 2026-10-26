@@ -1,0 +1,52 @@
+[
+  {
+    "path": "REPORT.md",
+    "bytes": 3840,
+    "sha256": "f58b8ed114425a241f579329488e96bb0b75e42e658493c844f6aa40dafaf640"
+  },
+  {
+    "path": "command.txt",
+    "bytes": 793,
+    "sha256": "9a548901c252335ac2707bbaf5fbe710ccadfd9ccd216334b9c0cab78b878488"
+  },
+  {
+    "path": "final-menu.png",
+    "bytes": 389913,
+    "sha256": "8ffead1b04adbe5fac8d82c5a374375f5883898b29e87962d72c3c3e26da18d5"
+  },
+  {
+    "path": "guest-args.json",
+    "bytes": 1984,
+    "sha256": "b70014c986ddbc6d9e26d31a8dd6f8372f31d548eba7db17975d9279a206a059"
+  },
+  {
+    "path": "output.log",
+    "bytes": 59099,
+    "sha256": "0c02c036b583ed514ce2e3a1a17e7c904dd7861d5a31b860bbd5785fe45cc386"
+  },
+  {
+    "path": "predecessor-menu.png",
+    "bytes": 389913,
+    "sha256": "8ffead1b04adbe5fac8d82c5a374375f5883898b29e87962d72c3c3e26da18d5"
+  },
+  {
+    "path": "provider-manifest.json.gz",
+    "bytes": 155034,
+    "sha256": "a879f2871dcb7804072d4d87fe3db9b8305a08ed02df6be28edc155d270e0cbe"
+  },
+  {
+    "path": "receipts.json.gz",
+    "bytes": 34195,
+    "sha256": "59e17c54744e0c8487f64eed5d3c35f15d2687260dc351ec299820bb450b98a6"
+  },
+  {
+    "path": "recipes.json.gz",
+    "bytes": 15293,
+    "sha256": "c633fa4deac5be31037a3b188db3a8fa5107dfe1704af50389f37e57388a0346"
+  },
+  {
+    "path": "run.json",
+    "bytes": 6868,
+    "sha256": "30b67d6424fe3731f1935eb9b553c3d8db4be1af76889ccfb4e4a67f6ae2c755"
+  }
+]
