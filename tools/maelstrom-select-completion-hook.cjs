@@ -6,11 +6,11 @@ const { createHash } = require('node:crypto');
 const { isProxy } = require('node:util').types;
 const PINS = Object.freeze({
   'src/09d-winsock.wat': 'c281da4763624a29910386d2d6b05a66f98ca92b2a9194827d880c0234ba89ab',
-  'src/09b-dispatch.wat': '55812e1cf277c3bb0daa6524f38f3723433c6a23878be96451a676412a11ee00',
+  'src/09b-dispatch.wat': 'd8f3ac461c9dca62cdf074cb28b3324080718bd98e5ba696de15577c598dbcce',
   'src/09b2-dispatch-table.generated.wat': '5067cb4767d5e4dc092dfba12942c36f546cbbeb1874f97e5c3033dac632eb3e',
   'src/05-alu.wat': 'e70c56e06d7568d5b9a6c09022659ef27ca8ac5eaef56409bf042c7e57a2edb6',
   'src/06b-core-handlers.wat': 'e8c04a58a5a6c7e15d8d6fb7f2c9c4a39bfe38b3178da41f746df8c457294f21',
-  'src/13-exports.wat': '739397dc54a77e93b367334fd4ca96c921180f57a7558913a3301f1de4520b86',
+  'src/13-exports.wat': 'bf07357361b6d6f1e9c6bd93953d2ca14ccbb55c68f8647149d2a47eaefbb51e',
 });
 const CAP = 4096;
 const FIELDS = Object.freeze(['started', 'phase', 'token', 'entries', 'parks', 'completions',
