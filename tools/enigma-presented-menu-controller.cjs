@@ -74,9 +74,11 @@ const ATOMIC_BRANCH=`
 function wireRunner(source) {
   // Exact source identity and exact single insertion point; never mutate the
   // canonical runner on disk. Caller writes a separately named derivative.
+  // Pin the tracked candidate/current-main blob 4b8461338f4bcddde6b5d5504991523b28d3ac35;
+  // historical donor bytes are not interchangeable with this runner.
   const crypto=require('node:crypto');
   assert.equal(crypto.createHash('sha256').update(source).digest('hex'),
-    '4d7b9587676db38fcf3314807acb2b2a42b5f09d2c98fcf3dccb8a6cde9e1809',
+    '87ab63d768eb59a09a8b69df2ccb3843270dd867a67405abd82f02c25c1628e7',
     'runner source identity mismatch');
   const marker="    if (cmd.action === 'eval') return controlEval(cmd.code || '');";
   assert.equal(source.split(marker).length,2,'runner insertion point mismatch');
