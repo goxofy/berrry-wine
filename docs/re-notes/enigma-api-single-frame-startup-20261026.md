@@ -7,6 +7,12 @@ rejected projected task storage **67,547,136 > 67,108,864 bytes**, excess
 semantic repair, second guest, packed-original or gameplay acceptance occurred.
 Scene, menu and Lua behavior remain **unknown**.
 
+Read-limit incidents are retained separately: initial combined recipe inspection
+returned11,071 code bytes, and the adapter's first155 lines comprised9,965 bytes,
+each exceeding the8,192-byte code-read limit. No retroactive compliance is
+claimed. These earlier operator inspection incidents are distinct from the
+first actual execution-admission rejection below.
+
 All 2659 manifest entries / 37,476,538 bytes were streamed directly from standing
 pinned sources to `bx_7qwjxps7`, then remotely rehashed successfully
 (`cmd_b4yaosl0vtlp`). Ordinary-user UID1000 preflight passed
