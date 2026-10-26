@@ -8,12 +8,20 @@ const { Model, parse, func, walk } = require('./maelstrom-select-hook-model.cjs'
 const { decodeRejection, createAdapter } = require('../tools/maelstrom-original-errno-adapter.cjs');
 const a = {selectRet:0x7a3362, successor:0x7a3366, frame:0x124, crtEntryRva:0xc430, crtTailRva:0xc435};
 const storage = hook.storage(a, 0x522000);
-const inputs = Object.fromEntries(Object.keys(hook.PINS).map(p => [p,fs.readFileSync(path.join(process.env.MNE_SOURCE_ROOT,p),'utf8')]));
-const output = hook.transform(inputs,{enabled:true,crtLoadedBase:0x522000,binaries:{
-  net:fs.readFileSync(path.join(process.env.MNE_ORIGINAL_ROOT,'SDL_net.dll')),
-  exe:fs.readFileSync(path.join(process.env.MNE_ORIGINAL_ROOT,'Maelstrom.exe')),
-  crt:fs.readFileSync(process.env.MNE_CRT)}});
-const source = output['src/09d-winsock.wat'];
+// Explicit scalar-only entry point for source repairs without staging game bytes.
+// Default invocation still verifies the full pinned transform and binary inputs.
+let source;
+if (process.argv.includes('--storage-only')) {
+  source = '(func $handle_select )\n;; Opt-in exact select diagnostic storage.\n' +
+    select.FIELDS.map(k=>`(global $msc_${k} (mut i32) (i32.const 0))`).join('\n') + '\n' + storage;
+} else {
+  const inputs = Object.fromEntries(Object.keys(hook.PINS).map(p => [p,fs.readFileSync(path.join(process.env.MNE_SOURCE_ROOT,p),'utf8')]));
+  const output = hook.transform(inputs,{enabled:true,crtLoadedBase:0x522000,binaries:{
+    net:fs.readFileSync(path.join(process.env.MNE_ORIGINAL_ROOT,'SDL_net.dll')),
+    exe:fs.readFileSync(path.join(process.env.MNE_ORIGINAL_ROOT,'Maelstrom.exe')),
+    crt:fs.readFileSync(process.env.MNE_CRT)}});
+  source = output['src/09d-winsock.wat'];
+}
 assert(source.endsWith(storage),'actual transformed fragment contains the tested scalar storage');
 class Scalars extends Model {
   eval(n, l) {
@@ -84,12 +92,12 @@ test('inert status and disabled transform do not inspect inputs or create diagno
   const unused=new Proxy({}, {get(){throw Error('input read');},ownKeys(){throw Error('input enumeration');}});
   assert.equal(hook.transform(unused,{enabled:false}),unused);
 });
-test('start and later rejection sites remain unclassified completion diagnostics',()=>{
+test('start and later rejection sites expose distinct guard diagnostics',()=>{
   model.g={...pristine,$code16:2};model.run('$start');assert.equal(model.g.$mne_status,5);
-  assert.equal(decodeRejection(native(),snapshot()),null);
+  assert.equal(decodeRejection(native(),snapshot()).predicate,'start-code16');
   reset();model.run('$mne_complete');model.g.$mne_status=3;model.g.$mne_event=2;
   model.run('$mne_call',[0,0,0]);assert.equal(model.g.$mne_status,5);
-  assert.equal(decodeRejection(native(),snapshot()),null);
+  assert.equal(decodeRejection(native(),snapshot()).predicate,'call-phase');
 });
 test('completion AST only reads globals and writes mne scalars, and preserves ordered guards',()=>{
   const f=func(storage,'mne_complete');
@@ -101,7 +109,7 @@ test('completion AST only reads globals and writes mne scalars, and preserves or
 test('decoder rejects unknown, contradictory, malformed and impossible-context diagnostics',()=>{
   reset(1<<3);model.run('$mne_complete');const n=native(),d=snapshot();
   for(const k of hook.DIAGNOSTIC_FIELDS)for(const v of [-1,0x100000000,1.5,NaN,undefined,'1'])assert.throws(()=>decodeRejection(n,{...d,[k]:v}),/invalid native rejection/);
-  for(const patch of [{rejectReason:10},{rejectReason:0},{rejectReason:5},{rejectModes:8},{rejectModes:1},{rejectExpectedRet:0},{rejectObservedRet:a.selectRet}])assert.throws(()=>decodeRejection(n,{...d,...patch}),/invalid native rejection/);
+  for(const patch of [{rejectReason:37},{rejectReason:0},{rejectReason:5},{rejectModes:8},{rejectModes:1},{rejectExpectedRet:0},{rejectObservedRet:a.selectRet}])assert.throws(()=>decodeRejection(n,{...d,...patch}),/invalid native rejection/);
   for(const patch of [{status:4},{event:1},{errno:4},{caller:123},{token:7}])assert.throws(()=>decodeRejection({...n,...patch},d),/invalid native rejection/);
 });
 function adapterFixture(){
@@ -134,7 +142,7 @@ test('new diagnostic exports stay zero on legitimate accepted capture and decode
 });
 test('invalid adapter diagnostics close before persistence/live callbacks; partial exports reject',()=>{
   const partial=adapterFixture();delete partial.exports.mne_rejectModes;assert.throws(partial.make,/missing mne_rejectModes/);
-  for(const value of [undefined,NaN,1.5,'4',0x100000000,-0x80000001,10]){
+  for(const value of [undefined,NaN,1.5,'4',0x100000000,-0x80000001,37]){
     const f=adapterFixture(),adapter=f.make();adapter.start();f.n.status=5;f.d.rejectReason=value;
     assert.throws(()=>adapter.observe(1),/invalid native rejection/);assert.equal(f.rows.length,1);assert.equal(f.live(),1);assert.equal(adapter.observe(2),null);
   }

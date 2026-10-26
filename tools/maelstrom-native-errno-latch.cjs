@@ -24,10 +24,21 @@ const BINARY_PINS = Object.freeze({
 const FIELDS = Object.freeze(['status', 'event', 'token', 'thread', 'regs', 'pre', 'post',
   'selectRet', 'parks', 'result', 'nativeEntry', 'callBlock', 'sourceBlock', 'pc',
   'esp', 'eax', 'ebp', 'errno', 'caller', 'socketSet', 'timeout']);
-// Separate from captured errno/caller fields. Zero means no completion diagnostic.
+// Separate from captured errno/caller fields. Zero means no rejection diagnostic.
 // Stable ABI: first failing predicate in the existing mne_complete guard order.
 const REJECTION_REASONS = Object.freeze({ 1: 'code16', 2: 'block-exec', 3: 'uop',
   4: 'select-return', 5: 'phase', 6: 'completions', 7: 'fault', 8: 'active', 9: 'capped' });
+// Append-only guard ABI; completion reasons 1..9 retain their original meaning.
+const GUARD_REJECTION_REASONS = Object.freeze({
+  10:'start-code16', 11:'start-block-exec', 12:'start-uop',
+  13:'start-select-started', 14:'start-select-token', 15:'uop-mode-switch',
+  16:'completion-uop-mode', 17:'call-phase', 18:'call-modes', 19:'call-stale-select',
+  20:'call-return', 21:'call-target', 22:'call-register', 23:'call-pc',
+  24:'call-esp', 25:'call-ebp', 26:'return-modes', 27:'return-stale-select',
+  28:'return-phase', 29:'return-pc', 30:'return-source', 31:'return-esp',
+  32:'return-ebp', 33:'return-native-entry', 34:'return-frame-overflow',
+  35:'return-errno-mapping', 36:'return-caller-mapping',
+});
 const DIAGNOSTIC_FIELDS = Object.freeze(['rejectReason', 'rejectModes', 'rejectExpectedRet',
   'rejectObservedRet', 'rejectPhase', 'rejectCompletions', 'rejectFault', 'rejectActive', 'rejectCapped']);
 // These VAs are hypotheses until verifyBinaries binds every consumed byte.
@@ -110,7 +121,6 @@ const reg = n => `(i32.load offset=${n} (global.get $reg_base))`;
 const eq = (a, b) => `(i32.eq ${a} ${b})`, ne = (a, b) => `(i32.ne ${a} ${b})`;
 const any = xs => xs.reduce((a, b) => `(i32.or ${a} ${b})`, c(0));
 const reject = `${set('status', c(5))} (return)`;
-const check = x => `(if ${x} (then ${reject}))`;
 function storage(a, crtBase, uopNativeBoundaries = false) {
   const modeFlags = ['code16', 'block_exec_enabled', 'uop_enabled'].map(n => ne(`(global.get $${n})`, c(0)));
   const modeBits = any(modeFlags.map((flag, i) => `(i32.shl ${flag} ${c(i)})`));
@@ -127,8 +137,10 @@ function storage(a, crtBase, uopNativeBoundaries = false) {
       set('reject' + n[0].toUpperCase() + n.slice(1), m(n))), reject].join('\n  ');
   const modes = any(['code16', 'block_exec_enabled'].map(n => ne(`(global.get $${n})`, c(0))).concat(
     uopNativeBoundaries ? [ne('(global.get $uop_enabled)', g('uopMode'))] : [modeFlags[2]]));
-  const startModes = uopNativeBoundaries ? any([modeFlags[0], modeFlags[1],
-    '(i32.gt_u (global.get $uop_enabled) (i32.const 1))']) : modes;
+  const startChecks = [modeFlags[0], modeFlags[1], uopNativeBoundaries ?
+    '(i32.gt_u (global.get $uop_enabled) (i32.const 1))' : modeFlags[2]];
+  const check = (predicate, reason) => `(if ${predicate} (then ${completionReject(reason)}))`;
+  const checks = (predicates, firstReason) => predicates.map((p, i) => check(p, firstReason + i)).join('\n  ');
   const callPC = uopNativeBoundaries ? `(i32.and ${ne('(global.get $eip)', c(a.selectRet))}
     ${any([ne(g('uopMode'), c(1)), ne('(global.get $eip)', c(a.successor - 2))])})` : ne('(global.get $eip)', c(a.selectRet));
   const returnPC = uopNativeBoundaries ? `(i32.and ${ne('(local.get $source)', c(crtBase + a.crtTailRva))}
@@ -146,15 +158,15 @@ function storage(a, crtBase, uopNativeBoundaries = false) {
 ;; 5 rejected. No reset. Event 3 means completion -> authentic CALL -> RET.
 (func (export "mne_start")
   (if ${ne(g('status'), c(0))} (then (return)))
-  ${check(startModes)}
-  ${check(any([ne(m('started'), c(0)), ne(m('token'), c(0))]))}
+  ${checks(startChecks, 10)}
+  ${checks([ne(m('started'), c(0)), ne(m('token'), c(0))], 13)}
   ${uopNativeBoundaries ? set('uopMode', '(global.get $uop_enabled)') : ''}
   ${set('status', c(1))} (call $msc_begin_for_mne))
 ${uopNativeBoundaries ? `(func $mne_uop_switch (param $on i32)
   (if (i32.and (i32.and (i32.ge_u ${g('status')} ${c(1)})
                         (i32.le_u ${g('status')} ${c(3)}))
                 ${ne('(local.get $on)', g('uopMode'))})
-    (then ${set('status', c(5))})))` : ''}
+    (then ${completionReject(15)})))` : ''}
 ;; Direct-window only. NEVER call g2w/gl32: their miss/lazy paths can write,
 ;; raise or execute callbacks. Unsupported mapping is a rejection, not errno 0.
 (func $mne_wa (param $ga i32) (param $len i32) (result i32)
@@ -172,7 +184,7 @@ ${uopNativeBoundaries ? `(func $mne_uop_switch (param $on i32)
   (local.get $wa))
 (func $mne_complete
   (if ${ne(g('status'), c(1))} (then (return)))
-  ${uopNativeBoundaries ? check(ne('(global.get $uop_enabled)', g('uopMode'))) : ''}
+  ${uopNativeBoundaries ? check(ne('(global.get $uop_enabled)', g('uopMode')), 16) : ''}
   ;; Scalar-only first rejection; status guard makes this immutable after status 5.
   ${completionChecks.map((predicate, i) => `(if ${predicate} (then ${completionReject(i + 1)}))`).join('\n  ')}
   ${['token', 'thread', 'regs', 'pre', 'post', 'parks', 'result'].map(n => set(n, m(n))).join('\n  ')}
@@ -181,27 +193,27 @@ ${uopNativeBoundaries ? `(func $mne_uop_switch (param $on i32)
   (if (i32.or (i32.lt_u ${g('status')} ${c(2)}) (i32.gt_u ${g('status')} ${c(3)})) (then (return)))
   (if ${owner} (then (return)))
   ;; A second owner CALL r while awaiting the native return is not this call.
-  ${check(ne(g('status'), c(2)))}
-  ${check(any([modes, stale, ne('(local.get $ret)', c(a.successor)),
+  ${check(ne(g('status'), c(2)), 17)}
+  ${checks([modes, stale, ne('(local.get $ret)', c(a.successor)),
     ne('(local.get $target)', c(crtBase + a.crtEntryRva)), ne('(local.get $reg)', c(7)),
-    callPC, ne(reg(16), g('post')), ne(reg(20), g('result'))]))}
+    callPC, ne(reg(16), g('post')), ne(reg(20), g('result'))], 18)}
   ${set('nativeEntry', '(local.get $target)')} ${set('callBlock', '(global.get $eip)')}
   ${set('event', c(2))} ${set('status', c(3))})
 (func $mne_return (param $source i32)
   (local $errno_wa i32) (local $caller_wa i32)
   (if (i32.or (i32.lt_u ${g('status')} ${c(2)}) (i32.gt_u ${g('status')} ${c(3)})) (then (return)))
   (if ${owner} (then (return)))
-  ${check(any([modes, stale]))}
+  ${checks([modes, stale], 26)}
   ;; Nested CRT returns are permitted only below the invocation's post ESP.
   ;; Returning to/releasing this frame without the owned native call rejects.
   (if (i32.lt_u ${reg(16)} ${g('post')}) (then (return)))
-  ${check(any([ne(g('status'), c(3)), ne('(global.get $eip)', c(a.successor)),
+  ${checks([ne(g('status'), c(3)), ne('(global.get $eip)', c(a.successor)),
     returnPC, ne(reg(16), g('post')),
     ne(reg(20), g('result')), ne(reg(28), g('nativeEntry')),
-    '(i32.gt_u ' + reg(16) + ' ' + c('0xfffffecf') + ')']))}
+    '(i32.gt_u ' + reg(16) + ' ' + c('0xfffffecf') + ')'], 28)}
   (local.set $errno_wa ${wa(reg(0))})
   (local.set $caller_wa (call $mne_wa (i32.add ${reg(16)} ${c(a.frame)}) ${c(12)}))
-  ${check(any([eq('(local.get $errno_wa)', c(-1)), eq('(local.get $caller_wa)', c(-1))]))}
+  ${checks([eq('(local.get $errno_wa)', c(-1)), eq('(local.get $caller_wa)', c(-1))], 35)}
   ${set('sourceBlock', '(local.get $source)')} ${set('pc', '(global.get $eip)')}
   ${set('esp', reg(16))} ${set('eax', reg(0))} ${set('ebp', reg(20))}
   ${set('errno', '(i32.load (local.get $errno_wa))')}
@@ -264,7 +276,7 @@ function transform(sources, options = {}) {
   out['src/05-alu.wat'] = alu.slice(0, start) + ret + alu.slice(end);
   return out;
 }
-module.exports = { transform, verifyBinaries, PINS, UOP_PINS, BINARY_PINS, FIELDS, DIAGNOSTIC_FIELDS, REJECTION_REASONS, NET_ANCHORS, NET_LAYOUT, SELECT_RETURN, pe, once, storage };
+module.exports = { transform, verifyBinaries, PINS, UOP_PINS, BINARY_PINS, FIELDS, DIAGNOSTIC_FIELDS, REJECTION_REASONS, GUARD_REJECTION_REASONS, NET_ANCHORS, NET_LAYOUT, SELECT_RETURN, pe, once, storage };
 
 if (require.main === module) {
   const fs = require('node:fs'), path = require('node:path');

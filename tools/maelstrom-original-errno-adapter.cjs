@@ -1,5 +1,5 @@
 'use strict';
-const { FIELDS, NET_ANCHORS, NET_LAYOUT, SELECT_RETURN, DIAGNOSTIC_FIELDS, REJECTION_REASONS } = require('./maelstrom-native-errno-latch.cjs');
+const { FIELDS, NET_ANCHORS, NET_LAYOUT, SELECT_RETURN, DIAGNOSTIC_FIELDS, REJECTION_REASONS, GUARD_REJECTION_REASONS } = require('./maelstrom-native-errno-latch.cjs');
 const owners = new WeakSet();
 const SELECT_FIELDS = Object.freeze(['started','phase','token','entries','parks','completions','fault','capped','active','thread','regs','pre','post','ret','result']);
 function scalars(e, prefix, fields, label, validate) {
@@ -38,7 +38,22 @@ function decodeRejection(native, diagnostic) {
   const d = diagnostic, reason = d.rejectReason;
   if (reason === 0) {
     if (DIAGNOSTIC_FIELDS.some(k => d[k] !== 0)) throw Error('invalid native rejection diagnostic: nonzero without reason');
-    return null; // Legacy/non-completion rejection, not errno/caller zero.
+    return null; // Legacy reasonless rejection, not errno/caller zero.
+  }
+  if (Object.hasOwn(GUARD_REJECTION_REASONS, reason)) {
+    // These guards can fail before select, after completion, or during the owned
+    // native call. They never capture errno/caller and are not completions.
+    const events = reason === 15 ? [0,1,2] : reason <= 16 ? [0] :
+      reason === 17 ? [2] : reason <= 25 || reason === 28 ? [1] : [1,2];
+    if (native.status !== 5 || !events.includes(native.event) || d.rejectModes > 7 ||
+        d.rejectExpectedRet !== SELECT_RETURN ||
+        ['sourceBlock','pc','esp','eax','ebp','errno','caller','socketSet','timeout'].some(k => native[k] !== 0) ||
+        (native.event === 0 && FIELDS.some(k => k !== 'status' && native[k] !== 0)) ||
+        (native.event === 1 && (native.nativeEntry !== 0 || native.callBlock !== 0)))
+      throw Error('invalid native rejection diagnostic: guard context');
+    return {schema:'maelstrom-native-guard-rejection/v1', reason, predicate:GUARD_REJECTION_REASONS[reason],
+      modeBits:d.rejectModes, expectedReturn:d.rejectExpectedRet, observedReturn:d.rejectObservedRet,
+      phase:d.rejectPhase, completions:d.rejectCompletions, fault:d.rejectFault, active:d.rejectActive, capped:d.rejectCapped};
   }
   if (!Object.hasOwn(REJECTION_REASONS, reason) || native.status !== 5 || native.event !== 0 ||
       FIELDS.some(k => k !== 'status' && native[k] !== 0) || d.rejectModes > 7 || d.rejectExpectedRet !== SELECT_RETURN)
