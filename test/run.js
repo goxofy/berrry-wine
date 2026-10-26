@@ -4,6 +4,7 @@ const { execSync } = require('child_process');
 const { withCliFailureCleanup } = require('../lib/cli-failure-cleanup');
 const { createHostImports } = require('../lib/host-imports');
 const frameIntervals = require('../lib/frame-intervals');
+const { createRenderWaitAttribution } = require('../lib/render-wait-attribution');
 const { loadDlls, callDllMain, detectRequiredDlls, shouldReportNtForDlls, loadWin16Dlls } = require('../lib/dll-loader');
 const { inputEventHwnd } = require('../lib/host-window');
 const { SYSTEM_DATA_FILES, resolveDllGraph, mountLoadedDllFiles, mountSystemDataFiles,
@@ -6812,6 +6813,10 @@ async function main() {
   // callback: Heroes II hung ten batches after its main menu this way. host.js
   // has always made this exemption (_isMainExecutionSuspended); the CLI has to
   // agree or the browser and the harness run different schedulers.
+  // --trace-render-wait: opt in to bounded software-D3D wait attribution.
+  // Legacy render-park waits/counters remain active without this diagnostic.
+  const renderWaitAttribution = hasFlag('trace-render-wait') ? createRenderWaitAttribution() : null;
+  if (renderWaitAttribution) ctx.renderWaitAttribution = renderWaitAttribution.stats;
   let mainRenderWait = null;
   const mainExecutionSuspended = () => {
     const ex = instance.exports;
@@ -6820,9 +6825,10 @@ async function main() {
       const token = ex.get_d3d_render_token() | 0;
       if (!mainRenderWait || mainRenderWait.token !== token) {
         const wait = {token,done:false,polls:0,since:tickState.batch|0}; mainRenderWait = wait;
+        renderWaitAttribution?.begin(wait, ctx.d3d9Bridge?.requests.get(token));
         wait.promise = Promise.resolve().then(() => ctx.waitD3DRender(token))
-          .catch(error => console.error('[render]',error))
-          .then(() => { wait.done = true; });
+          .catch(error => { renderWaitAttribution?.reject(wait); console.error('[render]',error); })
+          .then(() => { wait.done = true; renderWaitAttribution?.settle(wait); });
       }
       if (!mainRenderWait.done) {
         // A request the bridge already calls done should release main within
@@ -6887,11 +6893,16 @@ async function main() {
     const wait = mainRenderWait;
     if (!wait || wait.done) return;
     const started = Date.now();
+    renderWaitAttribution?.parkStart(wait, started);
+    let renderParkDeadline = false;
     while (!wait.done && !stopped) {
       await Promise.race([wait.promise, new Promise(r => setTimeout(r, 100))]);
-      if (deadlineMs && Date.now() > deadlineMs) break;
+      if (deadlineMs && Date.now() > deadlineMs) { renderParkDeadline = true; break; }
     }
-    renderParkStats.waits++; renderParkStats.wallMs += Date.now() - started;
+    const renderParkEnded = Date.now();
+    renderParkStats.waits++; renderParkStats.wallMs += renderParkEnded - started;
+    renderWaitAttribution?.parkEnd(wait, renderParkEnded,
+      stopped ? 'stopped' : (renderParkDeadline ? 'deadline' : 'pending'));
   };
 
   let lastSchedSig = null;
@@ -11522,6 +11533,8 @@ if (VERBOSE) {
   if (renderParkStats.waits || renderParkStats.skippedBatches)
     console.log(`render park: main waited on ${renderParkStats.waits} software D3D requests `
       + `(${renderParkStats.wallMs}ms wall), ${renderParkStats.skippedBatches} batches skipped while parked`);
+  renderWaitAttribution?.close(deadlineMs && Date.now() > deadlineMs ? 'deadline' : 'stopped');
+  if (renderWaitAttribution?.stats.requests) console.log(renderWaitAttribution.summary());
   if (PRESENT_CAP && instance.exports.get_present_paced_count) {
     console.log(`present pacing (main instance): cap ${PRESENT_CAP}/s ${PRESENT_PACE_MODE ? 'smooth' : 'deadline'}, `
       + `${instance.exports.get_present_paced_count()} frames slept `
