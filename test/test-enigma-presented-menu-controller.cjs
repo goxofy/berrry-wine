@@ -2,7 +2,7 @@
 // Dependency-free OFFLINE control/canvas fixture; no runner or guest execution.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const vm=require('node:vm'),crypto=require('node:crypto'),zlib=require('node:zlib');
-const {MENU,createController}=require('../tools/enigma-presented-menu-controller.cjs');
+const {MENU,createController,ATOMIC_ACTION,ATOMIC_BRANCH}=require('../tools/enigma-presented-menu-controller.cjs');
 const contract=require('./fixtures/enigma-presented-menu-contract.json');
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const expected=fs.readFileSync(path.join(__dirname,
@@ -71,7 +71,11 @@ function fixture(options={}) {
   vm.runInContext(`(()=>{
     let dxPresentHook=null;const instance={exports:{}},memory={buffer:{byteLength:0}},
       g2w=()=>0,ctx={},resolveAddr=()=>0,moduleBases={},controlSafeValue=x=>x;
-    let controlFrozen=true;
+    let controlFrozen=true,controlRunCredits=0,videoRecorder=null;
+    // This older pixel fixture mocks parsing/queueing; the full protocol suite
+    // separately executes the pinned parser, snapshot and complete handler.
+    const scheduledInput=[],parseInputEntries=()=>[{action:'click',batch:tickState.batch,x:344,y:212}];
+    globalThis.atomic=cmd=>{${ATOMIC_BRANCH}};
     const presentDxIfDirty=()=>{};
     ${contract.parts.presentForRead}
     ${contract.parts.dxPresentHook}
@@ -105,10 +109,10 @@ function fixture(options={}) {
         if(options.truncated)files.set(command.path,Buffer.from('broken'));
         if(options.changedCanvasSize)canvas.width=800;
       } else {
-        assert.equal(command.cmd,'click:344:212');
-        assert.equal(renderer.repaint,originalRepaint,'observer restored before click');
+        assert.equal(command.action,ATOMIC_ACTION);
+
         assert(events.includes('readback'),'readback before click');
-        clicks++;value={queued:true,batch:tickState.batch};
+        value=context.atomic(command);assert.equal(renderer.repaint,originalRepaint,'observer restored by atomic operation');clicks++;
       }
       return {ok:true,value};
     } catch(error){return {ok:false,error:error.message}}
@@ -135,7 +139,7 @@ async function test(name,fn){await fn();passes++;console.log('PASS '+name)}
     const f=fixture({eager}),r=await f.run();assert.equal(r.safety.pngSHA256,MENU.pngSHA256);
     assert.equal(r.click.x,344);assert.equal(r.click.y,212);assert.equal(f.clicks,1);
     const e=f.events;assert(e.indexOf('repaint')<e.indexOf('serialize'));
-    assert(e.indexOf('write')<e.indexOf('readback'));assert(e.indexOf('readback')<e.indexOf('click:344:212'));
+    assert(e.indexOf('write')<e.indexOf('readback'));assert(e.indexOf('readback')<e.indexOf(ATOMIC_ACTION));
     assert(!e.some(x=>x.startsWith('step')));assert.equal(f.renderer.repaint,f.originalRepaint);
     await assert.rejects(f.run(),/already consumed/);assert.equal(f.clicks,1);
   });

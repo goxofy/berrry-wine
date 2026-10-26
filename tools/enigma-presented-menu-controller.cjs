@@ -19,17 +19,68 @@ function arm(key,filename) {
       throw Error('missing repaint hook; no click');
     const original=renderer.repaint, state={original,count:0,batch:tickState.batch};
     state.wrapper=function(...args){state.count++;return original.apply(this,args)};
+    Object.defineProperty(state.wrapper,k,{value:state});
     globalThis[k]=state; renderer.repaint=state.wrapper;
     return {batch:tickState.batch};
   })()`;
 }
-function cleanup(key) {
+function cleanup(key, abort=false) {
   return `(()=>{const k=Symbol.for(${JSON.stringify(key)}),s=globalThis[k];
-    if(s){const intact=renderer.repaint===s.wrapper;
-      if(intact) renderer.repaint=s.original; delete globalThis[k];
-      if(!intact) throw Error('presentation observer replaced; no click');}
+    // The wrapper carries a second, immutable ownership reference. Losing or
+    // replacing the global witness must reject, but must not strand our hook.
+    const current=renderer.repaint, owned=current && current[k];
+    const intact=owned && owned.wrapper===current && current[k]===owned;
+    if(intact && (${abort} || s!==owned || s.count!==1)) renderer.repaint=owned.original;
+    const valid=s && intact && s===owned && s.count===1;
+    if(${abort} || !valid) delete globalThis[k];
+    else s.prepared=true;
+    if(!valid) throw Error('presentation observer ownership lost; no click');
     return true;
   })()`;
+}
+
+// Insert only in the runner-owned handleControlCommand lexical scope. new
+// Function/eval cannot see controlFrozen, credits, recorder or scheduledInput.
+// This synchronous branch has no await or guest execution between validation
+// and one splice. It cannot be emulated by successive remote snapshots.
+const ATOMIC_ACTION='enigma-presented-click-v1';
+const ATOMIC_BRANCH=`
+    if (cmd.action === '${ATOMIC_ACTION}') {
+      const k=Symbol.for(cmd.key), s=globalThis[k];
+      try {
+        if (!s || !s.prepared || s.wrapper[k]!==s || s.count!==1 ||
+            renderer.repaint!==s.wrapper || tickState.batch!==s.batch ||
+            cmd.batch!==s.batch || !controlFrozen || controlRunCredits!==0 || videoRecorder)
+          throw Error('invalidated presented-menu transaction; no click');
+        // Parse the one constant ordinary click with the canonical parser.
+        const evs=parseInputEntries([String(s.batch)+':click:344:212']);
+        if(evs.length!==1 || evs[0].action!=='click') throw Error('invalid click parser');
+        let at=scheduledInput.findIndex(e=>e.batch>s.batch);
+        if(at<0) at=scheduledInput.length;
+        renderer.repaint=s.original;
+        delete globalThis[k]; // consume before enqueue: repeated requests reject
+        scheduledInput.splice(at,0,...evs);
+        return {queued:true,batch:s.batch};
+      } finally {
+        // Also recover a lost/replaced global witness from our current wrapper.
+        // Never overwrite another owner's replacement repaint function.
+        const current=renderer.repaint, owned=current && current[k];
+        if(owned && owned.wrapper===current && current[k]===owned)
+          renderer.repaint=owned.original;
+        delete globalThis[k];
+      }
+    }
+`;
+function wireRunner(source) {
+  // Exact source identity and exact single insertion point; never mutate the
+  // canonical runner on disk. Caller writes a separately named derivative.
+  const crypto=require('node:crypto');
+  assert.equal(crypto.createHash('sha256').update(source).digest('hex'),
+    '4d7b9587676db38fcf3314807acb2b2a42b5f09d2c98fcf3dccb8a6cde9e1809',
+    'runner source identity mismatch');
+  const marker="    if (cmd.action === 'eval') return controlEval(cmd.code || '');";
+  assert.equal(source.split(marker).length,2,'runner insertion point mismatch');
+  return source.replace(marker,ATOMIC_BRANCH+marker);
 }
 function readback(key, filename) {
   return `(()=>{
@@ -96,14 +147,22 @@ function createController(ask, filename) {
         'click outside inspected Start Game bounds; no click');
       assert.equal(observed.pngSHA256,MENU.pngSHA256,
         'before framebuffer differs from inspected menu; no click');
-    } finally {
-      assert.equal(await send({action:'eval',code:cleanup(key)}),true,'observer cleanup failed; no click');
+    } catch(error) {
+      try { await send({action:'eval',code:cleanup(key,true)}); } catch(_) {}
+      throw error;
     }
-    // No steps/sleeps/input between safety readback and queueing this single
-    // ordinary click. Runner click dispatches one mouse down/up at (344,212).
-    const queued=await send({cmd:`click:${MENU.x}:${MENU.y}`});
+    try {
+      assert.equal(await send({action:'eval',code:cleanup(key)}),true,'observer cleanup failed; no click');
+    // Atomic runner-owned validation and enqueue; stock runners reject the
+    // unknown action without input. Cleanup transport ambiguity never retries
+    // this operation. The controller remains consumed even on a lost reply.
+    const queued=await send({action:ATOMIC_ACTION,key,batch});
     assert(queued.queued===true && queued.batch===batch,'click queue acknowledgement invalid');
+    } catch(error) {
+      try { await send({action:'eval',code:cleanup(key,true)}); } catch(_) {}
+      throw error;
+    }
     return {safety:observed,click:{x:MENU.x,y:MENU.y,batch,queued:true}};
   };
 }
-module.exports={MENU,createController};
+module.exports={MENU,createController,ATOMIC_ACTION,ATOMIC_BRANCH,wireRunner};
