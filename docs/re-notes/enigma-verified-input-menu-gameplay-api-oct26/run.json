@@ -1,0 +1,191 @@
+{
+  "outcome": "menu-confirmed-input-response-unqualified",
+  "verification": "reviewed",
+  "candidateId": null,
+  "reasonNoDashboardRun": "No Enigma entry in pinned 135-candidate corpus; evidence retained in focused investigation notes.",
+  "startedAt": "2026-10-26T18:40:26.904Z",
+  "route": "main-menu",
+  "menuConfirmed": true,
+  "ordinaryInputDelivered": true,
+  "ordinaryInputVisibleResponse": false,
+  "gameplayConfirmed": false,
+  "png": {
+    "bytes": 389913,
+    "sha256": "8ffead1b04adbe5fac8d82c5a374375f5883898b29e87962d72c3c3e26da18d5",
+    "width": 640,
+    "height": 480,
+    "rgbaSHA256": "a44ee9b285f41ab7ac824d47703d06a81cf85b126b77cb6b93ae0b285207f587",
+    "sameAsObservedGuestMenu": true,
+    "singlePNG": true,
+    "losslessHelperSHA256": "9dae92170fbf4ef5acf0a2b0be43b93d3b3a7c8ec86f227df708d3b65d67cb4b",
+    "ordinaryInputVisibleResponse": false
+  },
+  "firstUnmetRequirement": "F1 key-down/up reached guest input polling, but RGBA hash and main-menu title did not change after 3000 batches; main-menu F1 semantics versus delivery behavior remains unresolved. No crash/unimplemented API observed; no second guest authorized.",
+  "command": "command.txt",
+  "guestArgv": "guest-args.json",
+  "trace": "output.log",
+  "guestAttempts": 1,
+  "terminal": {
+    "TERM": false,
+    "KILL": false,
+    "returncode": 0,
+    "reaped": [],
+    "remainingGroup": false,
+    "peakRSS": 355053568,
+    "reason": "natural",
+    "elapsed": 71.76681646600002,
+    "box": "bx_xfbwmcty",
+    "lifecycle": "leave RUNNING; coordinator owns shutdown19:20UTC",
+    "expires": "2026-10-26T19:29:32Z",
+    "outputBytes": 59533
+  },
+  "box": {
+    "observedAt": "2026-10-26T18:43:05Z",
+    "box": "bx_xfbwmcty",
+    "boatAPIState": "idle",
+    "health": "ok",
+    "stop": null,
+    "operationalLeftUnstopped": true,
+    "expiry": "2026-10-26T19:29:32.853Z",
+    "coordinatorShutdown": "2026-10-26T19:20:00Z",
+    "guestCutoff": "2026-10-26T19:10:00Z",
+    "handback": "2026-10-26T19:15:00Z",
+    "guestDetachedPID": 29099,
+    "detachedStatus": "exited",
+    "exitCode": 0,
+    "remainingGuestGroup": false,
+    "lockReleased": true,
+    "noFurtherRuntime": true
+  },
+  "moduleSHA256": "8fac39936b6df2418ad86cab118cef19a65a727f649fbc14c412b37818904686",
+  "sourceHistorical": "b41a7c5f4b752d1f0bdab1141a11d4fed4dc6f9a",
+  "currentMainBinaryClaim": false,
+  "providerManifestSHA256": "4ccbdd4e9bab80a88bf9565f813681c5369e4b16ef5dcd34291b87c361a793fe",
+  "stagingHelperSHA256": "d3b2a9c152de0a7cfbe61facf1d847d6192e4bd399e1638091417070ffdb1f3b",
+  "captureRecipeSHA256": "6d64a146f2daf8b598dbf13e3c13f890dbc783d8f5286aacba6d343758d22079",
+  "helperPins": {
+    "tools/enigma-findfirst-compat.cjs": "c7d43b204bae560d421d11d326b336737b5f0d14b0cb271971b57b63d0aa16ed",
+    "tools/enigma-terminal-capture-guard.cjs": "56399047e54417b7968944639831b2a5268ebb87ea57a64833d8dd1f0fb4384c",
+    "tools/enigma-quiet-filesystem.cjs": "cc9bb22fb39058b581883f836724f7a62eaf8dfbe2d2e42f3cd765f3abd8741e",
+    "tools/lossless-capture-png.cjs": "9dae92170fbf4ef5acf0a2b0be43b93d3b3a7c8ec86f227df708d3b65d67cb4b",
+    "lib/filesystem.js": "542ecac68e15882d9f5455e89c2c92198d3e3042b53b599b29706a6668fcb3b1"
+  },
+  "diagnosticOverlays": [
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/SDL.dll",
+      "target": "vfs/Enigma-1.01/SDL.dll",
+      "bytes": 321024,
+      "sha256": "66136f9cc7091b7fa59514afe88792e45476926f8415f0080a6401f5f1b6366b",
+      "originalSHA256": "17f42459a4aa9b73d9115e1c09cd4fb4e9fd4ca08e4137b46e8a6a9b56c9043f",
+      "diagnosticOverlay": true
+    },
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/SDL_image.dll",
+      "target": "vfs/Enigma-1.01/SDL_image.dll",
+      "bytes": 43520,
+      "sha256": "96e28e9f1ba5ebb564cacc96469c50b5431a0c18f677a6028b7f69e95c3bf321",
+      "originalSHA256": "2129acb54f56dc5f670aebe3e2320583fe0e00e5622e0c38cc9b15f614f65770",
+      "diagnosticOverlay": true
+    },
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/SDL_mixer.dll",
+      "target": "vfs/Enigma-1.01/SDL_mixer.dll",
+      "bytes": 143872,
+      "sha256": "5d0c0e380a39465b8b7f90cdb954b81f179e73e59261f9e9b32dcaec16c21162",
+      "originalSHA256": "06fde1067326daae3cdb50c9ae84962e41184b95e3e827734eaa8ec99c8f1dd3",
+      "diagnosticOverlay": true
+    },
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/SDL_ttf.dll",
+      "target": "vfs/Enigma-1.01/SDL_ttf.dll",
+      "bytes": 20992,
+      "sha256": "905c0c3782bb669083e78dcfb3d0fa491fe02ff1b1138b79a7a32818470e9f05",
+      "originalSHA256": "8e8e543e0ce882b9ba82cf40c78df4b03e82096b849b24cfe7fae620f9d29b26",
+      "diagnosticOverlay": true
+    },
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/enigma.exe",
+      "target": "vfs/Enigma-1.01/enigma.exe",
+      "bytes": 6287872,
+      "sha256": "5885e29ac9c1bdfe7f36e0d7fba76a56b74bc99558e1e6debf8425febe35fa45",
+      "originalSHA256": "ce4ff5d66de3af85d3e0b1aef88995a54be7f44e78de81793169eb65e71e046e",
+      "diagnosticOverlay": true
+    },
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/jpeg.dll",
+      "target": "vfs/Enigma-1.01/jpeg.dll",
+      "bytes": 113664,
+      "sha256": "a8ce1785929b093225d41e79e493412e995ea5e7695719ee35b0d3fcca167fea",
+      "originalSHA256": "b278e21030069a7ffd53ef5a14680ff30d0bc6625b5909e612ac1119787138c3",
+      "diagnosticOverlay": true
+    },
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/libfreetype-6.dll",
+      "target": "vfs/Enigma-1.01/libfreetype-6.dll",
+      "bytes": 444928,
+      "sha256": "ec840982058e08e40fd70646a19bca418d648629cb8c82b8716e619b9f2f1fd3",
+      "originalSHA256": "6cd4e0860fb26625346dea2af9a9c0a2896a123f3b8bff9d36411ebf42192bdc",
+      "diagnosticOverlay": true
+    },
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/libpng12-0.dll",
+      "target": "vfs/Enigma-1.01/libpng12-0.dll",
+      "bytes": 132096,
+      "sha256": "6e1a15ecd3c451ad5e4082ffc2ca6cf91780869de6c49ecf7eba4b7a70332031",
+      "originalSHA256": "3258c9ad45d669313073c60874e068e81be35415ae897c0c6ce646ffbfa0a974",
+      "diagnosticOverlay": true
+    },
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/mikmod.dll",
+      "target": "vfs/Enigma-1.01/mikmod.dll",
+      "bytes": 246272,
+      "sha256": "29b8030a02e0e039f0f6a57329e4b4bff0774a771c9164627dd69c4a2efea71f",
+      "originalSHA256": "96ea656667a758a87aad9aec785b472fea4f4a57568b72b6326f2fe185e6d087",
+      "diagnosticOverlay": true
+    },
+    {
+      "kind": "file",
+      "path": "/tmp/enigma-authentic-static-unpack-oct24/outputs/zlib1.dll",
+      "target": "vfs/Enigma-1.01/zlib1.dll",
+      "bytes": 74752,
+      "sha256": "49244b51914d0a6e62bfd1465d11f7fdfc9f090981c590f736bc5efa6fd7e626",
+      "originalSHA256": "5ce32c8afd7660fe8fedd424bdf851103356c108d45e6aa654dbfdacb43a0a8f",
+      "diagnosticOverlay": true
+    }
+  ],
+  "inputActions": [
+    "[input] png /tmp/enigma-verified-input-menu-gameplay-api-oct26/guest/final.png (389913 bytes) at batch 100000 guest-ms=20000000",
+    "[input] keydown vk=112 at batch 100293",
+    "[check_input] msg=0x100 wParam=0x70 lParam=0x3b0001 packed=0x700100",
+    "[input] keyup vk=112 at batch 101793",
+    "[check_input] msg=0x101 wParam=0x70 lParam=0xc03b0001 packed=0x700101"
+  ],
+  "qualificationGaps": [
+    "untouched original-executable qualification",
+    "current-main module qualification",
+    "visible ordinary input response",
+    "level selection/gameplay/audio"
+  ],
+  "runtimeFailure": null,
+  "invocationCompletionHook": "Historical module and runner unchanged; no fixture CRT hook added; existing hook not independently requalified here.",
+  "tests": {
+    "providerHashes": 2659,
+    "canonicalTreeMount": true,
+    "chunkedAPIControl": true,
+    "destinationModesInodes": true,
+    "exactNodeStartup": true,
+    "PNGInspected": true,
+    "PNGRGBAIdentity": true,
+    "inputResponse": "not demonstrated",
+    "previousBuildNativeStaticGroups": "reused; none rerun"
+  }
+}

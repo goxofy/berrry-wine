@@ -1,0 +1,42 @@
+{
+  "receipts.json.gz": {
+    "bytes": 91133,
+    "sha256": "6180db773e086443a6a8709f7eacad57bd177b3494125371d72a6dc8a4fa5277"
+  },
+  "run.json": {
+    "bytes": 8250,
+    "sha256": "211871d401ea22ed282b60c6196e96f3ff9b7be6c9631880e7877060bbff22c2"
+  },
+  "output.log": {
+    "bytes": 59533,
+    "sha256": "773095d213009f00c79b750c9e55dff1b956a3fc5f20aa9afe220ca05c88c1c3"
+  },
+  "guest-args.json": {
+    "bytes": 1985,
+    "sha256": "490f4dcee39a6be359d94d3a2679363c08c9e53f110d72a83210ba5df0a0ae43"
+  },
+  "recipes.json.gz": {
+    "bytes": 18547,
+    "sha256": "aa2431c2c8c3b10a7c17b30f077f024e690f74e288dc3d78e751b611be30cd6e"
+  },
+  "command.txt": {
+    "bytes": 3847,
+    "sha256": "a4af92991e66a92aa9c8508e2cbd34addc011ae02097695b71838134e0ad06a6"
+  },
+  "menu.png": {
+    "bytes": 389913,
+    "sha256": "8ffead1b04adbe5fac8d82c5a374375f5883898b29e87962d72c3c3e26da18d5"
+  },
+  "preflight.json.gz": {
+    "bytes": 15362,
+    "sha256": "0dc45ccdc1697bbd38554b1d45e94ae5048e8784f72e4e09b18eaa2be9608f2b"
+  },
+  "REPORT.md": {
+    "bytes": 4085,
+    "sha256": "e6214899e0f2d65cf60dfa3a978b2d7326b98ece4ff0d3de786c53a100c15269"
+  },
+  "provider-manifest.json.gz": {
+    "bytes": 155034,
+    "sha256": "a879f2871dcb7804072d4d87fe3db9b8305a08ed02df6be28edc155d270e0cbe"
+  }
+}
