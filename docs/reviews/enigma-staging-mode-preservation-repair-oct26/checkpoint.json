@@ -1,5 +1,5 @@
 {
-  "time": 1793001076.265973,
+  "time": 1793001406.2571938,
   "base": "f1aac7b9ba83e2bbc763cb58d38646653d626468",
   "acceptance": "00bdb5504bc28e1ef17e15c15dbbc81773dbb5f8",
   "sources": {
@@ -118,7 +118,9 @@
     "identityScopeNote": "Prior identity fixture writes a nonfont copied from 0444 donor; preserving 0444 intentionally makes that write unavailable. Original fixture/evidence remains unchanged; no claim the old writable-copy assumption passes this contract.",
     "recipe": "tiny exact recipe executed again; executable AST unchanged, documentation contract updated"
   },
-  "remaining": [],
+  "remaining": [
+    "evidence-only closeout commit/push/exactremote verify"
+  ],
   "runtimeGates": [
     "coordinator review/integration",
     "fresh transport/real filesystem admission preserving modes and immutable aliases",
@@ -131,5 +133,7 @@
     "shutdownOwner": "coordinator"
   },
   "blockers": [],
-  "status": "REPAIR_TESTS_PASS"
+  "status": "SOURCE_REPAIR_PUBLISHED",
+  "sourceCommit": "8752981b212e416250a5655e65c98d3697cb60d5",
+  "sourcePublicationVerified": true
 }

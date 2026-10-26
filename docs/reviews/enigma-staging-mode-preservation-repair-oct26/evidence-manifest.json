@@ -12,8 +12,8 @@
     "sha256": "8670667e87830f21f4303eef77dd2e477b50c6b2d4aa31c3c2a89d544b46d97e"
   },
   "docs/reviews/enigma-staging-mode-preservation-repair-oct26/README.md": {
-    "bytes": 6214,
-    "sha256": "de95722fa96a2ef9f9d068ce14bec16753f0820ca32b1fdeb60418868511ee11"
+    "bytes": 6833,
+    "sha256": "29569fc003d9350279b2340bfce4d2e069d646ace3510381ff3c4ebc271eb51c"
   },
   "docs/reviews/enigma-staging-mode-preservation-repair-oct26/accept.py": {
     "bytes": 6723,
@@ -120,8 +120,8 @@
     "sha256": "445ea2f16d908ac48f30c9c0e3dca6a92e54f793d58cffd6492461f4bfcee68a"
   },
   "docs/reviews/enigma-staging-mode-preservation-repair-oct26/checkpoint.json": {
-    "bytes": 6368,
-    "sha256": "7fab744dc845bc1b5b25f813c3e7a57936f0bd42f4694829db41737673a7d7d1"
+    "bytes": 6537,
+    "sha256": "464581c6a1f0e3609e0b1ee7dbbb8c1a1fcc23a287116e85ec513bbdefce7311"
   },
   "docs/reviews/enigma-staging-mode-preservation-repair-oct26/checkpoint.py": {
     "bytes": 3485,
@@ -210,5 +210,33 @@
   "docs/reviews/enigma-staging-mode-preservation-repair-oct26/run-group.py": {
     "bytes": 1584,
     "sha256": "27a859257ff15d3a36efb978109ebd1ba0c31c82f984ceacc83f23d8fa5c0fcf"
+  },
+  "docs/reviews/enigma-staging-mode-preservation-repair-oct26/admission-git256MiB-preadmission.json": {
+    "bytes": 500,
+    "sha256": "771f24933ac318563062b32f081bb050431fa66f9f72de17b9b92a0a56a74cad"
+  },
+  "docs/reviews/enigma-staging-mode-preservation-repair-oct26/admission-prepush.json": {
+    "bytes": 485,
+    "sha256": "d3796a12580e9670f8b9a8d77891e8112acbf3ee85ff77dea5ced9571ed99157"
+  },
+  "docs/reviews/enigma-staging-mode-preservation-repair-oct26/publication-push-data16MiB-failure.json": {
+    "bytes": 242,
+    "sha256": "d8374f309504dd4798aa1af7862a48e7dfe9c1e9e6208b200b66399c25fdf9fb"
+  },
+  "docs/reviews/enigma-staging-mode-preservation-repair-oct26/publication-push-data64MiB-failure.json": {
+    "bytes": 242,
+    "sha256": "d8374f309504dd4798aa1af7862a48e7dfe9c1e9e6208b200b66399c25fdf9fb"
+  },
+  "docs/reviews/enigma-staging-mode-preservation-repair-oct26/source-publication.json": {
+    "bytes": 5306,
+    "sha256": "e6f9251c6bd983ad471fdebca70b62f59e11af331ee3e9a846a10c74a98dd3cb"
+  },
+  "docs/reviews/enigma-staging-mode-preservation-repair-oct26/push-only.py": {
+    "bytes": 1444,
+    "sha256": "69405a215ef4c81936327e6909305e20544982826ef81c619839157a1a986d78"
+  },
+  "docs/reviews/enigma-staging-mode-preservation-repair-oct26/closeout.py": {
+    "bytes": 2521,
+    "sha256": "8b00e82cbcb2e7838a1e2b7723e6b05b6eda999efb5700f1efc2d6073b3abe5e"
   }
 }

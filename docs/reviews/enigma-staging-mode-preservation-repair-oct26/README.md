@@ -71,9 +71,13 @@ The first four-test run passed; the final five-test run adds explicit changed
 duplicate coverage and records its actual exit status. No access denial was
 encountered or bypassed.
 The first Git add could not create its default lstat threads under the 16 MiB
-data limit; `publication-failure.json` preserves that diagnostic. Publication
-uses a single index/pack thread and disables index preloading, retaining the
-same resource limits and trusted SSH configuration.
+data limit; committed `publication-failure.json` preserves that diagnostic.
+Disabling preload and using one index/pack thread allowed the commit. Pushes
+under Git DATA limits of 16 and 64 MiB then failed with local malloc errors;
+both diagnostics are preserved separately. Git push with DATA=256 MiB, CPU=60 s,
+FSIZE=24 MiB and timeout=65 s succeeded within the separately admitted 512 MiB
+client envelope. Python tests retain DATA=16 MiB. The trusted SSH configuration
+and access controls were unchanged; no access denial was retried.
 
 `admission-*.json` charges owned checkout/Git/ops/evidence, external launcher
 and actual session, positive shared SQLite allocation highwater once, future
@@ -88,7 +92,11 @@ no mount or runtime command was executed.
 
 Publication is only `task/enigma-staging-mode-preservation-repair-oct26` using
 the supplied trusted SSH configuration, followed by exact remote-ref verification.
-Ops `publication.json` records the final commit. No main integration, workers,
+The tested source repair is `8752981b212e416250a5655e65c98d3697cb60d5`, with
+its successful exact remote receipt preserved in `source-publication.json`.
+This subsequent evidence closeout changes only this review directory; all
+tested source/fixture/recipe bytes and modes remain identical. Ops
+`publication.json` records the final commit. No main integration, workers,
 Boat, guest, SSH runtime, heavy compile, services or deployment occurred.
 No test box was assigned (ID/state/expiry N/A); user reports all prior boxes
 STOPPED. Shutdown ownership remains with the coordinator. Remaining gates are
