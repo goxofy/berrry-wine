@@ -113,56 +113,76 @@ function createController(ask, filename) {
   return async function clickInspectedMenu() {
     assert(!used,'controller already consumed'); used=true;
     const key='wine.enigma.presented-menu.'+randomUUID();
+    let dispatched=false;
     const send=async command=>{
       const response=await ask(command);
       assert(response && response.ok===true,'control readback error; no click');
       assert(Object.hasOwn(response,'value'),'missing control value; no click');
       return response.value;
     };
-    const snapshot=await send({action:'snapshot'});
-    assert(snapshot.frozen?.frozen===true && snapshot.frozen.credits===0 &&
-      snapshot.frozen.recording===false,'runner must be frozen and idle; no click');
-    const batch=snapshot.batch;
-    assert(Number.isSafeInteger(batch),'invalid batch; no click');
-    assert(snapshot.windows?.some(w=>w.title===MENU.title),'unexpected before title; no click');
-    let observed;
-    // Cleanup is attempted even if arming only partially succeeds or PNG fails.
     try {
-      const armed=await send({action:'eval',code:arm(key,filename)});
-      assert.equal(armed.batch,batch,'batch changed before presentation; no click');
-      const png=await send({action:'png',path:filename});
-      assert(png.frozen===true && png.batch===batch && png.path===filename,
-        'invalid canonical PNG transaction; no click');
-      observed=await send({action:'eval',code:readback(key,filename)});
-      assert.equal(observed.batch,batch,'batch changed after presentation; no click');
-      assert.equal(observed.bytes,png.bytes,'PNG readback byte count changed; no click');
-      assert(observed.width===MENU.width && observed.height===MENU.height &&
-        observed.canvasWidth===MENU.width && observed.canvasHeight===MENU.height,
-        'wrong framebuffer dimensions; no click');
-      assert(Number.isInteger(MENU.x) && Number.isInteger(MENU.y) &&
-        MENU.x>=0 && MENU.x<observed.width && MENU.y>=0 && MENU.y<observed.height,
-        'click outside framebuffer; no click');
-      const [left,top,right,bottom]=MENU.startGameBounds;
-      assert(MENU.x>=left && MENU.x<right && MENU.y>=top && MENU.y<bottom,
-        'click outside inspected Start Game bounds; no click');
-      assert.equal(observed.pngSHA256,MENU.pngSHA256,
-        'before framebuffer differs from inspected menu; no click');
-    } catch(error) {
-      try { await send({action:'eval',code:cleanup(key,true)}); } catch(_) {}
-      throw error;
+      const snapshot=await send({action:'snapshot'});
+      assert(snapshot.frozen?.frozen===true && snapshot.frozen.credits===0 &&
+        snapshot.frozen.recording===false,'runner must be frozen and idle; no click');
+      const batch=snapshot.batch;
+      assert(Number.isSafeInteger(batch),'invalid batch; no click');
+      assert(snapshot.windows?.some(w=>w.title===MENU.title),'unexpected before title; no click');
+      let observed;
+      // Cleanup is attempted even if arming only partially succeeds or PNG fails.
+      try {
+        const armed=await send({action:'eval',code:arm(key,filename)});
+        assert.equal(armed.batch,batch,'batch changed before presentation; no click');
+        const png=await send({action:'png',path:filename});
+        assert(png.frozen===true && png.batch===batch && png.path===filename,
+          'invalid canonical PNG transaction; no click');
+        observed=await send({action:'eval',code:readback(key,filename)});
+        assert.equal(observed.batch,batch,'batch changed after presentation; no click');
+        assert.equal(observed.bytes,png.bytes,'PNG readback byte count changed; no click');
+        assert(observed.width===MENU.width && observed.height===MENU.height &&
+          observed.canvasWidth===MENU.width && observed.canvasHeight===MENU.height,
+          'wrong framebuffer dimensions; no click');
+        assert(Number.isInteger(MENU.x) && Number.isInteger(MENU.y) &&
+          MENU.x>=0 && MENU.x<observed.width && MENU.y>=0 && MENU.y<observed.height,
+          'click outside framebuffer; no click');
+        const [left,top,right,bottom]=MENU.startGameBounds;
+        assert(MENU.x>=left && MENU.x<right && MENU.y>=top && MENU.y<bottom,
+          'click outside inspected Start Game bounds; no click');
+        assert.equal(observed.pngSHA256,MENU.pngSHA256,
+          'before framebuffer differs from inspected menu; no click');
+      } catch(error) {
+        try { await send({action:'eval',code:cleanup(key,true)}); } catch(_) {}
+        throw error;
+      }
+      try {
+        assert.equal(await send({action:'eval',code:cleanup(key)}),true,'observer cleanup failed; no click');
+      // Atomic runner-owned validation and enqueue; stock runners reject the
+      // unknown action without input. Cleanup transport ambiguity never retries
+      // this operation. The controller remains consumed even on a lost reply.
+      // Once ask is invoked, a lost/invalid response cannot establish whether
+      // enqueue happened. Do not use the pre-dispatch no-click diagnostics here.
+      dispatched=true;
+      const response=await ask({action:ATOMIC_ACTION,key,batch});
+      assert(response && response.ok===true && Object.hasOwn(response,'value'),
+        'atomic response unavailable');
+      const queued=response.value;
+      assert(queued && queued.queued===true && queued.batch===batch,
+        'click queue acknowledgement invalid');
+      } catch(error) {
+        try { await send({action:'eval',code:cleanup(key,true)}); } catch(_) {}
+        throw error;
+      }
+      return {enqueueOutcome:'acknowledged',safety:observed,click:{x:MENU.x,y:MENU.y,batch,queued:true}};
+    } catch(cause) {
+      if(dispatched) {
+        const error=new Error('enqueue outcome unknown; controller consumed; do not retry', {cause});
+        error.code='ENIGMA_ENQUEUE_OUTCOME_UNKNOWN';
+        error.enqueueOutcome='unknown';
+        throw error;
+      }
+      cause.code='ENIGMA_NOT_DISPATCHED';
+      cause.enqueueOutcome='not-dispatched';
+      throw cause;
     }
-    try {
-      assert.equal(await send({action:'eval',code:cleanup(key)}),true,'observer cleanup failed; no click');
-    // Atomic runner-owned validation and enqueue; stock runners reject the
-    // unknown action without input. Cleanup transport ambiguity never retries
-    // this operation. The controller remains consumed even on a lost reply.
-    const queued=await send({action:ATOMIC_ACTION,key,batch});
-    assert(queued.queued===true && queued.batch===batch,'click queue acknowledgement invalid');
-    } catch(error) {
-      try { await send({action:'eval',code:cleanup(key,true)}); } catch(_) {}
-      throw error;
-    }
-    return {safety:observed,click:{x:MENU.x,y:MENU.y,batch,queued:true}};
   };
 }
 module.exports={MENU,createController,ATOMIC_ACTION,ATOMIC_BRANCH,wireRunner};

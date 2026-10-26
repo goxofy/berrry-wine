@@ -95,6 +95,7 @@ function fixture(options={}) {
         windows:[{title:options.wrongTitle?'Other screen':MENU.title}]};
       else if(command.action==='eval'){
         evalCount++;
+        if(options.cleanupError&&evalCount===3)return {ok:false,error:'cleanup rejected before dispatch'};
         if(options.evalError&&evalCount===2)return {ok:false,error:'mock eval error'};
         value=context.controlEval(command.code);
         if(evalCount===2&&options.badHash)value.pngSHA256='0'.repeat(64);
@@ -113,9 +114,20 @@ function fixture(options={}) {
 
         assert(events.includes('readback'),'readback before click');
         value=context.atomic(command);assert.equal(renderer.repaint,originalRepaint,'observer restored by atomic operation');clicks++;
+        if(options.lostThrow)throw Error('transport lost AFTER enqueue');
+        if(options.lostEnvelope)return {ok:false,error:'transport lost AFTER enqueue'};
+        if(options.missingEnvelope)return undefined;
+        if(options.missingValue)return {ok:true};
+        if(options.nullAck)return {ok:true,value:null};
+        if(options.malformedAck)return {ok:true,value:{queued:false,batch:tickState.batch}};
+        if(options.wrongAckBatch)return {ok:true,value:{queued:true,batch:tickState.batch+1}};
+        if(options.malformedEnvelope)return {ok:'true',value};
       }
       return {ok:true,value};
-    } catch(error){return {ok:false,error:error.message}}
+    } catch(error){
+      if(options.lostThrow&&clicks>0)throw error;
+      return {ok:false,error:error.message};
+    }
   };
   return {ask,events,context,renderer,originalRepaint,get clicks(){return clicks},
     run:createController(ask,'/owned/menu.png')};
@@ -123,6 +135,42 @@ function fixture(options={}) {
 let passes=0,rejections=0;
 async function test(name,fn){await fn();passes++;console.log('PASS '+name)}
 (async()=>{
+  // Final-outcome tests can run alone without replaying unchanged pixel groups.
+  for(const fault of ['lostEnvelope','lostThrow','missingEnvelope','missingValue',
+    'nullAck','malformedAck','wrongAckBatch','malformedEnvelope']) {
+    await test(fault+' after enqueue is unknown and consumed',async()=>{
+      const f=fixture({[fault]:true});
+      await assert.rejects(f.run(),e=>{
+        assert.equal(e.code,'ENIGMA_ENQUEUE_OUTCOME_UNKNOWN');
+        assert.equal(e.enqueueOutcome,'unknown');
+        assert.match(e.message,/enqueue outcome unknown/);
+        assert.doesNotMatch(e.message,/no click/i);return true;
+      });
+      assert.equal(f.clicks,1);assert.equal(f.renderer.repaint,f.originalRepaint);
+      assert.equal(f.events.filter(x=>x===ATOMIC_ACTION).length,1);
+      await assert.rejects(f.run(),/consumed/);assert.equal(f.clicks,1);
+    });
+  }
+  await test('known pre-dispatch cleanup rejection never invokes atomic action',async()=>{
+    const f=fixture({cleanupError:true});
+    await assert.rejects(f.run(),e=>{
+      assert.equal(e.enqueueOutcome,'not-dispatched');
+      assert.equal(e.code,'ENIGMA_NOT_DISPATCHED');return true;
+    });
+    assert.equal(f.clicks,0);assert(!f.events.includes(ATOMIC_ACTION));
+    assert.equal(f.renderer.repaint,f.originalRepaint);
+    await assert.rejects(f.run(),/consumed/);assert.equal(f.clicks,0);
+  });
+  await test('acknowledged enqueue is exactly once and consumed',async()=>{
+    const f=fixture(),r=await f.run();
+    assert.equal(r.enqueueOutcome,'acknowledged');assert.equal(r.click.queued,true);
+    assert.equal(r.click.batch,100000);assert.equal(f.clicks,1);
+    await assert.rejects(f.run(),/consumed/);assert.equal(f.clicks,1);
+    assert.equal(f.events.filter(x=>x===ATOMIC_ACTION).length,1);
+  });
+  if(process.argv.includes('--final-dispatch-only')) {
+    console.log(JSON.stringify({pass:passes,guestExecutions:0,group:'final-dispatch-only'}));return;
+  }
   await test('legacy lazy framebuffer rejects the unchanged inspected menu before click',async()=>{
     const f=fixture(),raw=f.context.controlEval(contract.legacyCode);
     assert.notEqual(raw.rgbaSHA256,sha(image.data));
