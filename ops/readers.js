@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
+const Module = require('node:module');
 const { createProcessObserver } = require('./processes');
 const { classifyCandidate } = require('./corpus-categories');
 const { inventory } = require('./corpus-inventory');
@@ -476,8 +477,15 @@ function createReader(options = {}) {
     try {
       const registryFile = await safeFile(inventoryRoot, 'lib/apps.js');
       if (registryFile) {
-        delete require.cache[require.resolve(registryFile)];
-        const registry = require(registryFile);
+        // Reload current inventory without attaching a new Module to this
+        // long-lived reader's children on every poll. Deleting require.cache
+        // alone leaves every old module (and its exports) resident there.
+        // An isolated CommonJS module also leaves other consumers' cache alone.
+        const registryModule = new Module(registryFile);
+        registryModule.filename = registryFile;
+        registryModule.paths = Module._nodeModulePaths(path.dirname(registryFile));
+        registryModule._compile(await readText(registryFile), registryFile);
+        const registry = registryModule.exports;
         let assessments = [];
         try { assessments = JSON.parse(await readText(path.join(root, 'ops/corpus-status.json'), MB)).entries || []; }
         catch (e) { if (e.code !== 'ENOENT') warnings.push(`Registry associations: ${e.message}`); }
