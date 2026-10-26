@@ -30,7 +30,7 @@ for (const [name, before, after, pattern] of mutations) {
       // Node's internal child test-runner context (which suppresses discovery).
       const env = { ...process.env, FILE_BUNDLE_INDEPENDENT_SOURCE: file };
       delete env.NODE_TEST_CONTEXT;
-      const run = spawnSync(process.execPath, ['--max-old-space-size=192', '--test',
+      const run = spawnSync(process.execPath, ['--max-old-space-size=16', '--test',
         `--test-name-pattern=${pattern}`, suite], {
         env,
         timeout: 15000, maxBuffer: 128 * 1024, encoding: 'utf8',

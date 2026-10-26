@@ -22,6 +22,10 @@ function harness(specs, cap = 11) {
     get(target, key) {
       if (['alloc', 'allocUnsafe', 'allocUnsafeSlow'].includes(key)) {
         return (length, ...args) => {
+          if (active !== null && specs[active].allocationLimit !== undefined) {
+            assert.ok(events.filter(e => e.kind === 'allocate' && e.file === active).length <
+              specs[active].allocationLimit, 'at most one allocation per chunk plus overflow probe');
+          }
           events.push({ kind: 'allocate', file: active, length });
           assert.ok(length <= Math.max(cap, 8), 'allocation exceeds total budget');
           return target[key](length, ...args);
@@ -145,7 +149,7 @@ test('remaining budget bounds allocation and actual IO after accepted and failed
 
 test('one-byte short reads retain one allocation per chunk, not per read', async () => {
   const cap = chunkSize + 7;
-  const h = harness({ one: { length: cap, short: 1 } }, cap);
+  const h = harness({ one: { length: cap, short: 1, allocationLimit: 3 } }, cap);
   const r = decode(await h.api.readBundle(['one'], f => f));
   assert.deepEqual(r.entries, [{ f: 'one', size: cap }]);
   assert.deepEqual(r.data[0], bytes(cap));
