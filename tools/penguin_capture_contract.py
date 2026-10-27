@@ -8,6 +8,7 @@ import argparse
 import base64
 import copy
 import ctypes
+import datetime
 import hashlib
 import json
 import os
@@ -310,6 +311,11 @@ def restore_images(plan, frames):
         parsed = json.loads(raw)
         require(not parsed['stdoutTruncated'] and not parsed['stderrTruncated'], 'truncated response')
         records.append(json.loads(parsed['stdout']))
+    return restore_records(plan, records), charged
+
+
+def restore_records(plan, records):
+    """Shared bounded lossless decoder, independent of response framing."""
     require(records[0]['kind'] == 'manifest' and records[-1] ==
             dict(kind='end', images=len(plan['images'])), 'incomplete stream')
     cursor = 1
@@ -329,7 +335,201 @@ def restore_images(plan, frames):
                 len(data) == image['size'] and sha(data) == image['sha256'], 'lossless PNG verification failed')
         restored.append(data)
     require(cursor == len(records)-1, 'extra chunks')
-    return restored, charged
+    return restored
+
+
+# Boat's serialized exec response is variable, unlike DEFAULT_ENVELOPE. These
+# are the supported full response fields, not an invitation to ignore metadata.
+PROVIDER_FIELDS = frozenset(('commandId', 'cwd', 'exitCode', 'finishedAt',
+    'launcherFailed', 'noticedMs', 'oomKilled', 'signal', 'startMs', 'startedAt',
+    'stderr', 'stderrTruncated', 'stdout', 'stdoutTruncated', 'success', 'timedOut'))
+
+
+def strict_json(raw):
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            require(key not in result, 'duplicate JSON field')
+            result[key] = value
+        return result
+    def constant(value):
+        raise ContractError('nonfinite JSON value')
+    try:
+        if type(raw) is bytes:
+            raw = raw.decode('utf-8')
+        return json.loads(raw, object_pairs_hook=pairs, parse_constant=constant)
+    except (ValueError, UnicodeError, RecursionError) as exc:
+        raise ContractError('malformed JSON: ' + str(exc)[:160]) from exc
+
+
+def provider_stdout(raw, overhead_limit):
+    """Validate a successful, complete Boat exec envelope; return record text.
+
+    overhead includes ALL bytes beyond the canonical JSON string for stdout:
+    provider metadata, field names, whitespace, and alternate escaping. Only
+    capacity estimation uses that canonical string; charging always uses raw.
+    """
+    p = strict_json(raw)
+    exact_keys(p, PROVIDER_FIELDS)
+    for key, ceiling in (('commandId', 128), ('cwd', 1024)):
+        require(type(p[key]) is str and 0 < len(p[key]) <= ceiling and
+                all(ord(ch) >= 32 and ord(ch) != 127 for ch in p[key]),
+                'invalid provider ' + key)
+    times = []
+    for key in ('startedAt', 'finishedAt'):
+        value = p[key]
+        require(type(value) is str and len(value) == 24 and value.endswith('Z'),
+                'invalid provider timestamp')
+        try:
+            stamp = datetime.datetime.strptime(value, '%Y-%m-%dT%H:%M:%S.%fZ')
+        except ValueError as exc:
+            raise ContractError('invalid provider timestamp') from exc
+        times.append(stamp)
+    require(times[1] >= times[0], 'reversed provider timestamps')
+    for key in ('startMs', 'noticedMs'):
+        require(type(p[key]) is int and 0 <= p[key] <= (1 << 53)-1,
+                'invalid provider timing')
+    require(type(p['exitCode']) is int and p['exitCode'] == 0 and p['signal'] is None,
+            'provider command failed')
+    for key in ('launcherFailed', 'oomKilled', 'stderrTruncated',
+                'stdoutTruncated', 'timedOut', 'success'):
+        require(type(p[key]) is bool and p[key] == (key == 'success'),
+                'provider failure/truncation: ' + key)
+    require(type(p['stdout']) is str and p['stderr'] == '' and type(p['stderr']) is str,
+            'invalid provider streams')
+    require(len(raw)-len(wire(p['stdout'])) <= overhead_limit, 'provider framing reserve overflow')
+    return p['stdout']
+
+
+def plan_provider_images(paths, *, used, tail_reserve=0, chunk_bytes=8192,
+                         envelope_overhead=1024):
+    """Conservative full-envelope plan; legacy deterministic API stays exact.
+
+    used is the byte total of every earlier raw API response. tail_reserve
+    reserves all additional non-capture responses, consumed by account().
+    Every capture reserves its canonical stdout JSON string plus a bounded
+    variable envelope. A larger legal envelope needs a new admitted plan.
+    """
+    require(type(envelope_overhead) is int and 1 <= envelope_overhead <= 8192,
+            'invalid provider framing bound')
+    canonical = plan_images(paths, used=used, tail_reserve=tail_reserve,
+                            chunk_bytes=chunk_bytes)
+    names = [i['name'] for i in canonical['images']]
+    require(len(set(names)) == len(names), 'duplicate PNG name')
+    records = [strict_json(strict_json(f)['stdout']) for f in canonical['frames']]
+    bounds = [len(wire(strict_json(f)['stdout'])) + envelope_overhead
+              for f in canonical['frames']]
+    total = used + sum(bounds) + tail_reserve
+    require(total <= API_BYTES, 'UNSUPPORTED_PLAN: provider framing + used + tail exceeds API budget')
+    return dict(canonical=canonical, records=records, frame_limits=bounds,
+                envelope_overhead=envelope_overhead, used=used,
+                tail_reserve=tail_reserve, serialized_bytes_limit=sum(bounds), total=total)
+
+
+class ProviderCapture:
+    """One chronological raw-response ledger; rejection poisons this collector.
+
+    accept() consumes a capture response. account() consumes every other API
+    response, including failed requests, polls and metadata, without treating
+    their stdout as image data. Never pass a response to both methods. No PNG
+    bytes are exposed until finish() validates the entire lossless stream.
+    """
+    def __init__(self, plan):
+        self.plan = copy.deepcopy(plan)
+        self.charged = plan['used']
+        self.tail = plan['tail_reserve']
+        self.cursor = 0
+        self.records = []
+        self.failed = False
+        self.finished = False
+
+    def _consume(self, raw, capture):
+        require(not self.failed and not self.finished, 'collector is closed')
+        try:
+            require(type(raw) is bytes, 'original serialized response bytes required')
+            # Charge before ANY parsing, including rejected/error responses.
+            self.charged += len(raw)
+            require(self.charged <= API_BYTES, 'cumulative API budget')
+            p = self.plan
+            if capture:
+                require(self.cursor < len(p['records']), 'extra capture response')
+                require(len(raw) <= p['frame_limits'][self.cursor], 'provider framing reserve overflow')
+                record = strict_json(provider_stdout(raw, p['envelope_overhead']))
+                require(wire(record) == wire(p['records'][self.cursor]),
+                        'manifest/chunk/end identity or order mismatch')
+                self.records.append(record)
+                self.cursor += 1
+            else:
+                # Actual non-capture bytes spend, rather than duplicate, the
+                # reserved tail. Any excess must fit unused capture capacity.
+                self.tail = max(0, self.tail-len(raw))
+            require(self.charged + sum(p['frame_limits'][self.cursor:]) + self.tail <= API_BYTES,
+                    'remaining capture/tail reserve exceeds API budget')
+        except (ContractError, ValueError, TypeError, OverflowError, RecursionError) as exc:
+            self.failed = True
+            raise ContractError(str(exc)) from exc
+
+    def account(self, raw):
+        self._consume(raw, False)
+
+    def accept(self, raw):
+        self._consume(raw, True)
+
+    def finish(self):
+        require(not self.failed and not self.finished, 'collector is closed')
+        try:
+            require(self.cursor == len(self.plan['records']), 'incomplete capture stream')
+            # Decode the actual accepted records with the existing bounded
+            # base64/zlib EOF/size/hash checks. The raw ledger is independent.
+            images = restore_records(self.plan['canonical'], self.records)
+        except (ContractError, ValueError, zlib.error) as exc:
+            self.failed = True
+            raise ContractError(str(exc)) from exc
+        self.finished = True
+        return images, self.charged
+
+
+def restore_provider_transcript(paths, transcript_path, output, *, used,
+                                tail_reserve=0, envelope_overhead=1024):
+    """Production offline CLI boundary: raw files, explicit ordered disposition.
+
+    Transcript is [{"kind":"capture"|"account", "path":"raw-response.json"}].
+    Paths are relative to the transcript. Output directory must be new. All
+    validation precedes atomic directory publication; rejection publishes none.
+    """
+    import shutil
+    import tempfile
+    transcript_path = Path(transcript_path)
+    require(transcript_path.stat().st_size <= API_BYTES, 'transcript size cap')
+    transcript = strict_json(transcript_path.read_bytes())
+    require(type(transcript) is list and len(transcript) <= 4096, 'transcript count cap')
+    plan = plan_provider_images(paths, used=used, tail_reserve=tail_reserve,
+                                envelope_overhead=envelope_overhead)
+    capture = ProviderCapture(plan)
+    for entry in transcript:
+        exact_keys(entry, ('kind', 'path'))
+        require(entry['kind'] in ('capture', 'account') and type(entry['path']) is str,
+                'invalid transcript entry')
+        source = transcript_path.parent / entry['path']
+        require(source.stat().st_size <= API_BYTES, 'response file exceeds API cap')
+        raw = source.read_bytes()
+        if entry['kind'] == 'capture':
+            capture.accept(raw)
+        else:
+            capture.account(raw)
+    images, charged = capture.finish()
+    out = Path(output)
+    require(not out.exists(), 'output must be new')
+    stage = Path(tempfile.mkdtemp(prefix='.'+out.name+'-', dir=out.parent))
+    try:
+        for image, data in zip(plan['canonical']['images'], images):
+            (stage / image['name']).write_bytes(data)
+        stage.rename(out)
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+    return dict(status='PASS_LOSSLESS_OFFLINE_TRANSPORT', charged=charged,
+                tail_remaining=capture.tail, images=plan['canonical']['images'])
 
 
 def main():
@@ -340,11 +540,21 @@ def main():
     t = sub.add_parser('plan')
     t.add_argument('png', nargs='+'); t.add_argument('--used', required=True, type=int)
     t.add_argument('--tail-reserve', required=True, type=int)
+    p = sub.add_parser('restore-provider')
+    p.add_argument('png', nargs='+')
+    p.add_argument('--transcript', required=True)
+    p.add_argument('--output', required=True)
+    p.add_argument('--used', required=True, type=int)
+    p.add_argument('--tail-reserve', required=True, type=int)
+    p.add_argument('--envelope-overhead', type=int, default=1024)
     a = parser.parse_args()
     try:
         if a.command == 'supervise':
             result = supervise(a.profile, a.sha256, a.output)
             print(json.dumps(dict(status=result['status'], guest_starts=result['guest_starts'])))
+        elif a.command == 'restore-provider':
+            print(json.dumps(restore_provider_transcript(a.png, a.transcript, a.output,
+                used=a.used, tail_reserve=a.tail_reserve, envelope_overhead=a.envelope_overhead)))
         else:
             p = plan_images(a.png, used=a.used, tail_reserve=a.tail_reserve)
             print(json.dumps({k: v for k, v in p.items() if k not in ('frames', 'envelope')}))

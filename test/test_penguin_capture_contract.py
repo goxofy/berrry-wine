@@ -1,5 +1,6 @@
 """Bounded offline tests; never invokes Node, a guest, network, or Boat."""
 import base64
+import copy
 import importlib.util
 import json
 import os
@@ -213,6 +214,224 @@ class TransportTests(unittest.TestCase):
             with self.assertRaises(c.ContractError):c.plan_images(IMAGES,used=0,chunk_bytes=chunk)
         with self.assertRaisesRegex(c.ContractError,'response count cap before encoding'):
             c.plan_images(IMAGES,used=0,chunk_bytes=1)
+
+
+class ProviderTransportTests(unittest.TestCase):
+    """Genuine envelope shape; all PNG traffic below is deterministic offline data."""
+    FIXTURE = MODULE.parent.parent / 'test/fixtures/penguin-wire-envelope.json'
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(dir=MODULE.parent.parent/'test')
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.png = self.root/'fixture.png'
+        self.original = b'\x89PNG\r\n\x1a\n' + bytes(range(256))*4
+        self.png.write_bytes(self.original)
+        self.raw = self.FIXTURE.read_bytes()
+        self.assertEqual(c.sha(self.raw), '30df71f26400cd565268c22c9a42ea159233c50ed5ee2069375a53f84a5b4066')
+        self.envelope = json.loads(self.raw)
+        self.assertEqual(self.envelope['stdout'], 'delivered\n')
+
+    def frames(self, plan, *, reverse=False):
+        frames = []
+        for i, record in enumerate(plan['records']):
+            env = dict(self.envelope, stdout=c.wire(record).decode()+'\n',
+                       commandId='cmd_offline_'+str(i), startMs=i, noticedMs=i+1)
+            if reverse:
+                env = dict(reversed(list(env.items())))
+            frames.append(json.dumps(env, indent=1 if reverse else None).encode())
+        return frames
+
+    def test_original_defect_and_dynamic_full_envelope_repair(self):
+        legacy = c.plan_images([self.png], used=len(self.raw))
+        p = c.plan_provider_images([self.png], used=len(self.raw), tail_reserve=333)
+        frames = self.frames(p, reverse=True)
+        with self.assertRaisesRegex(c.ContractError, 'framing'):
+            c.restore_images(legacy, frames)
+        capture = c.ProviderCapture(p)
+        # Actual historical acknowledgment is charged; it is not an image record.
+        capture.account(self.raw)
+        for raw in frames:
+            capture.accept(raw)
+        restored, charged = capture.finish()
+        self.assertEqual(restored, [self.original])
+        self.assertEqual(charged, 2*len(self.raw)+sum(map(len, frames)))
+        self.assertNotEqual(charged, legacy['serialized_bytes'])
+        self.assertEqual(capture.tail, 0)
+        with self.assertRaises(c.ContractError):
+            capture.accept(frames[-1])
+
+    def test_worst_case_serialization_exact_remaining_and_tail_budget(self):
+        p = c.plan_provider_images([self.png], used=0, tail_reserve=17)
+        used = c.API_BYTES-p['total']
+        p = c.plan_provider_images([self.png], used=used, tail_reserve=17)
+        self.assertEqual(p['total'], c.API_BYTES)
+        frames = [raw+b' '*(bound-len(raw))
+                  for raw, bound in zip(self.frames(p), p['frame_limits'])]
+        capture = c.ProviderCapture(p)
+        # Failed/poll bodies can be arbitrary bytes; account without parsing them.
+        capture.account(b'failed poll body')
+        capture.account(b'?')
+        for raw in frames:
+            capture.accept(raw)
+        restored, charged = capture.finish()
+        self.assertEqual(restored, [self.original])
+        self.assertEqual(charged, c.API_BYTES)
+        for kwargs in (dict(used=used+1, tail_reserve=17),
+                       dict(used=used, tail_reserve=18)):
+            with self.assertRaisesRegex(c.ContractError, 'UNSUPPORTED_PLAN'):
+                c.plan_provider_images([self.png], **kwargs)
+        capture = c.ProviderCapture(p)
+        with self.assertRaisesRegex(c.ContractError, 'reserve'):
+            capture.account(b'x'*18)
+        self.assertEqual(capture.charged, used+18)
+        with self.assertRaises(c.ContractError):
+            capture.finish()
+
+    def test_maximum_metadata_and_utf8_serialization(self):
+        p = c.plan_provider_images([self.png], used=0, envelope_overhead=8192)
+        self.envelope.update(cwd='é'*1024, commandId='x'*128,
+                             startMs=(1 << 53)-1, noticedMs=(1 << 53)-1)
+        for ascii_escapes in (True, False):
+            capture = c.ProviderCapture(p)
+            raw_frames = []
+            for record in p['records']:
+                env = dict(self.envelope, stdout=c.wire(record).decode()+'\n')
+                raw = json.dumps(dict(reversed(list(env.items()))),
+                                 ensure_ascii=ascii_escapes).encode('utf-8')
+                capture.accept(raw); raw_frames.append(raw)
+            restored, charged = capture.finish()
+            self.assertEqual(restored, [self.original])
+            self.assertEqual(charged, sum(map(len, raw_frames)))
+
+    def test_retained_large_pngs_need_more_than_full_envelope_budget(self):
+        # Legacy canonical-only independent roundtrips are not provider plans.
+        # No reset, dropped framing or cap increase can qualify these captures.
+        for path, pin in zip(IMAGES, PINS):
+            self.assertEqual(c.sha(path.read_bytes()), pin)
+            with self.subTest(image=path.name), self.assertRaisesRegex(c.ContractError, 'UNSUPPORTED_PLAN'):
+                c.plan_provider_images([path], used=len(self.raw), tail_reserve=256)
+
+    def test_reject_metadata_status_schema_and_charge_original_once(self):
+        p = c.plan_provider_images([self.png], used=7)
+        frames = self.frames(p)
+        mutations = [dict(extra='unsupported'), dict(commandId='x'*129),
+            dict(cwd='x'*1025), dict(commandId='bad\n'), dict(cwd=None),
+            dict(exitCode=True), dict(exitCode=1), dict(signal='SIGTERM'),
+            dict(success=False), dict(success=1), dict(launcherFailed=True),
+            dict(oomKilled=True), dict(timedOut=True), dict(stdoutTruncated=True),
+            dict(stderrTruncated=True), dict(stderr='warning'), dict(stdout=4),
+            dict(startMs=True), dict(noticedMs=-1), dict(startMs=1 << 53),
+            dict(finishedAt=None), dict(startedAt='2026-99-99T00:00:00.000Z'),
+            dict(finishedAt='2000-01-01T00:00:00.000Z')]
+        invalid = [json.dumps(dict(json.loads(frames[0]), **m)).encode() for m in mutations]
+        missing = json.loads(frames[0]); del missing['cwd']
+        invalid += [c.wire(missing), b'{', b'[]', b'\xff',
+                    frames[0][:-1]+b',"success":true}',
+                    frames[0]+b' '*8192, self.raw]
+        for raw in invalid:
+            with self.subTest(raw=raw[:64]):
+                capture = c.ProviderCapture(p)
+                with self.assertRaises(c.ContractError):
+                    capture.accept(raw)
+                self.assertEqual(capture.charged, 7+len(raw))
+                self.assertTrue(capture.failed)
+                with self.assertRaises(c.ContractError):
+                    capture.finish()
+
+    def test_reject_missing_duplicate_reordered_corrupt_and_extra_records(self):
+        p = c.plan_provider_images([self.png], used=0, chunk_bytes=32)
+        frames = self.frames(p)
+        altered = []
+        for key, value in (('data', '!!!'), ('data', 'AAAA'), ('image', 1),
+                           ('index', True), ('index', 100), ('kind', 'end')):
+            e = json.loads(frames[1]); r = json.loads(e['stdout']); r[key] = value
+            e['stdout'] = json.dumps(r); altered.append([frames[0], c.wire(e), *frames[2:]])
+        for index in (0, len(frames)-1):
+            e = json.loads(frames[index]); r = json.loads(e['stdout']); r['extra'] = 1
+            e['stdout'] = json.dumps(r)
+            case = list(frames); case[index] = c.wire(e); altered.append(case)
+        altered += [frames[:-1], [frames[0], frames[2], frames[1], *frames[3:]],
+                    [frames[0], frames[1], frames[1], *frames[2:]], frames+[frames[-1]]]
+        for case in altered:
+            with self.subTest(length=len(case)):
+                capture = c.ProviderCapture(p)
+                with self.assertRaises(c.ContractError):
+                    for raw in case:
+                        capture.accept(raw)
+                    capture.finish()
+
+    def test_zlib_eof_trailing_bounds_size_and_hash_still_enforced(self):
+        p = c.plan_provider_images([self.png], used=0)
+        for mode in ('eof', 'trailing', 'bomb', 'size', 'hash'):
+            bad = copy.deepcopy(p)
+            image = bad['canonical']['images'][0]
+            packed = zlib.compress(self.original)
+            if mode == 'eof': packed = packed[:-1]
+            if mode == 'trailing': packed += b'x'
+            if mode == 'bomb': packed = zlib.compress(b'x'*(c.PNG_BYTES+1))
+            if mode == 'size': image['size'] += 1
+            if mode == 'hash': image['sha256'] = '0'*64
+            # Trusted-plan corruption control reaches legacy decompression checks.
+            image['compressed'] = len(packed)
+            bad['records'][1]['data'] = base64.b64encode(packed).decode()
+            bad['canonical']['frames'] = tuple(c.response(r, c.DEFAULT_ENVELOPE)
+                                                for r in bad['records'])
+            bad['frame_limits'] = [len(f)+8192 for f in bad['canonical']['frames']]
+            bad['envelope_overhead'] = 8192
+            capture = c.ProviderCapture(bad)
+            for raw in self.frames(bad):
+                capture.accept(raw)
+            with self.subTest(mode=mode), self.assertRaisesRegex(c.ContractError, 'lossless'):
+                capture.finish()
+
+    def test_real_cli_transcript_full_envelope_and_no_partial_publication(self):
+        p = c.plan_provider_images([self.png], used=0, tail_reserve=len(self.raw))
+        frames = self.frames(p, reverse=True)
+        entries = [dict(kind='account', path=str(self.FIXTURE))]
+        for i, raw in enumerate(frames):
+            (self.root/f'{i}.json').write_bytes(raw)
+            entries.append(dict(kind='capture', path=f'{i}.json'))
+        transcript = self.root/'transcript.json'; transcript.write_bytes(c.wire(entries))
+        out = self.root/'restored'
+        argv = [sys.executable, '-B', str(MODULE), 'restore-provider', str(self.png),
+                '--transcript', str(transcript), '--output', str(out), '--used', '0',
+                '--tail-reserve', str(len(self.raw))]
+        r = subprocess.run(argv, capture_output=True, timeout=10)
+        self.assertEqual(r.returncode, 0, r.stdout+r.stderr)
+        receipt = json.loads(r.stdout)
+        self.assertEqual(receipt['charged'], len(self.raw)+sum(map(len, frames)))
+        self.assertEqual((out/self.png.name).read_bytes(), self.original)
+        if EVIDENCE:
+            retained = Path(EVIDENCE)/'cli-fixture'
+            retained.mkdir(parents=True, exist_ok=True)
+            (retained/self.png.name).write_bytes(self.original)
+            (retained/'ack.json').write_bytes(self.raw)
+            reproduction = [dict(kind='account', path='ack.json')]
+            for i, raw in enumerate(frames):
+                (retained/f'{i}.json').write_bytes(raw)
+                reproduction.append(dict(kind='capture', path=f'{i}.json'))
+            (retained/'transcript.json').write_bytes(c.wire(reproduction))
+        for mode in ('corrupt', 'missing', 'overflow', 'framing'):
+            transcript.write_bytes(c.wire(entries))
+            for i, raw in enumerate(frames):
+                (self.root/f'{i}.json').write_bytes(raw)
+            argv[argv.index('--used')+1] = '0'
+            if mode == 'corrupt': (self.root/'1.json').write_bytes(b'{}')
+            if mode == 'missing': transcript.write_bytes(c.wire(entries[:-1]))
+            if mode == 'overflow': argv[argv.index('--used')+1] = str(c.API_BYTES)
+            if mode == 'framing':
+                (self.root/'1.json').write_bytes(frames[1]+b' '*8192)
+            rejected = self.root/('rejected-'+mode)
+            argv[argv.index('--output')+1] = str(rejected)
+            r = subprocess.run(argv, capture_output=True, timeout=10)
+            self.assertEqual(r.returncode, 2, r.stdout+r.stderr)
+            self.assertFalse(rejected.exists())
+            self.assertFalse(list(self.root.glob('.rejected-*')))
+        retain('provider-transport.json', dict(offlineOnly=True,
+            genuineEnvelopeSHA256=c.sha(self.raw), genuineStdout='delivered',
+            syntheticPNGHash=c.sha(self.original), result=receipt,
+            rawResponseBytes=len(self.raw)+sum(map(len, frames))))
 
 
 if __name__=='__main__':
