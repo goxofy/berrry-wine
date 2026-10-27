@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serial Airstrike observation adapter for the pinned, unchanged Controller.
+"""Serial Airstrike observation adapter for the hash-pinned Controller.
 
 This replaces the historical parent bridge, not the accepted controller CLI.
 External inspection is an observation phase. Only after inspection completes
@@ -25,7 +25,7 @@ import subprocess
 import time
 import uuid
 
-CONTROLLER_SHA256 = 'e96344c2a89dba87c28eba0aba9cd3ea5b400cc0245734b2bbc9248e110e7ebb'
+CONTROLLER_SHA256 = 'c4fb61b1ad21e22d5fe744e8ce55461246e6c5c8cead2b63a979732b2b25aa6d'
 RESPONSE_SECONDS = 10
 GUEST_SECONDS = 120
 WALL_SECONDS = 150
@@ -171,13 +171,16 @@ class Bridge:
         return {'ack': result}
 
     def request(self, action, deadline=None, **values):
+        return self.request_ack(action, deadline, **values)['value']
+
+    def request_ack(self, action, deadline=None, **values):
         if deadline is not None and time.monotonic() >= deadline:
             raise Stop('freshness exceeded ten-second response window')
         self.serial += 1
         cmd = dict(id='bridge-'+str(self.serial), action=action, **values)
         self.write(cmd)
         return self.ack(cmd, min(deadline or time.monotonic()+RESPONSE_SECONDS,
-                                 self.guest_deadline))['ack']['value']
+                                 self.guest_deadline))['ack']
 
     @staticmethod
     def focus(snapshot):
@@ -226,7 +229,7 @@ class Bridge:
         if (any(value.get(k) != request[k] for k in ('session', 'token', 'sha256', 'after'))
                 or value.get('observation', {}).get('after') != self.after):
             raise Stop('stale/unmatched factual observation')
-        # Start the unchanged ten-second budget AFTER the slow external phase.
+        # Start the ten-second budget AFTER the slow external phase.
         self.response_deadline = min(time.monotonic()+RESPONSE_SECONDS, self.guest_deadline)
         self.event('response-start', token=token, seconds=RESPONSE_SECONDS)
         self.reviewed_capture = (token, captured)
@@ -248,11 +251,16 @@ class Bridge:
             if fresh['sha256'] != captured['sha256'] or fresh['focus'] != captured['focus']:
                 raise Stop('reviewed image/focus no longer current; no input')
             self.reviewed_capture = None
-        elif self.focus(self.request('snapshot', self.response_deadline)) != self.expected_focus:
-            raise Stop('focus changed before input')
+            before = fresh['snapshot']
+        else:
+            before = self.request('snapshot', self.response_deadline)
+            if self.focus(before) != self.expected_focus:
+                raise Stop('focus changed before input')
         if time.monotonic() >= self.response_deadline:
             raise Stop('expired observation dispatch lease')
         self.command = cmd
+        self.dispatch_snapshot = before
+        self.input_log_start = len(self.logs['stdout'])
         self.activated = self.activated or cmd['cmd'] == 'keydown:13'
         self.write(cmd)
 
@@ -261,6 +269,8 @@ class Bridge:
             cmd, self.command = self.command, None
             value = self.ack(cmd, min(time.monotonic()+RESPONSE_SECONDS, self.guest_deadline),
                              terminal_ok=self.activated)
+            if value.get('ack', {}).get('value', {}).get('queued') is True:
+                value = self.complete_frozen(cmd, value)
             if 'ack' in value and cmd['cmd'].startswith('keyup:'):
                 self.after = cmd['id']
             return value
@@ -272,6 +282,38 @@ class Bridge:
                     raise Stop('terminal response deadline')
             return {'terminal': self.finish_terminal()}
         return self.observation()
+
+    def complete_frozen(self, cmd, value):
+        """One serial batch; retain original ACKs and actual stdout, never replay."""
+        queued = value['ack']['value']
+        before = self.dispatch_snapshot
+        if (type(queued.get('batch')) is not int
+                or queued['batch'] != before.get('batch')
+                or before.get('frozen', {}).get('frozen') is not True
+                or before['frozen'].get('credits') != 0):
+            raise Stop('queued input lacks a frozen-zero dispatch boundary; no replay')
+        deadline = min(self.response_deadline, self.guest_deadline)
+        step = self.request_ack('step', deadline, n=1)
+        done = step['value']
+        if (done.get('ran') != 1 or done.get('steps') != 1
+                or done.get('frozen') is not True
+                or done.get('batch') != queued['batch'] + 1):
+            raise Stop('partial/unmatched step completion; no replay')
+        snapshot = self.request_ack('snapshot', deadline)
+        state = snapshot['value']
+        if (state.get('batch') != done['batch']
+                or state.get('frozen', {}).get('frozen') is not True
+                or state['frozen'].get('credits') != 0):
+            raise Stop('step lacks matching frozen-zero snapshot; no replay')
+        lines = bytes(self.logs['stdout'][self.input_log_start:]).decode(errors='replace').splitlines()
+        action, vk = cmd['cmd'].split(':')
+        expected = f'[input] {action} vk={vk} at batch {queued["batch"]}'
+        if lines.count(expected) != 1:
+            raise Stop('missing/ambiguous actual input execution log; no replay')
+        completion = dict(inputId=cmd['id'], step=step, snapshot=snapshot,
+                          logs=[line for line in lines if line.startswith('[input] ')])
+        self.event('frozen-input-complete', inputAck=value['ack'], **completion)
+        return dict(value, completion=completion)
 
     def group(self):
         result = []
