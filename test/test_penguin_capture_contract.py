@@ -649,5 +649,186 @@ class ProviderTransportTests(unittest.TestCase):
             rawResponseBytes=len(self.raw)+sum(map(len, frames))))
 
 
+class ExplicitBudgetTests(unittest.TestCase):
+    """Fresh offline profiles only; retained PNGs provide no new gameplay proof."""
+    FIXTURE = ProviderTransportTests.FIXTURE
+    setUp = ProviderTransportTests.setUp
+    frames = ProviderTransportTests.frames
+
+    def test_exact_and_one_byte_over_both_planners_and_profiles(self):
+        for budget in (c.API_BYTES, c.MAX_CAPTURE_BYTES):
+            for planner in (c.plan_images, c.plan_provider_images):
+                with self.subTest(budget=budget, planner=planner.__name__):
+                    p = planner([self.png], used=0, tail_reserve=17, capture_budget=budget)
+                    used = budget-p['total']
+                    exact = planner([self.png], used=used, tail_reserve=17, capture_budget=budget)
+                    self.assertEqual(exact['total'], budget)
+                    self.assertEqual(exact['capture_budget'], budget)
+                    for kwargs in (dict(used=used+1, tail_reserve=17),
+                                   dict(used=used, tail_reserve=18)):
+                        with self.assertRaisesRegex(c.ContractError, 'UNSUPPORTED_PLAN'):
+                            planner([self.png], capture_budget=budget, **kwargs)
+                    if planner is c.plan_images:
+                        images, charged = c.restore_images(exact, exact['frames'], capture_budget=budget)
+                        self.assertEqual(images, [self.original])
+                        self.assertEqual(charged+17, budget)
+                        with self.assertRaisesRegex(c.ContractError, 'cumulative'):
+                            c.restore_images(exact, [exact['frames'][0]+b' ', *exact['frames'][1:]])
+                    else:
+                        frames = [r+b' '*(bound-len(r)) for r,bound in
+                                  zip(self.frames(exact), exact['frame_limits'])]
+                        capture = c.ProviderCapture(exact, capture_budget=budget)
+                        capture.account(b'poll/error bytes!') # exactly 17 bytes
+                        for raw in frames: capture.accept(raw)
+                        images, charged = capture.finish()
+                        self.assertEqual(images, [self.original])
+                        self.assertEqual(charged, budget)
+                        self.assertEqual(capture.tail, 0)
+
+    def test_invalid_profiles_and_default_stability(self):
+        self.assertEqual(c.API_BYTES, 1<<20)
+        for value in (True, False, -1, 0, (8<<20)+1, 1.0, '8388608', None):
+            for planner in (c.plan_images, c.plan_provider_images):
+                with self.subTest(value=value, planner=planner.__name__), self.assertRaises(c.ContractError):
+                    planner([self.png], used=0, capture_budget=value)
+        for budget in (1, 1234567, c.MAX_CAPTURE_BYTES):
+            if budget == 1:
+                with self.assertRaisesRegex(c.ContractError, 'UNSUPPORTED_PLAN'):
+                    c.plan_images([self.png], used=0, capture_budget=budget)
+            else:
+                self.assertEqual(c.plan_images([self.png], used=0, capture_budget=budget)['capture_budget'],budget)
+        default = c.plan_provider_images([self.png], used=0)
+        self.assertEqual(default['capture_budget'], 1<<20)
+        # A larger profile never rewrites the historical default for the next plan.
+        c.plan_provider_images([self.png], used=0, capture_budget=c.MAX_CAPTURE_BYTES)
+        self.assertEqual(c.plan_provider_images([self.png], used=0)['capture_budget'], 1<<20)
+
+    def test_plan_pins_mismatch_and_collector_cannot_upgrade_midstream(self):
+        for budget in (c.API_BYTES, c.MAX_CAPTURE_BYTES):
+            p = c.plan_provider_images([self.png], used=0, capture_budget=budget)
+            other = c.MAX_CAPTURE_BYTES if budget==c.API_BYTES else c.API_BYTES
+            with self.assertRaisesRegex(c.ContractError, 'mismatch'):
+                c.ProviderCapture(p, capture_budget=other)
+            for target in ('outer', 'canonical'):
+                bad = copy.deepcopy(p)
+                node = bad if target=='outer' else bad['canonical']
+                node['capture_budget'] = other
+                with self.assertRaisesRegex(c.ContractError, 'mismatch'): c.ProviderCapture(bad)
+                with self.assertRaisesRegex(c.ContractError, 'mismatch'):
+                    c.plan_budget(node)
+                if target=='canonical':
+                    with self.assertRaisesRegex(c.ContractError, 'mismatch'):
+                        c.restore_images(node, node['frames'])
+            with self.assertRaises(AttributeError): p._capture_budget = other
+            with self.assertRaisesRegex(c.ContractError,'already pinned'):
+                p.__init__(capture_budget=other)
+            capture = c.ProviderCapture(p)
+            with self.assertRaises(AttributeError): capture.capture_budget = other
+            frames = self.frames(p)
+            capture.accept(frames[0])
+            # Caller mutation cannot change the snapshot or collector budget.
+            p['capture_budget'] = other
+            self.assertEqual(capture.capture_budget, budget)
+            capture.plan['capture_budget'] = other
+            with self.assertRaisesRegex(c.ContractError, 'mismatch'): capture.accept(frames[1])
+            self.assertEqual(capture.charged,len(frames[0])+len(frames[1]))
+            self.assertTrue(capture.failed)
+            with self.assertRaises(c.ContractError): capture.finish()
+
+    def test_used_reserves_poll_overflow_and_late_error_poison_both_profiles(self):
+        for budget in (c.API_BYTES, c.MAX_CAPTURE_BYTES):
+            base = c.plan_provider_images([self.png], used=0, tail_reserve=17, capture_budget=budget)
+            used = budget-base['total']
+            p = c.plan_provider_images([self.png], used=used, tail_reserve=17, capture_budget=budget)
+            frames = [r+b' '*(bound-len(r)) for r,bound in zip(self.frames(p),p['frame_limits'])]
+            capture = c.ProviderCapture(p)
+            with self.assertRaisesRegex(c.ContractError, 'reserve'): capture.account(b'x'*18)
+            self.assertEqual(capture.charged,used+18)
+            with self.assertRaises(c.ContractError): capture.accept(frames[0])
+            capture = c.ProviderCapture(p)
+            for raw in frames[:-1]: capture.accept(raw)
+            malformed = b'{}'
+            with self.assertRaises(c.ContractError): capture.accept(malformed)
+            self.assertEqual(capture.charged,used+sum(map(len,frames[:-1]))+len(malformed))
+            with self.assertRaises(c.ContractError): capture.finish()
+            # A full valid stream still cannot make extra non-capture bytes free.
+            capture = c.ProviderCapture(p)
+            for raw in frames: capture.accept(raw)
+            capture.account(b'x'*17)
+            with self.assertRaisesRegex(c.ContractError,'cumulative'): capture.account(b'?')
+            self.assertEqual(capture.charged,budget+1)
+            with self.assertRaises(c.ContractError): capture.finish()
+
+    def test_finish_budget_tamper_poisoning(self):
+        p=c.plan_provider_images([self.png], used=0, capture_budget=c.MAX_CAPTURE_BYTES)
+        capture=c.ProviderCapture(p)
+        for raw in self.frames(p): capture.accept(raw)
+        capture.plan['canonical']['capture_budget']=c.API_BYTES
+        with self.assertRaisesRegex(c.ContractError,'mismatch'): capture.finish()
+        self.assertTrue(capture.failed)
+        capture.plan['canonical']['capture_budget']=c.MAX_CAPTURE_BYTES
+        with self.assertRaises(c.ContractError): capture.finish()
+
+    def test_retained_pair_production_cli_full_raw_envelopes(self):
+        budget=c.MAX_CAPTURE_BYTES
+        for path,pin in zip(IMAGES,PINS): self.assertEqual(c.sha(path.read_bytes()),pin)
+        used=len(self.raw) # explicitly charged response preceding this fresh plan
+        tail=1<<20
+        p=c.plan_provider_images(IMAGES,used=used,tail_reserve=tail,capture_budget=budget)
+        self.assertLessEqual(p['total'],budget)
+        frames=self.frames(p,reverse=True)
+        entries=[]
+        # Account-only response is synthetic terminal/poll traffic, not display.
+        account=b'{"terminal":"'+b'x'*(tail-15)+b'"}'
+        self.assertEqual(len(account),tail)
+        for i,raw in enumerate(frames):
+            (self.root/f'{i}.json').write_bytes(raw)
+            entries.append(dict(kind='capture',path=f'{i}.json'))
+        (self.root/'terminal.json').write_bytes(account)
+        entries.append(dict(kind='account',path='terminal.json'))
+        transcript=self.root/'transcript.json';transcript.write_bytes(c.wire(entries))
+        out=self.root/'retained-pair'
+        argv=[sys.executable,'-B',str(MODULE),'restore-provider',*map(str,IMAGES),
+              '--transcript',str(transcript),'--output',str(out),'--used',str(used),
+              '--tail-reserve',str(tail),'--capture-budget',str(budget)]
+        r=subprocess.run(argv,capture_output=True,timeout=20)
+        self.assertEqual(r.returncode,0,r.stdout+r.stderr)
+        result=json.loads(r.stdout)
+        raw_bytes=sum(map(len,frames))+len(account)
+        self.assertEqual(result['charged'],used+raw_bytes)
+        self.assertEqual(result['tail_remaining'],0)
+        for path,pin in zip(IMAGES,PINS):
+            self.assertEqual((out/path.name).read_bytes(),path.read_bytes())
+            self.assertEqual(c.sha((out/path.name).read_bytes()),pin)
+        retain('explicit-retained-pair.json',dict(offlineOnly=True,gameplayProof=False,
+               budget=budget,used=used,tailReserve=tail,plannedTotal=p['total'],
+               frameCount=len(frames),frameLimits=p['frame_limits'],
+               frameBytes=list(map(len,frames)),frameHashes=list(map(c.sha,frames)),
+               terminalBytes=len(account),terminalSHA256=c.sha(account),
+               images=p['canonical']['images'],result=result))
+        for mode in ('default','over-cap','invalid','late-error','missing','reserve-overflow'):
+            bad=list(argv); rejected=self.root/('rejected-'+mode)
+            bad[bad.index('--output')+1]=str(rejected)
+            transcript.write_bytes(c.wire(entries))
+            (self.root/f'{len(frames)-1}.json').write_bytes(frames[-1])
+            if mode=='default': del bad[-2:]
+            if mode=='over-cap':bad[-1]=str(budget+1)
+            if mode=='invalid':bad[-1]='-1'
+            if mode=='late-error': (self.root/f'{len(frames)-1}.json').write_bytes(b'{}')
+            if mode=='missing':transcript.write_bytes(c.wire(entries[:-2]+entries[-1:]))
+            if mode=='reserve-overflow':
+                bad[bad.index('--used')+1]=str(budget-p['serialized_bytes_limit']-tail+1)
+            r=subprocess.run(bad,capture_output=True,timeout=20)
+            self.assertEqual(r.returncode,2,(mode,r.stdout,r.stderr))
+            self.assertFalse(rejected.exists())
+            self.assertFalse(list(self.root.glob('.rejected-*')))
+        # The plan CLI must carry the same explicit profile through production.
+        r=subprocess.run([sys.executable,str(MODULE),'plan',*map(str,IMAGES),
+                          '--used',str(used),'--tail-reserve',str(tail),
+                          '--capture-budget',str(budget)],capture_output=True,timeout=20)
+        self.assertEqual(r.returncode,0,r.stdout+r.stderr)
+        self.assertEqual(json.loads(r.stdout)['capture_budget'],budget)
+
+
 if __name__=='__main__':
     unittest.main(verbosity=2)

@@ -21,6 +21,7 @@ import time
 import zlib
 
 API_BYTES = 1 << 20
+MAX_CAPTURE_BYTES = 8 << 20
 TEXT_BYTES = 2 << 20
 PNG_BYTES = 4 << 20
 SELECTED_BYTES = 8 << 20
@@ -37,6 +38,47 @@ class ContractError(ValueError):
 def require(condition, message):
     if not condition:
         raise ContractError(message)
+
+
+def validate_capture_budget(value):
+    require(type(value) is int and 0 < value <= MAX_CAPTURE_BYTES,
+            'invalid capture budget (integer 1..8388608 required)')
+    return value
+
+
+class CapturePlan(dict):
+    """Serializable plan with a construction-time budget pin.
+
+    The public mapping remains compatible with existing plan consumers. Editing
+    its budget field cannot grant capacity: every consumer checks the pin.
+    """
+    __slots__ = ('_capture_budget',)
+
+    def __init__(self, *, capture_budget=API_BYTES, **fields):
+        require(not hasattr(self, '_capture_budget'), 'capture plan budget is already pinned')
+        object.__setattr__(self, '_capture_budget', validate_capture_budget(capture_budget))
+        super().__init__(fields, capture_budget=capture_budget)
+
+    def __setattr__(self, name, value):
+        raise AttributeError('capture plan budget is immutable')
+
+    def __delattr__(self, name):
+        raise AttributeError('capture plan budget is immutable')
+
+    def __deepcopy__(self, memo):
+        result = CapturePlan(capture_budget=self._capture_budget)
+        memo[id(self)] = result
+        result.update(copy.deepcopy(dict(self), memo))
+        return result
+
+
+def plan_budget(plan, expected=None):
+    require(type(plan) is CapturePlan, 'pinned capture plan required')
+    budget = validate_capture_budget(plan.get('capture_budget'))
+    require(budget == plan._capture_budget, 'capture plan budget mismatch')
+    if expected is not None:
+        require(budget == validate_capture_budget(expected), 'plan/collector budget mismatch')
+    return budget
 
 
 def wire(value):
@@ -307,15 +349,19 @@ def response(record, envelope):
     return wire(dict(envelope, stdout=wire(record).decode('ascii') + '\n'))
 
 
-def plan_images(paths, *, used, tail_reserve=0, chunk_bytes=4096, envelope=None):
+def plan_images(paths, *, used, tail_reserve=0, chunk_bytes=4096, envelope=None,
+                capture_budget=API_BYTES):
     """Preflight all PNG payloads, base64, JSON, manifest and end responses.
 
     used includes EVERY earlier serialized API response (including failures,
     metadata, stderr, polling). tail_reserve covers all later responses. This
     function does no collection I/O; an insufficient plan exposes no chunks.
+    capture_budget is chosen for a fresh task before collecting any responses;
+    selecting it never clears used or changes another plan/collector's budget.
     """
+    capture_budget = validate_capture_budget(capture_budget)
     require(type(used) is int and type(tail_reserve) is int and
-            0 <= used <= API_BYTES and 0 <= tail_reserve <= API_BYTES, 'invalid API accounting')
+            0 <= used <= capture_budget and 0 <= tail_reserve <= capture_budget, 'invalid API accounting')
     require(type(chunk_bytes) is int and 1 <= chunk_bytes <= 8192, 'invalid chunk bound')
     require(1 <= len(paths) <= 16, 'finite selected image count required')
     envelope = copy.deepcopy(DEFAULT_ENVELOPE if envelope is None else envelope)
@@ -344,22 +390,23 @@ def plan_images(paths, *, used, tail_reserve=0, chunk_bytes=4096, envelope=None)
     require(len(records) <= 4096, 'response count cap')
     frames = tuple(response(r, envelope) for r in records)
     measured = sum(map(len, frames))
-    require(used + measured + tail_reserve <= API_BYTES,
+    require(used + measured + tail_reserve <= capture_budget,
             'UNSUPPORTED_PLAN: lossless payload + base64 + ALL JSON framing exceeds remaining API budget; '
-            f'used={used} transfer={measured} tail={tail_reserve} cap={API_BYTES}')
-    return dict(frames=frames, images=images, serialized_bytes=measured,
+            f'used={used} transfer={measured} tail={tail_reserve} cap={capture_budget}')
+    return CapturePlan(capture_budget=capture_budget, frames=frames, images=images, serialized_bytes=measured,
                 used=used, tail_reserve=tail_reserve, total=used+measured+tail_reserve,
                 envelope=envelope)
 
 
-def restore_images(plan, frames):
+def restore_images(plan, frames, *, capture_budget=None):
     """Validate complete bounded wire stream before returning any PNG bytes.
 
     Plan reserves capacity; actual responses are charged once here, not again
     as base64 or decompressed images. No partial output escapes on rejection.
     """
+    budget = plan_budget(plan, capture_budget)
     require(len(frames) == len(plan['frames']), 'missing/extra response')
-    require(plan['used'] + sum(map(len, frames)) + plan['tail_reserve'] <= API_BYTES,
+    require(plan['used'] + sum(map(len, frames)) + plan['tail_reserve'] <= budget,
             'cumulative API budget')
     records = []
     charged = plan['used']
@@ -374,6 +421,7 @@ def restore_images(plan, frames):
 
 def restore_records(plan, records):
     """Shared bounded lossless decoder, independent of response framing."""
+    plan_budget(plan)
     require(records[0]['kind'] == 'manifest' and records[-1] ==
             dict(kind='end', images=len(plan['images'])), 'incomplete stream')
     cursor = 1
@@ -460,7 +508,7 @@ def provider_stdout(raw, overhead_limit):
 
 
 def plan_provider_images(paths, *, used, tail_reserve=0, chunk_bytes=8192,
-                         envelope_overhead=1024):
+                         envelope_overhead=1024, capture_budget=API_BYTES):
     """Conservative full-envelope plan; legacy deterministic API stays exact.
 
     used is the byte total of every earlier raw API response. tail_reserve
@@ -471,15 +519,16 @@ def plan_provider_images(paths, *, used, tail_reserve=0, chunk_bytes=8192,
     require(type(envelope_overhead) is int and 1 <= envelope_overhead <= 8192,
             'invalid provider framing bound')
     canonical = plan_images(paths, used=used, tail_reserve=tail_reserve,
-                            chunk_bytes=chunk_bytes)
+                            chunk_bytes=chunk_bytes, capture_budget=capture_budget)
     names = [i['name'] for i in canonical['images']]
     require(len(set(names)) == len(names), 'duplicate PNG name')
     records = [strict_json(strict_json(f)['stdout']) for f in canonical['frames']]
     bounds = [len(wire(strict_json(f)['stdout'])) + envelope_overhead
               for f in canonical['frames']]
     total = used + sum(bounds) + tail_reserve
-    require(total <= API_BYTES, 'UNSUPPORTED_PLAN: provider framing + used + tail exceeds API budget')
-    return dict(canonical=canonical, records=records, frame_limits=bounds,
+    require(total <= capture_budget, 'UNSUPPORTED_PLAN: provider framing + used + tail exceeds API budget; '
+            f'required={total} cap={capture_budget}')
+    return CapturePlan(capture_budget=capture_budget, canonical=canonical, records=records, frame_limits=bounds,
                 envelope_overhead=envelope_overhead, used=used,
                 tail_reserve=tail_reserve, serialized_bytes_limit=sum(bounds), total=total)
 
@@ -492,8 +541,11 @@ class ProviderCapture:
     their stdout as image data. Never pass a response to both methods. No PNG
     bytes are exposed until finish() validates the entire lossless stream.
     """
-    def __init__(self, plan):
+    def __init__(self, plan, *, capture_budget=None):
+        budget = plan_budget(plan, capture_budget)
+        plan_budget(plan['canonical'], budget)
         self.plan = copy.deepcopy(plan)
+        self.__capture_budget = budget
         self.charged = plan['used']
         self.tail = plan['tail_reserve']
         self.cursor = 0
@@ -501,13 +553,22 @@ class ProviderCapture:
         self.failed = False
         self.finished = False
 
+    @property
+    def capture_budget(self):
+        return self.__capture_budget
+
+    def _check_budget(self):
+        plan_budget(self.plan, self.capture_budget)
+        plan_budget(self.plan['canonical'], self.capture_budget)
+
     def _consume(self, raw, capture):
         require(not self.failed and not self.finished, 'collector is closed')
         try:
             require(type(raw) is bytes, 'original serialized response bytes required')
             # Charge before ANY parsing, including rejected/error responses.
             self.charged += len(raw)
-            require(self.charged <= API_BYTES, 'cumulative API budget')
+            self._check_budget()
+            require(self.charged <= self.capture_budget, 'cumulative API budget')
             p = self.plan
             if capture:
                 require(self.cursor < len(p['records']), 'extra capture response')
@@ -521,7 +582,7 @@ class ProviderCapture:
                 # Actual non-capture bytes spend, rather than duplicate, the
                 # reserved tail. Any excess must fit unused capture capacity.
                 self.tail = max(0, self.tail-len(raw))
-            require(self.charged + sum(p['frame_limits'][self.cursor:]) + self.tail <= API_BYTES,
+            require(self.charged + sum(p['frame_limits'][self.cursor:]) + self.tail <= self.capture_budget,
                     'remaining capture/tail reserve exceeds API budget')
         except (ContractError, ValueError, TypeError, OverflowError, RecursionError) as exc:
             self.failed = True
@@ -536,6 +597,7 @@ class ProviderCapture:
     def finish(self):
         require(not self.failed and not self.finished, 'collector is closed')
         try:
+            self._check_budget()
             require(self.cursor == len(self.plan['records']), 'incomplete capture stream')
             # Decode the actual accepted records with the existing bounded
             # base64/zlib EOF/size/hash checks. The raw ledger is independent.
@@ -548,7 +610,8 @@ class ProviderCapture:
 
 
 def restore_provider_transcript(paths, transcript_path, output, *, used,
-                                tail_reserve=0, envelope_overhead=1024):
+                                tail_reserve=0, envelope_overhead=1024,
+                                capture_budget=API_BYTES):
     """Production offline CLI boundary: raw files, explicit ordered disposition.
 
     Transcript is [{"kind":"capture"|"account", "path":"raw-response.json"}].
@@ -557,19 +620,20 @@ def restore_provider_transcript(paths, transcript_path, output, *, used,
     """
     import shutil
     import tempfile
+    capture_budget = validate_capture_budget(capture_budget)
     transcript_path = Path(transcript_path)
     require(transcript_path.stat().st_size <= API_BYTES, 'transcript size cap')
     transcript = strict_json(transcript_path.read_bytes())
     require(type(transcript) is list and len(transcript) <= 4096, 'transcript count cap')
     plan = plan_provider_images(paths, used=used, tail_reserve=tail_reserve,
-                                envelope_overhead=envelope_overhead)
-    capture = ProviderCapture(plan)
+                                envelope_overhead=envelope_overhead, capture_budget=capture_budget)
+    capture = ProviderCapture(plan, capture_budget=capture_budget)
     for entry in transcript:
         exact_keys(entry, ('kind', 'path'))
         require(entry['kind'] in ('capture', 'account') and type(entry['path']) is str,
                 'invalid transcript entry')
         source = transcript_path.parent / entry['path']
-        require(source.stat().st_size <= API_BYTES, 'response file exceeds API cap')
+        require(source.stat().st_size <= capture_budget, 'response file exceeds API cap')
         raw = source.read_bytes()
         if entry['kind'] == 'capture':
             capture.accept(raw)
@@ -586,7 +650,7 @@ def restore_provider_transcript(paths, transcript_path, output, *, used,
     finally:
         if stage.exists():
             shutil.rmtree(stage)
-    return dict(status='PASS_LOSSLESS_OFFLINE_TRANSPORT', charged=charged,
+    return dict(status='PASS_LOSSLESS_OFFLINE_TRANSPORT', charged=charged, capture_budget=capture_budget,
                 tail_remaining=capture.tail, images=plan['canonical']['images'])
 
 
@@ -598,6 +662,7 @@ def main():
     t = sub.add_parser('plan')
     t.add_argument('png', nargs='+'); t.add_argument('--used', required=True, type=int)
     t.add_argument('--tail-reserve', required=True, type=int)
+    t.add_argument('--capture-budget', type=int, default=API_BYTES)
     p = sub.add_parser('restore-provider')
     p.add_argument('png', nargs='+')
     p.add_argument('--transcript', required=True)
@@ -605,6 +670,7 @@ def main():
     p.add_argument('--used', required=True, type=int)
     p.add_argument('--tail-reserve', required=True, type=int)
     p.add_argument('--envelope-overhead', type=int, default=1024)
+    p.add_argument('--capture-budget', type=int, default=API_BYTES)
     a = parser.parse_args()
     try:
         if a.command == 'supervise':
@@ -612,9 +678,11 @@ def main():
             print(json.dumps(dict(status=result['status'], guest_starts=result['guest_starts'])))
         elif a.command == 'restore-provider':
             print(json.dumps(restore_provider_transcript(a.png, a.transcript, a.output,
-                used=a.used, tail_reserve=a.tail_reserve, envelope_overhead=a.envelope_overhead)))
+                used=a.used, tail_reserve=a.tail_reserve, envelope_overhead=a.envelope_overhead,
+                capture_budget=a.capture_budget)))
         else:
-            p = plan_images(a.png, used=a.used, tail_reserve=a.tail_reserve)
+            p = plan_images(a.png, used=a.used, tail_reserve=a.tail_reserve,
+                            capture_budget=a.capture_budget)
             print(json.dumps({k: v for k, v in p.items() if k not in ('frames', 'envelope')}))
     except (ContractError, OSError, ValueError, subprocess.SubprocessError) as exc:
         print(json.dumps(dict(status='REJECT', error=str(exc))))
