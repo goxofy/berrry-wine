@@ -25,7 +25,7 @@ import subprocess
 import time
 import uuid
 
-CONTROLLER_SHA256 = 'c4fb61b1ad21e22d5fe744e8ce55461246e6c5c8cead2b63a979732b2b25aa6d'
+CONTROLLER_SHA256 = 'a3425f91a36eef1ed1413e6ddb3cb814617a924d8a1e23cb78a00c65b951c662'
 RESPONSE_SECONDS = 10
 GUEST_SECONDS = 120
 WALL_SECONDS = 150
@@ -87,6 +87,7 @@ class Bridge:
         self.response_deadline = None
         self.expected_focus = None
         self.reviewed_capture = None
+        self.console_review = None
         self.terminal = None
         self.streams = {}
 
@@ -234,7 +235,18 @@ class Bridge:
         self.event('response-start', token=token, seconds=RESPONSE_SECONDS)
         self.reviewed_capture = (token, captured)
         self.expected_focus = captured['focus']
-        return {'observation': value['observation']}
+        observation = value['observation']
+        self.console_review = None
+        if 'consoleObstruction' in observation:
+            if self.after is not None or observation.get('evidence') != captured['path']:
+                raise Stop('startup Console review is not initial/current evidence')
+            try:
+                self.module.activation_command(observation, captured['snapshot'])
+            except self.module.Refusal as error:
+                raise Stop(str(error))
+            observation['startupSnapshot'] = captured['snapshot']
+            self.console_review = observation
+        return {'observation': observation}
 
     def send(self, cmd):
         if self.command is not None:
@@ -245,12 +257,32 @@ class Bridge:
         # before its first input. No request intervenes between final snapshot
         # and dispatch. Key release instead checks focus: the keydown itself
         # may have changed the selected row, which needs a new factual review.
-        if cmd['cmd'].startswith('keydown:'):
+        activation = cmd['cmd'].startswith('click:')
+        if activation:
+            if self.console_review is None or self.after is not None:
+                raise Stop('unreviewed/repeated activation action')
+            try:
+                expected = self.module.activation_command(self.console_review, self.reviewed_capture[1]['snapshot'])
+            except self.module.Refusal as error:
+                raise Stop(str(error))
+            if cmd['cmd'] != expected:
+                raise Stop('activation action differs from reviewed Airstrike activation')
+        if cmd['cmd'].startswith('keydown:') or activation:
             token, captured = self.reviewed_capture
             fresh = self.capture(token+'-fresh', self.response_deadline)
             if fresh['sha256'] != captured['sha256'] or fresh['focus'] != captured['focus']:
                 raise Stop('reviewed image/focus no longer current; no input')
+            if activation and fresh['snapshot'] != captured['snapshot']:
+                raise Stop('reviewed startup snapshot no longer current; no activation input')
+            if activation:
+                try:
+                    expected = self.module.activation_command(self.console_review, fresh['snapshot'])
+                except self.module.Refusal as error:
+                    raise Stop(str(error))
+                if cmd['cmd'] != expected:
+                    raise Stop('fresh caption geometry differs from activation action')
             self.reviewed_capture = None
+            self.console_review = None
             before = fresh['snapshot']
         else:
             before = self.request('snapshot', self.response_deadline)
@@ -271,7 +303,7 @@ class Bridge:
                              terminal_ok=self.activated)
             if value.get('ack', {}).get('value', {}).get('queued') is True:
                 value = self.complete_frozen(cmd, value)
-            if 'ack' in value and cmd['cmd'].startswith('keyup:'):
+            if 'ack' in value and cmd['cmd'].startswith(('keyup:', 'click:')):
                 self.after = cmd['id']
             return value
         if self.activated:
@@ -306,8 +338,7 @@ class Bridge:
                 or state['frozen'].get('credits') != 0):
             raise Stop('step lacks matching frozen-zero snapshot; no replay')
         lines = bytes(self.logs['stdout'][self.input_log_start:]).decode(errors='replace').splitlines()
-        action, vk = cmd['cmd'].split(':')
-        expected = f'[input] {action} vk={vk} at batch {queued["batch"]}'
+        expected = self.module.execution_log(cmd['cmd'], queued['batch'], before)
         if lines.count(expected) != 1:
             raise Stop('missing/ambiguous actual input execution log; no replay')
         completion = dict(inputId=cmd['id'], step=step, snapshot=snapshot,

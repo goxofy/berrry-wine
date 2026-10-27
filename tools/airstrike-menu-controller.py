@@ -26,6 +26,81 @@ class Terminal(Exception):
         self.value = value
 
 
+def console_target(observation, snapshot):
+    """One reviewed startup Console, never a title-only or guessed target."""
+    o, s = observation, snapshot
+    if (o.get('state') != 'startup' or o.get('after') is not None
+            or o.get('unobscured') is not False or o.get('keysReleased') is not True
+            or o.get('startupPrompt') != 'Press any key to start'
+            or not o.get('evidence') or not isinstance(s, dict)
+            or type(s.get('batch')) is not int or s.get('quit') is not False
+            or s.get('focus') != s.get('mainHwnd') or not s.get('mainHwnd')
+            or s.get('frozen', {}).get('frozen') is not True
+            or s['frozen'].get('credits') != 0):
+        raise Refusal('unproven startup Console identity/frozen boundary')
+    windows = s.get('windows', [])
+    target = o.get('consoleObstruction')
+    main = [w for w in windows if w.get('hwnd') == s['mainHwnd']]
+    if (len(windows) != 2 or len(main) != 1
+            or main[0].get('title') != 'Airstrike 1.0 pre6'
+            or main[0].get('visible') is not True or main[0].get('isChild') is not False
+            or not isinstance(target, dict) or target not in windows
+            or target.get('hwnd') == s['mainHwnd'] or target.get('title') != 'Console'
+            or target.get('visible') is not True or target.get('isChild') is not False
+            or not isinstance(target.get('hwnd'), str)
+            or not target['hwnd'].startswith('0x')
+            or any(type(target.get(k)) is not int for k in ('x', 'y', 'w', 'h'))):
+        raise Refusal('wrong/unknown reviewed Console target')
+    try:
+        hwnd = int(target['hwnd'], 16)
+    except ValueError:
+        raise Refusal('invalid Console handle')
+    x, y = target['x'] + target['w'] - 46, target['y'] + 13
+    screen = s.get('screen', {})
+    if (not isinstance(screen, dict)
+            or any(type(screen.get(k)) is not int or screen[k] <= 0 for k in ('w', 'h'))):
+        raise Refusal('unknown screen geometry')
+    if (hwnd <= 0 or target['hwnd'] != hex(hwnd) or target['w'] < 64
+            or target['h'] < 32 or not 0 <= x < screen.get('w', 0)
+            or not 0 <= y < screen.get('h', 0)):
+        raise Refusal('unsafe Console caption geometry')
+    return target
+
+
+def activation_command(observation, snapshot):
+    target = console_target(observation, snapshot)
+    main = next(w for w in snapshot['windows'] if w['hwnd'] == snapshot['mainHwnd'])
+    if any(type(main.get(k)) is not int for k in ('x', 'y', 'w', 'h')):
+        raise Refusal('unknown Airstrike caption geometry')
+    screen = snapshot.get('screen', {})
+    if (any(type(screen.get(k)) is not int or screen[k] <= 0 for k in ('w', 'h'))
+            or main['w'] < 89 or main['h'] < 27 or main['y'] + 27 > screen['h']
+            or any(w['x'] < 0 or w['y'] < 0 or w['w'] <= 0 or w['h'] <= 0
+                   for w in (main, target))):
+        raise Refusal('degenerate/clipped/offscreen caption geometry')
+    # The retained frame exposes Airstrike's caption to the right of Console.
+    # Keep clear of the system menu, border and all three caption buttons.
+    # The client/bottom/right may extend beyond the canvas (as in the retained
+    # valid window); the selected caption interior itself must be on screen.
+    x, y = target['x'] + target['w'] + 8, main['y'] + 13
+    if (not main['x'] + 24 <= x < main['x'] + main['w'] - 64
+            or not main['y'] + 1 < y < min(main['y'] + 26, main['y'] + main['h'] - 1)
+            or not 0 <= x < snapshot['screen']['w']
+            or not 0 <= y < snapshot['screen']['h']
+            or (target['x'] <= x < target['x'] + target['w']
+                and target['y'] <= y < target['y'] + target['h'])):
+        raise Refusal('no safe exposed Airstrike caption point')
+    return f'click:{x}:{y}'
+
+
+def execution_log(command, batch, snapshot=None):
+    parts = command.split(':')
+    if len(parts) == 3 and parts[0] == 'click':
+        return f'[input] click {parts[1]},{parts[2]} at batch {batch}'
+    action, vk = parts
+    return f'[input] {action} vk={vk} at batch {batch}'
+
+
 class Controller:
     def __init__(self, receive, send):
         self.receive, self.send = receive, send
@@ -42,13 +117,20 @@ class Controller:
             raise Terminal(value['terminal'])
         return value
 
-    def observe(self, expected=None):
+    def observe(self, expected=None, *, startup=False, gameplay=False):
         o = self.read().get('observation', {})
+        if startup and self.after is None and 'consoleObstruction' in o:
+            target = console_target(o, o.get('startupSnapshot'))
+            self.dispatch(activation_command(o, o['startupSnapshot']), o['startupSnapshot'])
+            # An activation ACK says nothing about the next pixels or focus.
+            return self.observe(startup=True, gameplay=True)
         if (o.get('after') != self.after or o.get('focus') != 'airstrike'
                 or o.get('unobscured') is not True or not o.get('evidence')
                 or o.get('keysReleased') is not True):
             raise Refusal('insufficient-observation: ' + NEXT)
-        if o.get('state') == 'gameplay' and self.after is None:
+        if o.get('state') == 'startup' and startup and o.get('startupPrompt') == 'Press any key to start':
+            return 'startup'
+        if o.get('state') == 'gameplay' and (self.after is None or gameplay):
             return None
         index = o.get('selected')
         if (o.get('state') != 'menu' or o.get('header') != 'Airstrike menu'
@@ -58,9 +140,11 @@ class Controller:
         return index
 
     def key(self, action, vk):
+        self.dispatch(f'{action}:{vk}')
+
+    def dispatch(self, cmd, snapshot=None):
         self.serial += 1
         self.after = 'airstrike-' + str(self.serial)
-        cmd = f'{action}:{vk}'
         self.send({'id': self.after, 'cmd': cmd})
         response = self.read()
         a = response.get('ack', {})
@@ -71,14 +155,14 @@ class Controller:
         if queued is True:
             completion = response.get('completion', {})
             step = completion.get('step', {})
-            snapshot = completion.get('snapshot', {})
-            done, state = step.get('value', {}), snapshot.get('value', {})
+            completion_snapshot = completion.get('snapshot', {})
+            done, state = step.get('value', {}), completion_snapshot.get('value', {})
             batch = v.get('batch')
             if (type(batch) is not int or completion.get('inputId') != self.after
-                    or step.get('ok') is not True or snapshot.get('ok') is not True
+                    or step.get('ok') is not True or completion_snapshot.get('ok') is not True
                     or not isinstance(step.get('id'), str)
-                    or not isinstance(snapshot.get('id'), str)
-                    or len({self.after, step.get('id'), snapshot.get('id')}) != 3
+                    or not isinstance(completion_snapshot.get('id'), str)
+                    or len({self.after, step.get('id'), completion_snapshot.get('id')}) != 3
                     or done.get('ran') != 1 or done.get('steps') != 1
                     or done.get('frozen') is not True or done.get('batch') != batch+1
                     or state.get('batch') != batch+1
@@ -86,14 +170,14 @@ class Controller:
                     or state['frozen'].get('credits') != 0):
                 raise Refusal('uncertain frozen completion; no replay or further input')
             logs = completion.get('logs', [])
-            expected = f'[input] {action} vk={vk} at batch {batch}'
+            expected = execution_log(cmd, batch, snapshot)
             if not isinstance(logs, list) or logs.count(expected) != 1:
                 raise Refusal('missing actual frozen input log; no further input')
-        prefix = f'[input] {action} vk={vk} at batch '
+        expected = execution_log(cmd, v.get('batch'), snapshot)
         if (a.get('id') != self.after or a.get('ok') is not True
                 or (queued and queued is not True) or type(v.get('batch')) is not int
                 or not isinstance(logs, list)
-                or not any(isinstance(s, str) and s.startswith(prefix) for s in logs)):
+                or expected not in logs):
             raise Refusal('uncertain/rejected dispatch; no replay or further input')
 
     def press(self, vk):
@@ -101,7 +185,10 @@ class Controller:
         self.key('keyup', vk)
 
     def run(self):
-        index = self.observe()
+        index = self.observe(startup=True, gameplay=True)
+        if index == 'startup':
+            self.press(32)
+            index = self.observe(gameplay=True)
         if index is None:
             self.press(27)
             index = self.observe(0)
