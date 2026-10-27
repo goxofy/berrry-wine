@@ -224,7 +224,7 @@
     "/tmp/airstrike-accepted-frozen-dispatch-main-integrate-oct27/ops/merged-closure.stderr": "16c3d0c3c0a32b33c857c381ff131b4522534b13b2edc253ec02677ee33d1046",
     "/tmp/airstrike-accepted-frozen-dispatch-main-integrate-oct27/ops/merged-closure-corrected.json": "3c053541f0878d8f60d573cafbc11151a1fc8e2935782652b868f6815a236485",
     "/tmp/airstrike-accepted-frozen-dispatch-main-integrate-oct27/ops/checkout-main.stderr": "522df911c1eac74604cdc77d2b4603a15a1c6d27e882515dbc4dd379b949d535",
-    "/tmp/airstrike-accepted-frozen-dispatch-main-integrate-oct27/ops/accounting.json": "e77b055766fbd49394a63444bb7174df8bb66dd89a908f4529022700518206aa"
+    "/tmp/airstrike-accepted-frozen-dispatch-main-integrate-oct27/repo/docs/reviews/airstrike-accepted-frozen-dispatch-main-integrate-oct27/resource-at-publication.json": "129cf4b09f00460b63b122e5ccae6962a77dc0c57a620eee02c78a072ec79295"
   },
   "ops": "/tmp/airstrike-accepted-frozen-dispatch-main-integrate-oct27/ops",
   "noGuest": true,
@@ -241,6 +241,17 @@
     "Initial exploratory display overflow retained in session/events. Subsequent output bounded.",
     "Initial setup rejected aggregate RSS137289728 from whole-file installed Node hashing. Streamed64KiB corrected pass38748160; no limits raised.",
     "Read-only nested alternates emit depth warnings; all required main/candidate blobs resolved, no fetch or donor mutation.",
-    "Initial closure verifier wrongly required every historical acceptance group to exit0. Historical independent group retained ten passing cases and one over-strict snapshot-shape oracle failure; accepted corrected normal case passes. Verified both exact receipts; corrected verifier distinguishes them. No acceptance rerun or source/oracle change."
-  ]
+    "Initial closure verifier wrongly required every historical acceptance group to exit0. Historical independent group retained ten passing cases and one over-strict snapshot-shape oracle failure; accepted corrected normal case passes. Verified both exact receipts; corrected verifier distinguishes them. No acceptance rerun or source/oracle change.",
+    "Publication-gate first metadata check encountered semantic-result/supervisor-receipt basename collision (index-review.json); distinct index-review-pass.json/publication-gate-pass.json fixed and verified before main push. No source/test changes.",
+    "First committed-scope verification accidentally used read-only root CWD and observed root historical watchdog diff; no root write. Corrected committed-task-scope proves exact isolated seven-path commit. Root remains untouched; initial root digest reused without later comparison."
+  ],
+  "resourceSnapshotCorrection": {
+    "originalCommit": "f77d779a3762e55f8e10e60bd04045737fcc1273",
+    "originalMutableAccountingHash": "e77b055766fbd49394a63444bb7174df8bb66dd89a908f4529022700518206aa",
+    "reason": "Accounting changes on each operation. Replaced mutable path reference by immutable report snapshot before final handoff; source acceptance unchanged."
+  },
+  "wrapperVersions": {
+    "/tmp/airstrike-accepted-frozen-dispatch-main-integrate-oct27/ops/run-at-setup.py": "fba379404058707fde523e10b3eb1eafeb7a675ef757e190e18f50dc9d4e119c",
+    "/tmp/airstrike-accepted-frozen-dispatch-main-integrate-oct27/ops/run-final.py": "ea7e6e1a7a4608493e99f1c70fbc655a4e442bebabe74228ed8e66916ab0e3bc"
+  }
 }
