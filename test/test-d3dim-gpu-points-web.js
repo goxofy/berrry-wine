@@ -53,7 +53,7 @@ cases.push(...cases.filter(c => c.format === 1).map(c => ({ ...c, boundedReadbac
   try {
     const evidence = { browser: await browser.version(), cases, versions: [] };
     const page = await browser.newPage();
-    for (const name of ['gpu-backend', 'd3d9-shader', 'd3d9-fixed', 'd3d9-backend', 'd3dim-gpu'])
+    for (const name of ['gpu-backend', 'd3d9-shader', 'd3d9-fixed', 'render-clear','d3d9-backend', 'd3dim-gpu'])
       await page.addScriptTag({ path: path.join(__dirname, '../lib', name + '.js') });
     for (const version of [1, 2]) {
       const results = await page.evaluate(({ cases, version }) => cases.map(c => {

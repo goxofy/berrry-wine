@@ -3,6 +3,45 @@
   "assetRoot": "test/binaries/candidates",
   "candidates": [
     {
+      "id": "airstrike-pre6a",
+      "name": "Airstrike (original pre6a)",
+      "kind": "game",
+      "version": "Original icculus Win32 pre6a preview (2004), not a modern same-name game",
+      "executables": [
+        "game/airstrike-pre6a.exe"
+      ],
+      "sourcePage": "https://icculus.org/airstrike/",
+      "license": "Original LICENSE: program and most data GPL; COPYING is GPL v2. Some sounds only believed public domain by the release author. Support DLLs have separate licenses. Local use only; no redistribution prepared.",
+      "localOnly": true,
+      "packages": [],
+      "manual": "Use tools/verify-airstrike-pre6a.js --prepare ORIGINAL ZLIB CRT DEST with retained original release and authentic support files. No download required. See docs/re-notes/airstrike-pre6a-local-registration-20261024.md. Normal local selector/CLI app: airstrike_pre6a.",
+      "browser": {
+        "fileRoot": "game",
+        "exe": "game/airstrike-pre6a.exe"
+      },
+      "cli": {
+        "exeGuestPath": "C:\\airstrike-pre6a.exe",
+        "cwd": "C:\\",
+        "dlls": [
+          "game/SDL.dll",
+          "game/SDL_image.dll",
+          "game/SDL_mixer.dll",
+          "game/jpeg.dll",
+          "game/libpng1.dll",
+          "game/msvcr70.dll",
+          "game/msvcrt.dll",
+          "game/zlib.dll"
+        ],
+        "vfsInclude": [
+          "**/*"
+        ],
+        "maxBatches": 4500,
+        "batchSize": 20000,
+        "timeoutMs": 60000
+      },
+      "notes": "Exact 89-file 4072418-byte game closure pinned from independently accepted historical gameplay/recovery evidence at main 9b263cea. Original config/media and authentic zlib preserved. Static registration tests only; registered-path runtime, browser, audio and full-game qualification remain separately assigned. Historical movement/fire evidence remains scoped to source b41a7c5 and module 8fac3993; no current-main gameplay claim."
+    },
+    {
       "id": "madbomber",
       "name": "Mad Bomber (original)",
       "kind": "game",
@@ -716,7 +755,8 @@
           "into": "cd"
         }
       ],
-      "notes": "Full original (non-SE) release, same NFSW.EXE name as the nfs2_demo payload. The CD root carries NFS2.ICO, the icon EA shipped for it; nfsw.exe has no icon resource. No app entry yet: reference/source fixture only."
+      "manual": "Source CD only, not an accepted installed game. The original README documents AUTORUN.EXE > INSTALL and SETUP/ENGLISH/SETUP.EXE is the original NE installer bootstrap with its adjacent setup bundle. NFSW.EXE checks the working drive and has an install-first error for CD-ROM execution. Qualify the original installer and its resulting INSTALL.WIN/file layout before registering a game route; a copied fixed-drive tree has not been accepted. See docs/re-notes/need-for-speed-2-retail.md.",
+      "notes": "Full original (non-SE) release, same NFSW.EXE name as the nfs2_demo payload. Original CD recovered and hash-verified on 2026-10-28: 549926912 ISO bytes, 1123 extracted files. The CD root carries NFS2.ICO. No app entry or browser launch manifest: reference/source fixture only, with installation/direct-launch qualification still pending. Do not substitute the demo or SE."
     },
     {
       "id": "need-for-speed-2-se-full",
@@ -744,7 +784,7 @@
           "into": "cd"
         }
       ],
-      "notes": "Full Special Edition: NFS2SEA.EXE (3Dfx Glide), NFS2SEN.EXE, with NFS2SEA/SEN/SER.ICO at the CD root. No app entry yet: reference/source fixture only."
+      "notes": "Original Special Edition retail CD: NFS2SEA.EXE is the Glide variant; NFS2SEN.EXE is the software variant. Recovery verified 2026-10-28 against the pinned ISO SHA-1: 1543 files, including original INSTALL.NFS but no INSTALL.WIN. NFS2SEN.EXE checks INSTALL.WIN during startup; SETUP/ENGLISH/SETUP.INS names both INSTALL.NFS and INSTALL.WIN. Installation is a prerequisite: preserve the original CD fixture and capture the original installer's output before adding an app/browser/CLI route. No direct-launch registration or gameplay qualification. See docs/re-notes/nfs2se-retail-recovery-20261028.md."
     },
     {
       "id": "dxball",
@@ -5098,6 +5138,46 @@
         ]
       },
       "notes": "LOCAL ONLY candidate recipe. Preserve all 38 companions: BBLOOGIE.000, SOS9502.DLL and 36 AIF files. Guest executable C:\\BBLOOGIE.EXE, working directory C:\\, companion VFS paths C:\\<filename>. No registry seeds or DLL substitutions. Archive is retained in scratch/runs/20261020-hock-loogie-original-intake-oct20; do not redownload for registration. Separate explicit-EXE gameplay/scoring evidence is accepted; this candidate route and app-selector gameplay are not runtime qualified. See docs/re-notes/hock-a-loogie.md for hashes, tests, corpus-runner acceptance blocker and remaining gaps."
+    },
+    {
+      "id": "penguin-command-1611",
+      "appIds": [
+        "penguin_command_1611"
+      ],
+      "name": "Penguin Command 1.6.11 (original, local only)",
+      "kind": "game",
+      "version": "1.6.11 original Windows release",
+      "executables": [
+        "game/penguin-command.exe"
+      ],
+      "localOnly": true,
+      "license": "Original local compatibility fixture only; no payload redistribution or public deployment authorized.",
+      "packages": [],
+      "browser": {
+        "fileRoot": "game",
+        "exe": "game/penguin-command.exe"
+      },
+      "cli": {
+        "exeGuestPath": "C:/penguin-command.exe",
+        "cwd": "C:/",
+        "args": "--windowed --nosound",
+        "dlls": [
+          "game/msvcrt.dll",
+          "game/SDL.dll",
+          "game/zlib1.dll",
+          "game/libpng12-0.dll",
+          "game/jpeg.dll",
+          "game/SDL_image.dll",
+          "game/SDL_mixer.dll"
+        ],
+        "vfsInclude": [
+          "**/*"
+        ],
+        "maxBatches": 200000,
+        "batchSize": 1000
+      },
+      "manual": "Use tools/verify-penguin-command.js --prepare ORIGINAL CRT FRESH_DEST to prepare the exact accepted recovery game subset, including standing authentic msvcrt.dll. No acquisition packages, installer, executable patching or replacement libraries. See test/candidate-corpus/penguin-command-README.md.",
+      "notes": "91 original runtime game files / 1778442 bytes. Historical b41a7c5 module/runner evidence: Normal Game, score 160 to 240 and Wave 2, Hiscores/menu; no isolated projectile causality, audio or current-main runtime qualification. Local selector/corpus route is filesystem tested only; ordinary loading depends on the shared manifest boundary adapter."
     }
   ]
 }

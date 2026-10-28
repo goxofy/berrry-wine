@@ -394,10 +394,23 @@
     (local $pg_desc i32) (local $pg_chunk_cap i32) (local $pg_desc_cap i32)
     (local $ctx i32) (local $rec i32) (local $sp i32) (local $frame i32)
     (local $handler i32) (local $rounds i32) (local $ok i32) (local $guard i32)
-    (local $io_fills i32)
+    (local $io_fills i32) (local $io_ready i32)
+    (local $expected_child i64) (local $expected_parent i64) (local $expected_root i64)
+    (local $expected_depth i32) (local $expected_inv_depth i32)
     (if (i32.or (global.get $fault_sync_active)
                 (i32.eqz (global.get $sync_msg_ret_thunk)))
       (then (return (i32.const 0))))
+    ;; Own this entire synchronous fault walk before touching the interrupted
+    ;; context or guest stack. Pin the actual suspended $ip once, not a prior
+    ;; filter's spill stream on CONTINUE_SEARCH. Slices/IO/handler visits all
+    ;; belong to this child; a foreign replacement must never be popped.
+    (call $invocation_ensure)
+    (local.set $expected_parent (call $invocation_current))
+    (local.set $expected_root (global.get $invocation_root))
+    (call $sync_depth_enter)
+    (local.set $expected_child (call $invocation_current))
+    (local.set $expected_depth (global.get $sync_msg_depth))
+    (local.set $expected_inv_depth (global.get $invocation_depth))
     (global.set $fault_sync_active (i32.const 1))
     (global.set $fault_sync_epoch (i32.add (global.get $fault_sync_epoch) (i32.const 1)))
     (global.set $fault_raising (i32.const 1))
@@ -479,18 +492,22 @@
           (global.set $steps (i32.const 0))
           (global.set $yield_reason (i32.const 0))
           (global.set $yield_flag (i32.const 0))
-          ;; The suspended frame is the faulting block, whose $ip is $old_ip.
-          ;; After a filter that returned CONTINUE_SEARCH, $ip still holds
-          ;; wherever that filter's nested run stopped -- often the decoded-code
-          ;; spill -- and $sync_depth_enter would pin the spill for a frame that
-          ;; is not in it (Serious Sam, timer on: pin mask 1 at batch 5395).
-          ;; $run looks its own $ip up, so the nested run does not read this.
+          ;; The child was acquired with the faulting block's $ip, before any
+          ;; filter could leave it in the spill. $run looks its own $ip up.
           (global.set $ip (local.get $old_ip))
-          (call $sync_depth_enter)
           (local.set $rounds (i32.const 0))
           (local.set $io_fills (i32.const 0))
           (block $ran (loop $run_more
             (call $run (i32.const 1000000))
+            ;; invocation_current also validates thread, epoch and live root.
+            (if (i64.ne (call $invocation_current) (local.get $expected_child))
+              (then (unreachable)))
+            (if (i64.ne (global.get $invocation_root) (local.get $expected_root))
+              (then (unreachable)))
+            (if (i32.ne (global.get $sync_msg_depth) (local.get $expected_depth))
+              (then (unreachable)))
+            (if (i32.ne (global.get $invocation_depth) (local.get $expected_inv_depth))
+              (then (unreachable)))
             (br_if $ran (i32.eqz (global.get $eip)))
             ;; The filter parked a ReadFile on a lazily loaded file (io_wait).
             ;; A yield here only returns to this loop, so no host turn would
@@ -505,7 +522,17 @@
                          (i32.and (i32.ne (global.get $guest_can_block) (i32.const 0))
                                   (i32.lt_u (local.get $io_fills) (i32.const 4096))))
               (then
-                (if (call $host_io_fill_sync (global.get $current_thread_id))
+                (local.set $io_ready (call $host_io_fill_sync (global.get $current_thread_id)))
+                ;; A host boundary must be checked even when it reports no fill.
+                (if (i64.ne (call $invocation_current) (local.get $expected_child))
+                  (then (unreachable)))
+                (if (i64.ne (global.get $invocation_root) (local.get $expected_root))
+                  (then (unreachable)))
+                (if (i32.ne (global.get $sync_msg_depth) (local.get $expected_depth))
+                  (then (unreachable)))
+                (if (i32.ne (global.get $invocation_depth) (local.get $expected_inv_depth))
+                  (then (unreachable)))
+                (if (local.get $io_ready)
                   (then
                     (local.set $io_fills (i32.add (local.get $io_fills) (i32.const 1)))
                     (global.set $yield_reason (i32.const 0))
@@ -515,7 +542,6 @@
             (local.set $rounds (i32.add (local.get $rounds) (i32.const 1)))
             (br_if $ran (i32.ge_u (local.get $rounds) (i32.const 64)))
             (br $run_more)))
-          (call $sync_depth_leave)
           ;; The handler never came back: give up on this fault.
           (br_if $walked (i32.ne (global.get $eip) (i32.const 0)))
           (if (i32.eqz (i32.load offset=0 (global.get $reg_base)))
@@ -523,6 +549,28 @@
           (br_if $walked (i32.ne (i32.load offset=0 (global.get $reg_base)) (i32.const 1)))))
       (local.set $frame (call $gl32 (local.get $frame)))
       (br $walk)))
+    ;; Legacy bounded timeout still returns 0 and restores the interrupted
+    ;; context, but only while this exact child/root/depth remains owned.
+    (if (i64.ne (call $invocation_current) (local.get $expected_child))
+      (then (unreachable)))
+    (if (i64.ne (global.get $invocation_root) (local.get $expected_root))
+      (then (unreachable)))
+    (if (i32.ne (global.get $sync_msg_depth) (local.get $expected_depth))
+      (then (unreachable)))
+    (if (i32.ne (global.get $invocation_depth) (local.get $expected_inv_depth))
+      (then (unreachable)))
+    (call $sync_depth_leave)
+    ;; Check the retained parent before restoring any interrupted CPU/page state.
+    (if (i64.ne (call $invocation_current) (local.get $expected_parent))
+      (then (unreachable)))
+    (if (i64.ne (global.get $invocation_root) (local.get $expected_root))
+      (then (unreachable)))
+    (if (i32.ne (global.get $sync_msg_depth)
+          (i32.sub (local.get $expected_depth) (i32.const 1)))
+      (then (unreachable)))
+    (if (i32.ne (global.get $invocation_depth)
+          (i32.sub (local.get $expected_inv_depth) (i32.const 1)))
+      (then (unreachable)))
     (global.set $eip (local.get $old_eip))
     (i32.store offset=16 (global.get $reg_base) (local.get $old_esp))
     (i32.store offset=0 (global.get $reg_base) (local.get $old_eax))

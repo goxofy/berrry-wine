@@ -4,6 +4,7 @@ const { execSync } = require('child_process');
 const { withCliFailureCleanup } = require('../lib/cli-failure-cleanup');
 const { createHostImports } = require('../lib/host-imports');
 const frameIntervals = require('../lib/frame-intervals');
+const { createRenderWaitAttribution } = require('../lib/render-wait-attribution');
 const { loadDlls, callDllMain, detectRequiredDlls, shouldReportNtForDlls, loadWin16Dlls } = require('../lib/dll-loader');
 const { inputEventHwnd } = require('../lib/host-window');
 const { SYSTEM_DATA_FILES, resolveDllGraph, mountLoadedDllFiles, mountSystemDataFiles,
@@ -49,6 +50,7 @@ const { CliVideoRecorder } = require('../lib/cli-recorder');
 const { renderTinySynthNotes } = require('../lib/tinysynth-offline');
 const { createBatchClock } = require('../lib/batch-clock');
 const { createGuestClockSource } = require('../lib/guest-clock');
+const { createInputConsumptionTrace } = require('./input-consumption-trace');
 const { createStartupClock } = require('../lib/startup-clock');
 const { parseShellLaunchCommand, resolveShellLaunchPath } = require('../host.js');
 // Fixed memory-map addresses, from the map declared in src/00-regions.wat.
@@ -296,8 +298,9 @@ const TRACE_API_FILTER = (TRACE_API_RAW && TRACE_API_RAW.includes('='))
   ? new Set(TRACE_API_RAW.split('=')[1].split(',').map(s => s.trim()).filter(Boolean))
   : null;
 // --trace-api-paused (with --quiet-api): install the --trace-api logging but keep
-// the WAT API log OFF until a control command {"action":"trace-api","on":true}
-// turns it on. Any --trace-api switches every Win32 call to three host calls
+// the WAT API log OFF when no other consumer needs it, until a control command
+// {"action":"trace-api","on":true} turns tracing on. Any --trace-api switches
+// every Win32 call to three host calls
 // (log, log_i32, log_api_exit), which slowed Black & White 2 about 4x and moved
 // a route's timing out from under its inputs; paused, the run is full speed up
 // to the moment worth tracing. {"on":false} pauses it again.
@@ -305,7 +308,7 @@ const TRACE_API_PAUSED = hasFlag('trace-api-paused');
 const TRACE_API_DEDUP = hasFlag('trace-api-dedup'); // --trace-api-dedup: collapse N consecutive identical lines into "(xN)"
 const TRACE_API_COUNTS = hasFlag('trace-api-counts'); // --trace-api-counts: print histogram of API call names at end
 const TRACE_MOUSE_STATE = hasFlag('trace-mouse-state'); // --trace-mouse-state: log renderer mouse state changes seen by host imports
-const TRACE_INPUT_DISPATCH = hasFlag('trace-input-dispatch'); // --trace-input-dispatch: log mouse/key MSGs entering DispatchMessage
+const TRACE_INPUT_DISPATCH = hasFlag('trace-input-dispatch'); // bounded schedule/dequeue/route/DispatchMessage timing
 // --trace-stack[=N|=Name1,Name2|=Name:N,...]: walk EBP chain on matched API calls
 const TRACE_STACK_RAW = args.find(a => a === '--trace-stack' || a.startsWith('--trace-stack='));
 const TRACE_STACK = !!TRACE_STACK_RAW;
@@ -486,6 +489,7 @@ if (TRACE_GL_RAW) {
 }
 const TRACE_DX_RAW = hasFlag('trace-dx-raw'); // --trace-dx-raw: on each Execute, walk+hexdump the full instruction stream
 const TRACE_FS = hasFlag('trace-fs');     // --trace-fs: log filesystem CreateFile hits/misses
+const QUIET_FS = hasFlag('quiet-fs');     // --quiet-fs: omit ReadFile diagnostics implied by --trace-api; explicit --trace-fs wins
 // --lazy-ranges[=MS]: mount a registry entry's lazy files (`loadMode: 'lazy'`
 // or `'background'`, and legacy `httpRange` not marked `loadMode: 'required'`)
 // the way the page does -- provider-backed, async-only, MS of latency per
@@ -1331,6 +1335,15 @@ const getAssetFiles = entry => {
     throw new Error(`${ASSET_ENTRY_ID || APP_ID || 'app'}: invalid local media manifest`);
   }
   const manifestDir = path.dirname(entry.localFileManifest);
+  if (entry.localManifestIntegrity) {
+    const verified = require('../lib/app-files').validateLocalManifestSync(entry, manifest, {
+      resolve: url => path.join(manifestDir, url),
+      read: url => fs.readFileSync(appAsset(url)),
+      sha256: bytes => require('crypto').createHash('sha256').update(bytes).digest('hex'),
+    });
+    Object.defineProperty(verified.files, 'verifiedMedia', { value: verified });
+    return verified.files;
+  }
   const local = manifest.files.filter(file => file && file.url)
     .map(file => ({ ...file, url: path.join(manifestDir, file.url) }));
   return require('../lib/app-files').mergeLocalManifestFiles(files, local);
@@ -1694,6 +1707,12 @@ function buildHandlerNameList() {
 
 async function main() {
   return withCliFailureCleanup(async onFailure => {
+  // Fail closed before compilation, PE loading or any VFS mutation.
+  const verifiedAssetFiles = ASSET_ENTRY && ASSET_ENTRY.localManifestIntegrity
+    ? getAssetFiles(ASSET_ENTRY) : null;
+  const verifiedBytesByPath = new Map(verifiedAssetFiles
+    ? [...verifiedAssetFiles.verifiedMedia.byUrl].map(([url, bytes]) => [canonicalPath(appAsset(url)), bytes]) : []);
+  const readAssetBytes = hostPath => verifiedBytesByPath.get(canonicalPath(hostPath)) || fs.readFileSync(hostPath);
   let wasmBytes;
   // A PIN THAT CANNOT BE HONOURED IS FATAL. This used to fall through to the
   // `else` and compile from src/, so `--wasm=/typo/path.wasm` (or a stale
@@ -1729,7 +1748,7 @@ async function main() {
     const { layoutHash, appendSection } = require('../tools/region-layout-hash.js');
     wasmBytes = appendSection(Buffer.from(r.wasmBinary), layoutHash(r.regions.regions));
   }
-  const exeBytes = fs.readFileSync(EXE_PATH);
+  const exeBytes = verifiedAssetFiles ? verifiedAssetFiles.verifiedMedia.exeBytes : readAssetBytes(EXE_PATH);
 
   // Where a DLL the guest asks for at run time comes from: what the app mounted
   // in the VFS first, then the directories this process can see. The browser
@@ -1747,7 +1766,7 @@ async function main() {
       path.join(path.dirname(EXE_PATH), 'plugins'),
     ]) {
       const sp = findHostFileCi(dir, fileName);
-      if (sp) return new Uint8Array(fs.readFileSync(sp));
+      if (sp) return new Uint8Array(readAssetBytes(sp));
     }
     return null;
   };
@@ -1783,6 +1802,8 @@ async function main() {
   // calls ($api_calls) and h.log sees only non-API log lines, so the total
   // is the sum -- the same number the per-call log used to produce.
   let apiLogOff = false;
+  // User trace visibility is independent of dispatch hooks needed by observers.
+  let traceApiOn = TRACE_API && !TRACE_API_PAUSED;
   // The WAT counter ($api_calls) runs only while the log is off. apiWatSeen is
   // the part of it already folded into apiCount when --trace-api-paused
   // switched the log on, so toggling never counts a call twice.
@@ -1793,6 +1814,7 @@ async function main() {
   let lastApiName = null;  // track last API name for return value correlation
   let lastApiEntry = null; // typed metadata for last API (for return formatting)
   let lastApiArgs = null;  // raw dword args captured at entry, used for out-param dump on return
+  let lastApiTraced = false; // selected entry, independent of --esp-delta correlation
   let lastTreeItemTrace = null;
   let lastApiEsp = 0;      // ESP at API entry, for --esp-delta audit
   let pendingComApiId = -1; // COM api_id from 0xC0DE0000 marker emitted just BEFORE the '<ord>' name log
@@ -2743,7 +2765,7 @@ async function main() {
     // A getter because the manager is built long after ctx is.
     get threadManager() { return threadManager; },
     verbose: VERBOSE,
-    _debugReadFile: TRACE_API,
+    _debugReadFile: TRACE_API && !QUIET_FS,
     _debugFindFile: TRACE_API,
     // Appended to every traced ReadFile (--trace-fs): the batch and the MAIN
     // thread's synchronous-message depth. A read made while that depth is
@@ -3278,6 +3300,7 @@ async function main() {
   for (const name of profileHostNames) wrapProfileHost(h, name);
 
   // --- Override logging ---
+  let morrowindNameObserver = null;
   let criticalTracePending = null;
   // Decoded API names, keyed by the guest pointer they were read from. This
   // runs on EVERY api call -- 904,207 of them in a 55s Black & White 2 window --
@@ -3296,13 +3319,14 @@ async function main() {
   // one Heroes III run. The count survives in WAT ($api_calls, apiTotal()).
   // The list is every reader of an API name or exit below, plus --esp-audit,
   // which wraps a worker's log. --quiet-api-fast is now an alias of this.
-  apiLogOff = QUIET_API &&
-    (!TRACE_API || TRACE_API_PAUSED) && !TRACE_API_COUNTS && !TRACE_CRITICAL &&
-    !TRACE_INPUT_DISPATCH && !ESP_DELTA && !ESP_AUDIT && !breakApis.length &&
+  const apiLogRequired = traceOn => !QUIET_API || traceOn ||
+    TRACE_API_COUNTS || TRACE_CRITICAL || TRACE_INPUT_DISPATCH || ESP_DELTA ||
+    ESP_AUDIT || breakApis.length || hasFlag('observe-morrowind-name') ||
     // Memory dumps accompany a paused API trace; they must not force its
     // dispatch logger on before the explicit trace-api control command.
     // Without --trace-api, memory-only tracing retains its existing behavior.
-    (!TRACE_API_MEM.length || (TRACE_API && TRACE_API_PAUSED));
+    (TRACE_API_MEM.length && (!TRACE_API || traceOn));
+  apiLogOff = !apiLogRequired(traceApiOn);
   h.log = (ptr, len) => {
     let t = apiNameCache.get(ptr);
     if (t === undefined) {
@@ -3325,8 +3349,17 @@ async function main() {
       comOrdRaw = true;
       pendingComApiId = -1;
     }
+    if (morrowindNameObserver) morrowindNameObserver.apiEnter(t);
     apiCount++;
     if (apiCounts) apiCounts.set(t, (apiCounts.get(t) || 0) + 1);
+    if (TRACE_API) {
+      // A filtered/new call must never inherit an earlier call's metadata.
+      lastApiTraced = false;
+      lastApiName = null;
+      lastApiEntry = null;
+      lastApiArgs = null;
+      lastTreeItemTrace = null;
+    }
 
     if (TRACE_CRITICAL && (t === 'EnterCriticalSection' || t === 'LeaveCriticalSection')) {
       try {
@@ -3366,12 +3399,12 @@ async function main() {
         if ((msgMsg >= 0x0100 && msgMsg <= 0x0108) ||
             (msgMsg >= 0x0200 && msgMsg <= 0x020D) ||
             (msgMsg >= 0x00A0 && msgMsg <= 0x00AD)) {
-          logs.push(`[dispatch-input] ${t} hwnd=0x${msgHwnd.toString(16)} msg=0x${msgMsg.toString(16)} wParam=0x${msgWP.toString(16)} lParam=0x${(msgLP >>> 0).toString(16)}`);
+          inputConsumptionTrace.dispatch(t, msgHwnd, msgMsg, msgWP, msgLP);
         }
       } catch (_) {}
     }
 
-    for (const spec of TRACE_API_MEM) {
+    for (const spec of (!TRACE_API || traceApiOn) ? TRACE_API_MEM : []) {
       if (t !== spec.name) continue;
       try {
         const e = instance.exports;
@@ -3438,7 +3471,7 @@ async function main() {
       lastApiEsp = instance.exports.get_esp();
     }
 
-    if (TRACE_API && (!TRACE_API_FILTER || TRACE_API_FILTER.has(t))) {
+    if (traceApiOn && (!TRACE_API_FILTER || TRACE_API_FILTER.has(t))) {
       const e = instance.exports;
       const esp = e.get_esp();
       const imageBase = e.get_image_base();
@@ -3447,6 +3480,7 @@ async function main() {
       const fmtCtx = { dv, g2w, memory: memory.buffer, readStr, hex };
 
       const entry = apiByName.get(t);
+      lastApiTraced = true;
       lastApiName = t;
       lastApiEntry = entry || null;
       // Snapshot arg dwords at entry so out-param decoding survives stack churn
@@ -3854,17 +3888,15 @@ async function main() {
       const delta = (espAfter - lastApiEsp) | 0;
       logs.push(`[ESP] ${lastApiName}: ${hex(lastApiEsp)} -> ${hex(espAfter)} delta=${delta >= 0 ? '+' : ''}${delta}`);
     }
-    if (TRACE_API && lastApiName) {
+    if (traceApiOn && lastApiTraced) {
       if (!lastApiEntry || !lastApiEntry.ret) {
-        // Legacy untyped path. Typed entries are formatted in log_api_exit
-        // using EAX, which is authoritative — skip here to avoid duplicate lines.
+        // An arbitrary integer diagnostic is not a final API return. Keep it
+        // visible, but leave correlation for log_api_exit's authoritative EAX.
+        // Typed entries still skip this diagnostic as before.
         flushDedup();
-        logs.push(`  => ${hex(val)}`);
-        lastApiName = null;
-        lastApiEntry = null;
-        lastApiArgs = null;
+        logs.push('[i32] ' + hex(val));
       }
-    } else {
+    } else if (!TRACE_API || traceApiOn) {
       logs.push('[i32] ' + hex(val));
     }
   };
@@ -3909,8 +3941,9 @@ async function main() {
     };
   }
 
-  if (ESP_DELTA || TRACE_API || TRACE_CRITICAL) {
+  if (ESP_DELTA || TRACE_API || TRACE_CRITICAL || hasFlag('observe-morrowind-name')) {
     h.log_api_exit = () => {
+      if (morrowindNameObserver) morrowindNameObserver.apiExit();
       if (criticalTracePending) {
         try {
           const after = criticalTracePending.state();
@@ -3924,18 +3957,19 @@ async function main() {
         const delta = (espAfter - lastApiEsp) | 0;
         logs.push(`[ESP] ${lastApiName}: ${hex(lastApiEsp)} -> ${hex(espAfter)} delta=${delta >= 0 ? '+' : ''}${delta}`);
       }
-      if (TRACE_API && lastApiEntry) {
+      if (traceApiOn && lastApiTraced) {
         const dv = new DataView(memory.buffer);
         const imageBase = instance.exports.get_image_base();
         const fmtCtx = { dv, g2w: addr => translateGuest(addr, imageBase, memory.buffer), memory: memory.buffer, readStr, hex };
         const eax = instance.exports.get_eax();
-        const typedRet = fmtApiRet(lastApiEntry, eax, fmtCtx);
+        const typedRet = fmtApiRet(lastApiEntry, eax, fmtCtx) ||
+          `=> ${hex(eax)} (raw EAX; ${lastApiName})`;
         const outInfo = lastApiArgs ? fmtApiOutParams(lastApiEntry, lastApiArgs, fmtCtx) : '';
         if (typedRet || outInfo) flushDedup();
         if (typedRet) logs.push(`  ${typedRet.trim()}`);
         if (outInfo) logs.push(outInfo);
       }
-      if (TRACE_API && lastApiName === 'SendMessageA' && lastTreeItemTrace) {
+      if (traceApiOn && lastApiName === 'SendMessageA' && lastTreeItemTrace) {
         try {
           const imageBase = instance.exports.get_image_base();
           const textValue = readStr(RegionMap.g2w(lastTreeItemTrace.textGuest, imageBase),
@@ -3947,6 +3981,7 @@ async function main() {
       lastApiName = null;
       lastApiEntry = null;
       lastApiArgs = null;
+      lastApiTraced = false;
     };
   }
 
@@ -4449,7 +4484,19 @@ async function main() {
         `guest ${Math.round(startupClock.map(raw))} ms`);
     };
   }
-  h.get_ticks = guestClock.ticks;
+  // Resolve the reader at call time so the optional observer below sees the
+  // same mapped return as GetTickCount/timeGetTime/QueryPerformanceCounter.
+  h.get_ticks = () => guestClock.ticks();
+  // Independent of --trace-input-dispatch; no initialization or hooks by default.
+  const mainSchedulerObserver = hasFlag('trace-main-scheduler')
+    ? require('./main-scheduler-observer').createMainSchedulerObserver({ logs, isOpen: traceWindowOpen }) : null;
+  const inputConsumptionTrace = createInputConsumptionTrace({
+    enabled: TRACE_INPUT_DISPATCH, logs,
+    snapshot: () => ({ batch: tickState.batch, guestMs: guestClock.publish(),
+      clock: guestClock.realTicks ? 'real' : 'batch',
+      lastGuestTick: inputConsumptionTrace.lastGuestTick }),
+  });
+  guestClock.ticks = inputConsumptionTrace.observeTicks(guestClock.ticks);
   // Every OTHER import table in this process is built from `ctx` — one per
   // guest thread, in makeWorkerImports — and createHostImports derives its
   // get_ticks from ctx.guestNowMs. Overriding only `h` above therefore left
@@ -4495,13 +4542,18 @@ async function main() {
   // --- Override input for test injection ---
   let lastInputEvent = null;
   h.check_input = () => {
+    if (mainSchedulerObserver) mainSchedulerObserver.hostInput();
     let evt = null;
+    let source;
     if (inputEvent) {
+      source = 'pending';
       evt = inputEvent;
       inputEvent = null;
     } else if (crossThreadMsgs.length > 0) {
+      source = 'cross-thread';
       evt = crossThreadMsgs.shift();
     } else if (inputQueue && inputQueue.length > 0) {
+      source = 'button-queue';
       // Delay button clicks while on "Installing Files" page (let extraction thread work)
       if (installingFiles) return 0;
       const id = inputQueue.shift();
@@ -4511,10 +4563,12 @@ async function main() {
       // menu commands because the edit child's wndproc is WNDPROC_BUILTIN.
       else evt = { msg: 0x0111, wParam: id, lParam: 0, hwnd: 0 };
     } else if (renderer) {
+      source = 'renderer';
       evt = renderer.checkInput();
     }
     if (!evt) return 0;
     lastInputEvent = evt;
+    inputConsumptionTrace.dequeue(evt, source);
     const packed = (evt.wParam << 16) | (evt.msg & 0xFFFF);
     logs.push(`[check_input] msg=0x${evt.msg.toString(16)} wParam=0x${evt.wParam.toString(16)} lParam=0x${(evt.lParam >>> 0).toString(16)} packed=0x${packed.toString(16)}`);
     return packed;
@@ -4529,9 +4583,13 @@ async function main() {
   // won the input FIFO (Moorhuhn's WinSock thread, whenever the main thread
   // sat in a present-cap sleep) was told the key was the main window's and
   // routed it, while the browser told it 0 and it kept the key.
-  h.check_input_hwnd = (focusHwnd) => inputEventHwnd(lastInputEvent,
-    { get_focus_hwnd: () => focusHwnd | 0 },
-    (why) => logs.push(`[check_input_hwnd] ${why}`));
+  h.check_input_hwnd = (focusHwnd) => {
+    const hwnd = inputEventHwnd(lastInputEvent,
+      { get_focus_hwnd: () => focusHwnd | 0 },
+      (why) => logs.push(`[check_input_hwnd] ${why}`));
+    inputConsumptionTrace.route(focusHwnd, hwnd);
+    return hwnd;
+  };
   h.check_input_lparam = () => (lastInputEvent ? (lastInputEvent.lParam || 0) : 0);
   h.check_input_wparam = () => (lastInputEvent ? (lastInputEvent.wParam || 0) : 0);
   let lastMouseTracePos = -1;
@@ -4847,6 +4905,15 @@ async function main() {
     }
   }
 
+  // MORROWIND_NAME_IMPORT_BEGIN: before instantiation captures import references.
+  if (hasFlag('observe-morrowind-name')) {
+    const legacyEip = h.log_eip;
+    h.log_eip = pc => {
+      if (morrowindNameObserver) morrowindNameObserver.onEip(pc);
+      if (legacyEip) legacyEip(pc);
+    };
+  }
+  // MORROWIND_NAME_IMPORT_END
   const instance = await WebAssembly.instantiate(wasmModule, imports);
   ctx.exports = instance.exports;
   // Quiet runs silence the per-call API log from the first instruction, DLL
@@ -5113,7 +5180,7 @@ async function main() {
       traceHost: traceHostNames,
       hostCensus: HOST_CENSUS,
       exports: workerExportsProxy,
-      _debugReadFile: TRACE_API,
+      _debugReadFile: TRACE_API && !QUIET_FS,
       ioTraceTag: ctx.ioTraceTag,
       sharedGdi: base.gdi,  // the live GDI table, not the copy in ctx
       g2w: (addr) => translateGuest(addr, instance.exports.get_image_base(), memory.buffer),
@@ -5142,7 +5209,8 @@ async function main() {
     // A console reader may live on a guest worker (telnet does). Its low-level
     // input buffer is process-scoped, so it must drain the same host event and
     // metadata latch as the main instance.
-    wh.check_input = h.check_input;
+    wh.check_input = mainSchedulerObserver
+      ? () => mainSchedulerObserver.workerInput(tid, h.check_input) : h.check_input;
     wh.check_input_lparam = h.check_input_lparam;
     wh.check_input_wparam = h.check_input_wparam;
     wh.check_input_hwnd = h.check_input_hwnd;
@@ -5227,9 +5295,10 @@ async function main() {
         return entry && entry.id === id ? entry.name : null;
       },
       shouldLog: (name) => workerApiShouldLog(
-        { traceApi: TRACE_API, quietApi: QUIET_API, filter: TRACE_API_FILTER }, name),
+        { traceApi: traceApiOn, quietApi: QUIET_API, filter: TRACE_API_FILTER }, name),
       formatValue: hex,
-      emit: (line) => logs.push(line),
+      // A return may arrive after a pause between this worker's entry/exit.
+      emit: (line) => { if (traceApiOn) logs.push(line); },
     });
     wh.log = workerApiLog.log;
     wh.log_i32 = workerApiLog.log_i32;
@@ -5516,6 +5585,27 @@ async function main() {
 
   applyStartupShow(instance.exports, getArg('startup-show', undefined));
   const { entry } = stageAndLoadPe(instance.exports, memory.buffer, exeBytes, console.log);
+  // MORROWIND_NAME_ATTACH_BEGIN: loaded image, before any guest initializer.
+  if (hasFlag('observe-morrowind-name')) {
+    morrowindNameObserver = require('../lib/morrowind-name-observer').install({
+      enabled: true, exeBytes, exports: instance.exports,
+      parallel: hasFlag('threads'), traceConflict: !!TRACE_EIP_RANGE,
+      read: (address, length) => {
+        if (!Number.isInteger(address) || address <= 0 || address + length > 0x100000000)
+          throw Error('invalid guest span');
+        const bytes = Buffer.alloc(length);
+        for (let i = 0; i < length; i++) {
+          const offset = translateGuest(address + i, instance.exports.get_image_base(), memory.buffer);
+          if (offset === 0xf0 || offset < 0 || offset >= memory.buffer.byteLength)
+            throw Error('unmapped guest span');
+          bytes[i] = new Uint8Array(memory.buffer)[offset];
+        }
+        return bytes;
+      },
+      emit: record => logs.push('[morrowind-name] ' + JSON.stringify(record)),
+    });
+  }
+  // MORROWIND_NAME_ATTACH_END
   applyVirtualAllocTop(instance.exports, VIRTUAL_ALLOC_TOP_ARG !== null
     ? Number(VIRTUAL_ALLOC_TOP_ARG) : (APP_ENTRY && APP_ENTRY.virtualAllocTop));
   if (CS_STEAL_AFTER && instance.exports.set_cs_steal_after) {
@@ -5592,7 +5682,7 @@ async function main() {
   if (dllArg) {
     dlls = dllArg.split(',').map(p => ({
       name: path.basename(p.trim()),
-      bytes: fs.readFileSync(p.trim()),
+      bytes: readAssetBytes(p.trim()),
     }));
   } else {
     // Auto-detect: scan EXE imports, load any DLLs found in test/binaries/dlls/
@@ -5650,7 +5740,7 @@ async function main() {
               ? appAsset(appFileByName.get(name.toLowerCase())) : null));
         return (p && fs.existsSync(p)) ? {
           name,
-          bytes: fs.readFileSync(p),
+          bytes: readAssetBytes(p),
           path: capturedGuestPath(p) || besideExeGuestPath(p, name) || undefined,
         } : null;
       },
@@ -5671,7 +5761,7 @@ async function main() {
   // C:\Modules for Myth's network modules. Mount the same manifest here first;
   // the full mount below re-adds each path idempotently.
   if (ctx.vfs && ASSET_ENTRY) {
-    for (const item of getAssetFiles(ASSET_ENTRY)) {
+    for (const item of (verifiedAssetFiles || getAssetFiles(ASSET_ENTRY))) {
       const url = typeof item === 'string' ? item : (item && item.url);
       if (!url) continue;
       const hostPath = appAsset(url);
@@ -5685,7 +5775,7 @@ async function main() {
         if (ctx.vfs.files.has(vfsPath)) continue;
         ctx.vfs.ensureParentDirs(vfsPath);
         ctx.vfs.setLazyFile(vfsPath.slice(0, vfsPath.lastIndexOf('\\') + 1) + String(raw).replace(/^.*[\\/]/, ''), { attrs: 0x20, size,
-          load: () => new Uint8Array(fs.readFileSync(hostPath)) });
+          load: () => new Uint8Array(item.bytes || fs.readFileSync(hostPath)) });
       }
     }
   }
@@ -5746,7 +5836,7 @@ async function main() {
       return ctx.vfs.setLazyFile(vfsPath.slice(0, vfsPath.lastIndexOf('\\') + 1) + String(rawPath).replace(/^.*[\\/]/, ''), {
         attrs: 0x20,
         size,
-        load: () => new Uint8Array(fs.readFileSync(hostPath)),
+        load: () => new Uint8Array(readAssetBytes(hostPath)),
       });
     };
     const addFontAlias = (name, hostPath, size) => {
@@ -5792,7 +5882,7 @@ async function main() {
       // files and sizes. Its lazy entries mount provider-backed under
       // --lazy-ranges -- the audit of what the browser streams -- and stay
       // ordinary eager mounts otherwise.
-      const policy = require('../lib/app-files').normalizeLazyFiles(ASSET_ENTRY, getAssetFiles(ASSET_ENTRY), {
+      const policy = require('../lib/app-files').normalizeLazyFiles(ASSET_ENTRY, verifiedAssetFiles || getAssetFiles(ASSET_ENTRY), {
         isWin16: !!(instance.exports.is_win16 && instance.exports.is_win16()),
         // Only the sizes the page has too (an entry's own `size`): a stat()
         // size here made the CLI decide differently from the browser and
@@ -6776,17 +6866,26 @@ async function main() {
   // callback: Heroes II hung ten batches after its main menu this way. host.js
   // has always made this exemption (_isMainExecutionSuspended); the CLI has to
   // agree or the browser and the harness run different schedulers.
+  // --trace-render-wait: opt in to bounded software-D3D wait attribution.
+  // Legacy render-park waits/counters remain active without this diagnostic.
+  const renderWaitAttribution = hasFlag('trace-render-wait') ? createRenderWaitAttribution() : null;
+  if (renderWaitAttribution) ctx.renderWaitAttribution = renderWaitAttribution.stats;
   let mainRenderWait = null;
-  const mainExecutionSuspended = () => {
+  const mainExecutionSuspended = (path = 'probe') => {
+    const observation = mainSchedulerObserver?.begin(path, tickState.batch);
+    const finish = (value, reason) => observation ? observation.finish(value, reason) : value;
     const ex = instance.exports;
-    if (threadManager.isMainNamedEventWaiting()) return true;
-    if (ex.get_yield_reason() === 16) {
+    if (threadManager.isMainNamedEventWaiting()) return finish(true, 'named-event');
+    let yieldReason = ex.get_yield_reason();
+    if (observation) observation.yield(yieldReason);
+    if (yieldReason === 16) {
       const token = ex.get_d3d_render_token() | 0;
       if (!mainRenderWait || mainRenderWait.token !== token) {
         const wait = {token,done:false,polls:0,since:tickState.batch|0}; mainRenderWait = wait;
+        renderWaitAttribution?.begin(wait, ctx.d3d9Bridge?.requests.get(token));
         wait.promise = Promise.resolve().then(() => ctx.waitD3DRender(token))
-          .catch(error => console.error('[render]',error))
-          .then(() => { wait.done = true; });
+          .catch(error => { renderWaitAttribution?.reject(wait); console.error('[render]',error); })
+          .then(() => { wait.done = true; renderWaitAttribution?.settle(wait); });
       }
       if (!mainRenderWait.done) {
         // A request the bridge already calls done should release main within
@@ -6797,13 +6896,15 @@ async function main() {
         if (++mainRenderWait.polls === 1000 && record && record.done)
           console.log(`[render] main parked on completed request ${token} for 1000 checks ` +
             `(since batch ${mainRenderWait.since}); the wait never observed it`);
-        return true;
+        return finish(true, 'render');
       }
       mainRenderWait = null; ex.clear_yield();
     }
-    if (threadManager._renderSendTargets.has(ex)) return true;
-    if (ex.get_yield_reason() === 10 && (threadManager.backend === 'worker' ||
-        !threadManager.resolveCooperativeThreadSend(ex))) return true;
+    if (threadManager._renderSendTargets.has(ex)) return finish(true, 'render-send');
+    yieldReason = ex.get_yield_reason();
+    if (observation) observation.yield(yieldReason);
+    if (yieldReason === 10 && (threadManager.backend === 'worker' ||
+        !threadManager.resolveCooperativeThreadSend(ex))) return finish(true, 'thread-send');
     // Sleep(n) on the main thread. checkMainYield records the deadline after
     // the batch that slept; host.js parks the main instance until it passes,
     // and so must this loop, or Sleep(1001) lasts one batch of guest time.
@@ -6819,12 +6920,15 @@ async function main() {
     // A Sleep main made earlier in this batch (between thread slices) has not
     // been through checkMainYield yet; record its deadline now.
     threadManager.noteMainSleep();
-    if (!REAL_TICK_SLEEPS && threadManager.isMainSleeping() && !threadManager.hasLiveThreads()) {
+    if (!REAL_TICK_SLEEPS && threadManager.isMainSleeping(observation?.sleep) &&
+        !(observation ? observation.live(threadManager.hasLiveThreads()) : threadManager.hasLiveThreads())) {
+      if (observation) observation.fastForward();
       tickState.pausedMs += threadManager.mainSleepRemaining();
     }
-    if (threadManager.isMainSleeping()) return true;
-    if (!threadManager.isMainThreadSuspended()) return false;
-    return !(ex.is_mm_timer_callback_active && (ex.is_mm_timer_callback_active() | 0));
+    if (threadManager.isMainSleeping(observation?.sleep)) return finish(true, 'sleep');
+    if (!threadManager.isMainThreadSuspended()) return finish(false, 'runnable');
+    return finish(!(ex.is_mm_timer_callback_active && (ex.is_mm_timer_callback_active() | 0)),
+      'suspend-count-or-mm-timer');
   };
 
   // A main thread parked on a software D3D request (yield 16) used to cost a
@@ -6851,11 +6955,16 @@ async function main() {
     const wait = mainRenderWait;
     if (!wait || wait.done) return;
     const started = Date.now();
+    renderWaitAttribution?.parkStart(wait, started);
+    let renderParkDeadline = false;
     while (!wait.done && !stopped) {
       await Promise.race([wait.promise, new Promise(r => setTimeout(r, 100))]);
-      if (deadlineMs && Date.now() > deadlineMs) break;
+      if (deadlineMs && Date.now() > deadlineMs) { renderParkDeadline = true; break; }
     }
-    renderParkStats.waits++; renderParkStats.wallMs += Date.now() - started;
+    const renderParkEnded = Date.now();
+    renderParkStats.waits++; renderParkStats.wallMs += renderParkEnded - started;
+    renderWaitAttribution?.parkEnd(wait, renderParkEnded,
+      stopped ? 'stopped' : (renderParkDeadline ? 'deadline' : 'pending'));
   };
 
   let lastSchedSig = null;
@@ -7232,17 +7341,28 @@ async function main() {
       };
     }
     if (cmd.action === 'snapshot') return controlSnapshot();
+    if (cmd.action === 'input-state') return inputConsumptionTrace.frozenState(cmd,
+      { frozen: controlFrozen, credits: controlRunCredits, batch: tickState.batch | 0 },
+      () => ({ scheduledInput, inputEvent, crossThreadMsgs, inputQueue, renderer,
+        threadManager, exports: instance.exports }));
     if (cmd.action === 'trace-api') {
       if (!TRACE_API || !TRACE_API_PAUSED) throw new Error('trace-api needs --trace-api[=NAMES] --trace-api-paused');
       const on = cmd.on !== false;
+      const logOn = !!apiLogRequired(on);
       const watNow = instance.exports.get_api_calls ? instance.exports.get_api_calls() >>> 0 : 0;
-      if (on && apiLogOff) { apiCount += watNow - apiWatSeen; apiWatSeen = watNow; }
-      if (!on && !apiLogOff) apiWatSeen = watNow;
-      apiLogOff = !on;
-      const setLog = exports => { if (exports && exports.set_api_log) exports.set_api_log(on ? 1 : 0); };
+      if (logOn && apiLogOff) { apiCount += watNow - apiWatSeen; apiWatSeen = watNow; }
+      if (!logOn && !apiLogOff) apiWatSeen = watNow;
+      apiLogOff = !logOn;
+      if (!on) {
+        flushDedup();
+        lastApiTraced = false;
+        lastTreeItemTrace = null;
+      }
+      traceApiOn = on;
+      const setLog = exports => { if (exports && exports.set_api_log) exports.set_api_log(logOn ? 1 : 0); };
       setLog(instance.exports);
       if (threadManager) for (const [, t] of threadManager.threads) setLog(t.instance && t.instance.exports);
-      inheritWasm('set_api_log', on ? 1 : 0);
+      inheritWasm('set_api_log', logOn ? 1 : 0);
       logs.push(`[trace-api] ${on ? 'on' : 'paused'} at batch ${tickState.batch | 0}`);
       return { traceApi: on, batch: tickState.batch | 0 };
     }
@@ -7550,6 +7670,7 @@ async function main() {
     // Inject scheduled input events at the right batch
     while (scheduledInput.length && scheduledInput[0].batch <= batch) {
       const ev = scheduledInput.shift();
+      inputConsumptionTrace.schedule(ev);
       injectedInputThisBatch = true;
       // Start the input->blit clock on events a user would perform. The
       // wrapped gdi_surface_upload stops it at the first blit that follows.
@@ -10202,10 +10323,12 @@ async function main() {
         // the run idle with its control channel unanswered.
         logs.push(`[input] ${ev.action} dropped at batch ${batch}: no renderer`);
       } else if (renderer) {
-        renderer.inputQueue.push({ type: 'key', hwnd: 0, msg: ev.msg, wParam: ev.wParam, lParam: ev.lParam });
+        renderer.inputQueue.push(inputConsumptionTrace.enqueue(
+          { type: 'key', hwnd: 0, msg: ev.msg, wParam: ev.wParam, lParam: ev.lParam }, ev));
         logs.push(`[input] injected msg=0x${ev.msg.toString(16)} wParam=0x${ev.wParam.toString(16)} at batch ${batch}`);
       } else {
-        inputEvent = { msg: ev.msg, wParam: ev.wParam, lParam: ev.lParam, hwnd: 0 };
+        inputEvent = inputConsumptionTrace.enqueue(
+          { msg: ev.msg, wParam: ev.wParam, lParam: ev.lParam, hwnd: 0 }, ev);
         logs.push(`[input] injected msg=0x${ev.msg.toString(16)} wParam=0x${ev.wParam.toString(16)} at batch ${batch}`);
       }
     }
@@ -10350,7 +10473,10 @@ async function main() {
       if (instance.exports.get_yield_reason && instance.exports.get_yield_reason() === 7) {
         threadManager.checkMainYield();
       }
-      if (!mainExecutionSuspended()) instance.exports.run(BATCH_SIZE);
+      if (!mainExecutionSuspended('ordinary')) {
+        if (mainSchedulerObserver) mainSchedulerObserver.run('ordinary', () => instance.exports.run(BATCH_SIZE));
+        else instance.exports.run(BATCH_SIZE);
+      }
       else if (instance.exports.get_yield_reason() === 16) renderParkStats.skippedBatches++;
     } catch (e) {
       flushLogs();
@@ -10815,10 +10941,13 @@ async function main() {
         // --threads-serial means nothing runs beside a guest thread, main
         // included, or the switch would not answer the question it exists for.
         if (THREADS_SERIAL) await workerSlices;
-        else if (s < THREAD_SLICES - 1 && !stopped && !mainExecutionSuspended()) {
+        else if (s < THREAD_SLICES - 1 && !stopped && !mainExecutionSuspended('worker-interleaved')) {
           // Main keeps running WHILE they do — the CLI's version of host.js
           // awaiting the main slice and the thread slices together.
-          try { instance.exports.run(BATCH_SIZE); } catch (e) { /* reported below */ }
+          try {
+            if (mainSchedulerObserver) mainSchedulerObserver.run('worker-interleaved', () => instance.exports.run(BATCH_SIZE));
+            else instance.exports.run(BATCH_SIZE);
+          } catch (e) { /* reported below */ }
         }
         ran = await workerSlices;
         if (!ran || stopped || !threadManager.hasActiveThreads()) break;
@@ -10862,8 +10991,11 @@ async function main() {
         // loop; repeatedly re-entering the main message pump here can drain
         // creation-time paints before an app has finished its first layout.
         if (s < slices - 1 && !stopped && threadManager.hasActiveThreads() &&
-            !mainExecutionSuspended()) {
-          try { instance.exports.run(BATCH_SIZE); } catch (e) { break; }
+            !mainExecutionSuspended('cooperative-interleaved')) {
+          try {
+            if (mainSchedulerObserver) mainSchedulerObserver.run('cooperative-interleaved', () => instance.exports.run(BATCH_SIZE));
+            else instance.exports.run(BATCH_SIZE);
+          } catch (e) { break; }
         }
       }
       if (TRACE_BATCH_TIMING) {
@@ -11483,6 +11615,8 @@ if (VERBOSE) {
   if (renderParkStats.waits || renderParkStats.skippedBatches)
     console.log(`render park: main waited on ${renderParkStats.waits} software D3D requests `
       + `(${renderParkStats.wallMs}ms wall), ${renderParkStats.skippedBatches} batches skipped while parked`);
+  renderWaitAttribution?.close(deadlineMs && Date.now() > deadlineMs ? 'deadline' : 'stopped');
+  if (renderWaitAttribution?.stats.requests) console.log(renderWaitAttribution.summary());
   if (PRESENT_CAP && instance.exports.get_present_paced_count) {
     console.log(`present pacing (main instance): cap ${PRESENT_CAP}/s ${PRESENT_PACE_MODE ? 'smooth' : 'deadline'}, `
       + `${instance.exports.get_present_paced_count()} frames slept `

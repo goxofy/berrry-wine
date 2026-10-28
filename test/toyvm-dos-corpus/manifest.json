@@ -71,9 +71,9 @@
    "text": "ToyVM implements DOS EXEC (INT 21h 4Bh, AL=00/01), so a launcher can start the next program.",
    "cite": "tools/toyvm/dos.js INT 21h 4Bh"
   },
-  "no-browser-mouse": {
-   "text": "The browser live page wires keyboard only; INT 33h mouse exists in the CLI but no pointer events reach a live session.",
-   "cite": "tools/toyvm/live.js and docs/dos-corpus/site.js (no mouse handlers)"
+  "browser-mouse-limits": {
+   "text": "Browser input supports absolute mouse position, three button bits, polling transition counts and deltas between absolute samples. No pointer lock/relative input, wheel, custom INT 33h ranges or callback interrupts; browser gameplay remains unqualified.",
+   "cite": "tools/toyvm/live.js bindInput; test/test-toyvm-mouse-input.js (DOM/state fixtures only)"
   }
  },
  "titles": [
@@ -196,10 +196,10 @@
       ]
      },
      {
-      "id": "keyboard-only",
-      "text": "A browser session would get keyboard input only.",
+      "id": "browser-mouse-limits",
+      "text": "Browser absolute mouse input has polling-only limits; gameplay is not qualified by input fixtures.",
       "facts": [
-       "no-browser-mouse"
+       "browser-mouse-limits"
       ]
      },
      {
@@ -350,10 +350,10 @@
       ]
      },
      {
-      "id": "keyboard-only",
-      "text": "A browser session would get keyboard input only.",
+      "id": "browser-mouse-limits",
+      "text": "Browser absolute mouse input has polling-only limits; gameplay is not qualified by input fixtures.",
       "facts": [
-       "no-browser-mouse"
+       "browser-mouse-limits"
       ]
      },
      {
@@ -482,10 +482,10 @@
     "blockers": [],
     "cautions": [
      {
-      "id": "keyboard-only",
-      "text": "A browser session would get keyboard input only.",
+      "id": "browser-mouse-limits",
+      "text": "Browser absolute mouse input has polling-only limits; gameplay is not qualified by input fixtures.",
       "facts": [
-       "no-browser-mouse"
+       "browser-mouse-limits"
       ]
      }
     ],
@@ -655,10 +655,10 @@
       ]
      },
      {
-      "id": "keyboard-only",
-      "text": "A browser session would get keyboard input only.",
+      "id": "browser-mouse-limits",
+      "text": "Browser absolute mouse input has polling-only limits; gameplay is not qualified by input fixtures.",
       "facts": [
-       "no-browser-mouse"
+       "browser-mouse-limits"
       ]
      }
     ],
@@ -815,10 +815,10 @@
       ]
      },
      {
-      "id": "keyboard-only",
-      "text": "A browser session would get keyboard input only.",
+      "id": "browser-mouse-limits",
+      "text": "Browser absolute mouse input has polling-only limits; gameplay is not qualified by input fixtures.",
       "facts": [
-       "no-browser-mouse"
+       "browser-mouse-limits"
       ]
      }
     ],
@@ -904,10 +904,10 @@
     "blockers": [],
     "cautions": [
      {
-      "id": "keyboard-only",
-      "text": "A browser session would get keyboard input only.",
+      "id": "browser-mouse-limits",
+      "text": "Browser absolute mouse input has polling-only limits; gameplay is not qualified by input fixtures.",
       "facts": [
-       "no-browser-mouse"
+       "browser-mouse-limits"
       ]
      }
     ],
@@ -1063,10 +1063,10 @@
     ],
     "cautions": [
      {
-      "id": "keyboard-only",
-      "text": "A browser session would get keyboard input only.",
+      "id": "browser-mouse-limits",
+      "text": "Browser absolute mouse input has polling-only limits; gameplay is not qualified by input fixtures.",
       "facts": [
-       "no-browser-mouse"
+       "browser-mouse-limits"
       ]
      }
     ],

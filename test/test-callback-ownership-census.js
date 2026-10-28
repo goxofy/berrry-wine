@@ -3,7 +3,7 @@
 // Source-only mutation tests. No wasm compilation, guest execution or model
 // token simulation: these establish inventory enforcement, not jump safety.
 const assert = require('assert');
-const { scanWat, scanSources, check, checkNonlocalAPIs } = require('../tools/callback-ownership-census');
+const { sourceFiles, scanWat, scanSources, check, checkNonlocalAPIs } = require('../tools/callback-ownership-census');
 const source = `(func $entry (export "inject") (global.set $eip (local.get $callback)))`;
 const sources = [{ file: 'src/fixture.wat', src: source }];
 const entries = scanSources(sources);
@@ -110,10 +110,12 @@ assert(checkNonlocalAPIs(nonlocalSources, [{name: 'longjmp'}]).length >= 2,
   'fully refreshed census still cannot authorize nonlocal handler/API');
 // Exercise the real manifest, not only self-consistent fixture inventories.
 // An unreviewed lifetime edit must fail even when producer counts stay equal.
-const fs = require('fs'), path = require('path'), cp = require('child_process');
+const fs = require('fs'), path = require('path');
 const root = path.resolve(__dirname, '..');
-const real = JSON.parse(cp.execFileSync(process.execPath,
-  [path.join(root, 'tools/callback-ownership-census.js'), '--dump'], {encoding: 'utf8'}));
+// Use the production enumerator and scanner in this process. Spawning a second
+// Node duplicates the runtime's physical footprint during source-only tests.
+const real = { entries: scanSources(sourceFiles(root).map(file => ({ file,
+  src: fs.readFileSync(path.join(root, file), 'utf8') }))) };
 const reviewed = require('../tools/callback-ownership-census.json');
 assert.deepStrictEqual(check(real.entries, reviewed), [], 'real source must match reviewed manifest');
 const hostSource = fs.readFileSync(path.join(root, 'host.js'), 'utf8');
@@ -186,6 +188,11 @@ const hostReviewMutations = [
   ['lib/browser-shell.js', 'finally { launchOpts.onExit(w); }', 'finally {}'],
   ['lib/browser-shell.js', 'await Promise.resolve(launchOpts.beforeRun(wine))',
     'await Promise.resolve()'],
+  ['host.js', "new TextDecoder('utf-8', { fatal: true })", 'new TextDecoder()'],
+  ['lib/renderer-input.js',
+    'P.handleKeyDown = function(vkCode, keyInfo) {\n    if (this._exited) return;\n    this._restoreKeyboardInputOwner();',
+    'P.handleKeyDown = function(vkCode, keyInfo) {\n    if (this._exited) return;\n    void this;'],
+  ['lib/renderer-input.js', 'this._modifierPhysicalMap !== this._physicalKeys', 'false'],
 ];
 for (const [file, before, after] of hostReviewMutations) {
   const original = fs.readFileSync(path.join(root, file), 'utf8');
@@ -196,4 +203,4 @@ for (const [file, before, after] of hostReviewMutations) {
   assert.deepStrictEqual(check(real.entries.map(e => e.file === file ? replacement : e), reviewed),
     [`changed producer ${file}:host-file (sha256); review its lifetime`]);
 }
-console.log('callback ownership census mutation tests PASS (fixtures, two lifetime, nine startup and six host review mutations; source inventory only)');
+console.log('callback ownership census mutation tests PASS (fixtures, two lifetime, nine startup and nine host review mutations; source inventory only)');

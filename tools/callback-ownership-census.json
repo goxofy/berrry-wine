@@ -267,9 +267,9 @@
     {
       "file": "host.js",
       "name": "host-file",
-      "sha256": "03eb8a7ab8dfae1f6e2a16c7943be2ed582a3f463029ae950043f0b2c0569ee4",
+      "sha256": "7154fbbcfb3381cddfecaeb07dbf4301e6a68fc43850b4f085264b6cb412e993",
       "kind": "host-entry",
-      "reason": "Conservative whole-file host boundary inventory. LockFile review: stop marks this host stopped, synchronously retires VFS disk handles before asynchronous guest-runtime retirement, and rejects late opens; final duplicate close releases owner locks and pending read reservations. closeAllDiskHandles/closeHandle invoke no guest callback or context restoration. Other callback ownership remains pending. SetLocalTime review: synchronous process calendar offset state is shared through host context construction; no guest callbacks, suspended invocation or context restoration added. Frozen-clock review: clock origin initialization and freeze/resume rebasing change only host clock state; no new guest invocation or restoration boundary. MIDI review 20261020: cooperative delivery authenticates captured exports against main/active thread identity and suspension; immutable registration arguments select wave or MIDI bound export; wait counters change only after admission. Worker MIDI transport throws. Native qualification pending. Process-alias review 20261021: published child object survives E4 close and asynchronous attachment; beforeRun checks exited before and after each await, onExit is idempotent and preserves authoritative DWORD status. stop severs object.wine and owner tables; init creates a new object, never revives old aliases. Children remain independently owned. Source-slice cancellation and lifetime tests, not full browser qualification. See docs/reviews/hock-startup-census-20261021.md. Startup review a339395: forceSpawn and showCmd travel with tracked child callbacks; launch options distinguish hidden progress from guest state. Publish startup before PE initialization; prior cancellation, stable process object and completion ownership remain. Integration 20261022: Expanded worker cache review: chooses shared index layout before decoding or thread initialization; setter only updates layout state, with no guest callback or context restoration.",
+      "reason": "Conservative whole-file host boundary inventory. LockFile review: stop marks this host stopped, synchronously retires VFS disk handles before asynchronous guest-runtime retirement, and rejects late opens; final duplicate close releases owner locks and pending read reservations. closeAllDiskHandles/closeHandle invoke no guest callback or context restoration. Other callback ownership remains pending. SetLocalTime review: synchronous process calendar offset state is shared through host context construction; no guest callbacks, suspended invocation or context restoration added. Frozen-clock review: clock origin initialization and freeze/resume rebasing change only host clock state; no new guest invocation or restoration boundary. MIDI review 20261020: cooperative delivery authenticates captured exports against main/active thread identity and suspension; immutable registration arguments select wave or MIDI bound export; wait counters change only after admission. Worker MIDI transport throws. Native qualification pending. Process-alias review 20261021: published child object survives E4 close and asynchronous attachment; beforeRun checks exited before and after each await, onExit is idempotent and preserves authoritative DWORD status. stop severs object.wine and owner tables; init creates a new object, never revives old aliases. Children remain independently owned. Source-slice cancellation and lifetime tests, not full browser qualification. See docs/reviews/hock-startup-census-20261021.md. Startup review a339395: forceSpawn and showCmd travel with tracked child callbacks; launch options distinguish hidden progress from guest state. Publish startup before PE initialization; prior cancellation, stable process object and completion ownership remain. Integration 20261022: Expanded worker cache review: chooses shared index layout before decoding or thread initialization; setter only updates layout state, with no guest callback or context restoration. Bundle-validation review 20261027: synchronous fatal UTF-8/exact-descriptor/duplicate-name checks retain buffer-view lifetime; unchanged async caller abort, exception, transfer and fallback paths. No guest callback or restoration introduced; ownership remains pending.",
       "ownership": "pending"
     },
     {
@@ -283,17 +283,17 @@
     {
       "file": "lib/apps.js",
       "name": "host-file",
-      "sha256": "a024c9f03a47a4378abea8bad525a4ea4c811772bd140b2782f4dc2d4a57c39d",
+      "sha256": "d874cbdec638767c95ed35c5418c618c2a06b8778ee67699b3dbf9cf8d6964e4",
       "kind": "host-entry",
-      "reason": "Uplink uses automatic mouse capture and mounts runtime DLLs as files instead of permanent EXE roots; existing LoadLibrary/FreeLibrary lifetime machinery owns callbacks.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Review 20261021: Mad Bomber metadata previously reviewed. Entire delta from seal at 2ae81e402 to 80f8278a adds only Hock local selector/EXE/required manifest data (b000885e); no executable callback producer, restoration or lifetime change. Whole-file inventory and ownership pending retained. See docs/reviews/army-host-census-reconcile-20261021.md. Integration 20261022: Expanded worker cache review: WC3 configuration adds a boolean layout opt-in only; no callback or context restoration. Review 20261025: complete delta from seal 8b6d676c to 27e2a785 adds only Airstrike/Penguin selector and pinned required-media metadata plus synchronous DLL-name map aliases; no guest entry, callback or restoration change. See docs/reviews/host-census-four-row-reconcile-oct25.md; ownership remains pending. Uplink integration: automatic mouse capture and runtime DLL file mounts use existing LoadLibrary/FreeLibrary lifetime machinery; no new callback owner.",
       "ownership": "pending"
     },
     {
       "file": "lib/browser-shell.js",
       "name": "host-file",
-      "sha256": "91bc8086de848cf900a8f96fe0e187458776cbb108271acc5cedb07c70cf0eb2",
+      "sha256": "ee958a3b4f7e5d9006a03ce6f4823653e17f6bb48342c59b304d977b79658890",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Startup review a339395: pending queue retains launch options; only bypassSingleApp tracked children bypass parent-exit scheduling. Entire delta from seal at 2ae81e402 to 80f8278a is nullish launchOpts normalization (52c165ee): supplied object/callback identity and showCmd zero survive; queue, restart, cancellation, beforeRun and onExit paths unchanged. No new guest continuation identity or ownership certification. See docs/reviews/army-host-census-reconcile-20261021.md.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Startup review a339395: pending queue retains launch options; only bypassSingleApp tracked children bypass parent-exit scheduling. Entire delta from seal at 2ae81e402 to 80f8278a is nullish launchOpts normalization (52c165ee): supplied object/callback identity and showCmd zero survive; queue, restart, cancellation, beforeRun and onExit paths unchanged. No new guest continuation identity or ownership certification. See docs/reviews/army-host-census-reconcile-20261021.md. Review 20261025: complete delta from seal 8b6d676c to 27e2a785 moves manifest validation before init, revalidates pinned launches, retains checked EXE/DLL/required-file bytes, and scopes temporary Blob URLs to awaited loadFiles with finally revocation. Abort checkpoints precede publication; queue/restart options, beforeRun/onExit and guest entry ordering reviewed, without an ownership-complete claim. See docs/reviews/host-census-four-row-reconcile-oct25.md; ownership remains pending.",
       "ownership": "pending"
     },
     {
@@ -315,9 +315,9 @@
     {
       "file": "lib/guest-worker.js",
       "name": "host-file",
-      "sha256": "41f0e60e1a826b6ee472b133626aa7de6737a7b3a4eff3f4b3dec52b6d7b1b1a",
+      "sha256": "d1ae471298f667510b5fb3fbec56157e50f706896ededd4ca3450429f48af062",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. CS park-EIP reporting reads an existing diagnostic export after a slice; it creates no guest context or continuation. Named-wait review 20261021: retains import transport and reports current sequence; completeWait rejects active thread-send frames or mismatched/already-consumed sequence before guest register/stack restoration. Exactly one successful consumption per named wait; callback/nonlocal coverage remains pending. Integration 20261022: Retry-yield review: clear_yield runs only for the explicit slice retry flag and live yield 9, after both incoming-send guards. A changed nonzero yield returns its normal diagnostic snapshot without sync callbacks, wait resume, guest execution, sleep flag consumption or detach callbacks; incoming-send skipped slices retain their owned frames.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. CS park-EIP reporting reads an existing diagnostic export after a slice; it creates no guest context or continuation. Named-wait review 20261021: retains import transport and reports current sequence; completeWait rejects active thread-send frames or mismatched/already-consumed sequence before guest register/stack restoration. Exactly one successful consumption per named wait; callback/nonlocal coverage remains pending. Integration 20261022: Retry-yield review: clear_yield runs only for the explicit slice retry flag and live yield 9, after both incoming-send guards. A changed nonzero yield returns its normal diagnostic snapshot without sync callbacks, wait resume, guest execution, sleep flag consumption or detach callbacks; incoming-send skipped slices retain their owned frames. Review 20261025: complete delta from seal 8b6d676c to 27e2a785 adds only versioned render-clear.js before d3d9-backend.js in the lazy browser D3DIM import list. No slice, wait completion, callback, cancellation or register restoration edits. See docs/reviews/host-census-four-row-reconcile-oct25.md; ownership remains pending.",
       "ownership": "pending"
     },
     {
@@ -371,17 +371,17 @@
     {
       "file": "lib/renderer-input.js",
       "name": "host-file",
-      "sha256": "4ea9ba14249a361b6c498c8e019cc27b761bc080af755eab04616b85af5ca051",
+      "sha256": "e7b59c046f63b504a0aba256b644a42c01f820fde9a0f9e5fee3961dae397f78",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Dialog-tree review 20261021: same-instance candidates compare their WS_CHILD top-level surfaces before area preference; cross-instance z-order and existing delivery paths remain. No new retained callback or context restoration. Production routing and modal input regressions passed.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Dialog-tree review 20261021: same-instance candidates compare their WS_CHILD top-level surfaces before area preference; cross-instance z-order and existing delivery paths remain. No new retained callback or context restoration. Production routing and modal input regressions passed. Modifier review 20261027: side owners retire when the physical map changes; queued boolean side snapshots preserve event order and consumed press bits. Existing keyboard-owner restoration precedes updates; Worker/modal/native routing, exceptions and guest context paths unchanged. Retained invocation ownership remains pending.",
       "ownership": "pending"
     },
     {
       "file": "lib/renderer.js",
       "name": "host-file",
-      "sha256": "d90f162458bf2743a5bda15d19341ed23983bcbfdf44391e63b7918059e1b744",
+      "sha256": "6702c363929e969a57d4e817d2d3d638d138e145cf28a50cda93a468f4269afe",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Uplink overlay review: canonical WAT child enumeration reads geometry synchronously; retains no guest callback or invocation context. Existing window and restoration ownership unchanged.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Startup review a339395: SW_FORCEMINIMIZE joins existing non-child minimization path; existing window object and restoration rectangle ownership unchanged. Review 20261025: complete delta from seal 71d9c29a to 27e2a785 separates isChild traversal from popup owner links and adds ancestor clipping with save/try/finally/restore for single-source child composition. Reviewed recursive wasm/memory alias restoration, surface snapshots and window lifetimes; no guest ownership certification. See docs/reviews/host-census-four-row-reconcile-oct25.md; ownership remains pending. Uplink integration: canonical WAT child enumeration reads geometry synchronously and retains no callback/context; newer popup ownership and ancestor clipping retained.",
       "ownership": "pending"
     },
     {
@@ -7664,9 +7664,16 @@
       "name": "$seh_fault_sync",
       "writes": 2,
       "boundaryCalls": [
+        "$invocation_ensure",
+        "$invocation_current",
         "$sync_depth_enter",
+        "$invocation_current",
         "$run",
-        "$sync_depth_leave"
+        "$invocation_current",
+        "$invocation_current",
+        "$invocation_current",
+        "$sync_depth_leave",
+        "$invocation_current"
       ],
       "exports": [],
       "targets": [
@@ -7679,7 +7686,7 @@
           "$old_eip"
         ]
       ],
-      "sha256": "db09b436efed69f6727e47d63db4c37a2be952e1c339ff2b49395893ef5a8282",
+      "sha256": "2e99233f80d3dd2a5f9c96e6636612caf3f59b020d0e70ed71311e3eadd625eb",
       "kind": "mixed-dispatch",
       "reason": "Potential callback entry, completion, redirect or park; each listed EIP target remains pending retained-context ownership review.",
       "ownership": "pending"

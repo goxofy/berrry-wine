@@ -1,5 +1,51 @@
 ## Run
 
+`--trace-input-dispatch` adds bounded CLI input timing observations (at most
+1,000 records plus one suppression notice per process). It works with
+`--quiet-api --quiet-blocks`; without the trace flag, existing output stays
+unchanged. `[input-schedule]` records the requested `scheduledBatch` and the
+actual injection batch, before the action runs; it does not prove an event was
+queued. `[input-enqueue]` identifies raw scripted MSG objects actually queued.
+`[input-dequeue]` records when `h.check_input` consumes an event, with full
+32-bit wParam/lParam, source and a per-consumption `dequeueId`.
+`[input-dequeue-route]` uses that ID for the polling guest's focus routing result
+(hwnd 0 lets WAT select its default). Empty polls produce no new timing record.
+`[dispatch-input]` records mouse/key MSG contents when the main CLI instance
+enters DispatchMessageA/W, before its handler runs. These observations do not
+cover independent worker API loggers, DirectInput polling or completed wndproc
+execution.
+
+Each record includes the observed `batch` and a non-advancing `guestMs` from
+the existing guest clock's publish path. `clock=batch` means its current batch
+base, including clock rebases/pauses. `clock=real` uses the existing
+scaled/mapped elapsed clock. `lastGuestTick` records the last actual return
+through the main host's guest-clock reader, after startup dilation or other
+mapping, in either mode. Before its first observed call it is `unavailable`.
+This value can be stale, including across startup release: publishing time does
+not change it. Host hooks that share this reader also update the observation;
+it does not report independent worker threads' last API reads or QPC's separate
+microsecond interpolation. It is never the raw underlying batch-clock state.
+Neither value is computed from the scheduled batch, and tracing spends no
+guest clock probe. Raw enqueues retain `enqueueId`/`scheduledBatch` at dequeue
+only by object identity. Renderer actions may suppress, combine or generate
+multiple events, so their schedule-to-dequeue identity is unavailable.
+Dispatch always says `correlation=unavailable`: an identical MSG tuple cannot
+prove which host dequeue produced it, especially with repeated keys or mouse
+events. Compare observed windows without treating matching tuples as IDs.
+
+For a separately authorized Penguin follow-up with its registered original
+assets installed, retain the matched schedule and add
+`--screen=800x600 --trace-input-dispatch --quiet-api --quiet-blocks` to
+`node test/run.js --app=penguin_command_1611 --no-build ...`.
+`--screen=WxH` is the existing host viewport option; review captures for the
+full client/cannon area. Use observed dequeue/dispatch batches to place later
+capture brackets; scheduled `34800:keydown:65,34900:keyup:65` alone does not
+establish delivery time. This diagnostic change has source-level regression
+coverage, not a new Penguin gameplay qualification. Run the lightweight test
+with `node --max-old-space-size=256 test/test-cli-tick-ms-input.js --source-only`;
+it executes production CLI hook bodies with real clock/trace code and controlled
+queues/MSG memory, without instantiating the guest VM.
+
 - **Browser:** Open `index.html` (at repo root), select an app, click Launch. Live build deployed at https://wine-assembly.berrry.app via `tools/deploy-berrry.js --update`.
 - **CLI:** `node test/run.js --exe=path/to/exe [options]` — headless execution with auto-build. A registered EXE gets that app's explicit file manifest; an arbitrary bare `--exe` mounts only the executable. Add repeatable/comma-separated `--vfs-include='*.dat,plugins/**/*.dll'` patterns (relative to the EXE directory) for ad-hoc companion assets, or prefer `--app=ID`. Key flags: `--verbose`, `--trace`, `--trace-api`, `--trace-gdi`, `--trace-host=fn1,fn2`, `--no-close`, `--break=0xADDR`, `--break-api=Name`, `--watch=0xADDR`, `--dump-gdi=DIR`, `--max-batches=N`, `--batch-size=N`, `--tick-ms-per-batch=N`
 

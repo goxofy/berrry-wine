@@ -1,5 +1,36 @@
 # Hock-A-Loogie original-game scoring: 2026-10-21
 
+## Offline publication review (2026-10-25)
+
+**ACCEPT, historical bounded scoring only.** Exact remote main
+`eeb4b3372c8b18361dae83509652b67281f67d0c` already contains this report's
+prior independent review, the Hock scoring note and the byte-identical candidate
+archive from `54b0ee54ba8053d7d430350dc332e1ff1ddcce92`. This publication
+preserves them and adds this qualification; it does not replay a historical
+patch over later notes. No TODO/status history is imported or changed.
+
+The reviewer independently inspected sealed run2 shot-02/final images showing
+0/20 at timer116 and 5/20 at timer59, the real mouse-input driver, timings and
+read-only score dump. The archive's SHA256 is exactly
+`2561cd2b2051cf6ba53bab01799d9564705926919294c32dd8d2423cb49b3f99`;
+unchanged coordinator verification of 118 outer and 53 nested seals is reused.
+Altered archive bytes and an altered expected hash are both rejecting controls.
+The historical runtime `776d37d55d2f749dcb29203e3bd26b8a5e9c05bd` and
+historical main `d2034ccf750f2482fa78012b30039800e75b9f54` independently match
+all 5,017 inputs under the archived mapping rule. Module, source-manifest,
+package and EXE identities below remain historical evidence. They are not a
+build or runtime qualification of eeb4b337 or of this documentation revision.
+
+Earlier registration/status statements below are dated review history, not a
+fresh evaluation of today's backlog. Exact struck target/collision instant,
+completion, audio, FPS, Windows parity and broad goal completion remain
+unqualified. No build, runtime access or replay occurred. bx_c6f3np32 is
+coordinator-reported stopped; historical running/expiry wording below records
+the original handoff only. Lifecycle remains coordinator-owned.
+
+Independent acceptance, integrity tests, resulting-tree checks and publication
+receipts: `/tmp/hock-scoring-reviewed-publication-oct25/ops/` on the review host.
+
 ## Independent integration review (2026-10-21)
 
 Accepted report commit `54b0ee54ba8053d7d430350dc332e1ff1ddcce92` against
