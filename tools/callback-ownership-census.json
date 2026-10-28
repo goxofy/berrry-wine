@@ -323,9 +323,9 @@
     {
       "file": "lib/host-audio.js",
       "name": "host-file",
-      "sha256": "00e02890ff3010cb514bbff3e946d9cbc8c00d8cba2d2966a16950e585574bdb",
+      "sha256": "cb944f0b0f0911d36259171c54f1281494e4f52c7fab48051cc59274a7d8e3e7",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. MIDI lifecycle/timing review 20261020: immutable registration retains callback, instance, exports and routing owner; function queue guards reentrancy and retries busy/throw, browser pump guards await and removes only the same head. Window backpressure retains head; changed owner is rejected; event DONE rejects mutex encoding. Completion removes pending ownership before notification; drain detaches old queue and close retires handle before notification. Fractional timing remainder and running/queued division restrictions reviewed; no invocation token or nonlocal coverage claimed.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. MIDI lifecycle/timing review 20261020: immutable registration retains callback, instance, exports and routing owner; function queue guards reentrancy and retries busy/throw, browser pump guards await and removes only the same head. Window backpressure retains head; changed owner is rejected; event DONE rejects mutex encoding. Completion removes pending ownership before notification; drain detaches old queue and close retires handle before notification. Fractional timing remainder and running/queued division restrictions reviewed; no invocation token or nonlocal coverage claimed. MCI compound-element review 20261028: _mciSplitCompound is a pure synchronous string helper consulted by both MCI open paths (command-string open and mci_open/mci_open_w) before the existing synchronous VFS read; it retains no callback, context or owner state, suspends nothing and restores no guest context. _mciFetchLate consumes the already-stripped dev.element unchanged; no new async ownership introduced.",
       "ownership": "pending"
     },
     {
