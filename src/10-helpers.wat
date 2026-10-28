@@ -171,6 +171,20 @@
   ;; HeapAlloc/VirtualAlloc so every guest store needs only one range check to
   ;; decide whether it can dirty a display bitmap.
   (func $dib_alloc (param $size i32) (result i32)
+    (local $result i32)
+    (call $lock_acquire (global.get $GDI_ALLOC_LOCK))
+    (local.set $result (call $dib_reserve_locked (local.get $size)))
+    (call $lock_release (global.get $GDI_ALLOC_LOCK))
+    ;; Reserved pages are private now; clearing large images must not block
+    ;; other threads from reserving their own objects or storage.
+    (if (local.get $result) (then
+      (call $zero_memory
+        (i32.add (global.get $DIB_BACKING_BASE)
+          (i32.sub (local.get $result) (global.get $DIB_GUEST_BASE)))
+        (i32.and (i32.add (local.get $size) (i32.const 4095)) (i32.const -4096)))))
+    (local.get $result))
+
+  (func $dib_reserve_locked (param $size i32) (result i32)
     (local $pages i32) (local $page i32) (local $run i32) (local $start i32)
     (if (i32.eqz (local.get $size)) (then (return (i32.const 0))))
     (local.set $pages
@@ -198,12 +212,14 @@
     (memory.fill
       (i32.add (global.get $DIB_PAGE_USED) (local.get $start))
       (i32.const 1) (local.get $pages))
-    (call $zero_memory
-      (i32.add (global.get $DIB_BACKING_BASE) (i32.shl (local.get $start) (i32.const 12)))
-      (i32.shl (local.get $pages) (i32.const 12)))
     (i32.add (global.get $DIB_GUEST_BASE) (i32.shl (local.get $start) (i32.const 12))))
 
   (func $dib_free_wasm (param $wa i32)
+    (call $lock_acquire (global.get $GDI_ALLOC_LOCK))
+    (call $dib_free_locked (local.get $wa))
+    (call $lock_release (global.get $GDI_ALLOC_LOCK)))
+
+  (func $dib_free_locked (param $wa i32)
     (local $page i32) (local $pages i32)
     (if (i32.ge_u
           (i32.sub (local.get $wa) (global.get $DIB_BACKING_BASE))

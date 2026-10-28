@@ -2622,6 +2622,10 @@
         (store.field DxObject flags (local.get $entry)
           (i32.or (i32.const 4) (local.get $storage_flags))) ;; offscreen
         (call $dx_surf_fmt_set (local.get $entry) (local.get $fmt))
+        (if (i32.eqz (call $dx_surface_caps2_set (local.get $entry)
+              (call $dx_surface_caps2_get (call $dx_from_this (local.get $parent_obj))))) (then
+          (drop (call $dx_surface_release (local.get $obj)))
+          (br $done)))
         (store.field DxObject misc0 (local.get $prev_entry) (local.get $obj))
         (local.set $prev_entry (local.get $entry))
         (local.set $level (i32.add (local.get $level) (i32.const 1)))
@@ -2634,7 +2638,7 @@
     (local $obj i32) (local $entry i32) (local $flags i32) (local $ddsd_flags i32)
     (local $back_obj i32) (local $back_entry i32) (local $vidmem_bytes i32)
     (local $back_count i32) (local $back_index i32) (local $prev_entry i32)
-    (local $back_flags i32) (local $back_bytes i32) (local $chain_hr i32)
+    (local $back_flags i32) (local $back_bytes i32) (local $chain_hr i32) (local $caps2 i32)
     ;; Native v4/v7 descriptors must not silently discard extended caps.
     ;; Cube/storage semantics are a subsequent implementation slice.
     (if (i32.eq (call $dx_native_desc_size (local.get $arg0)) (i32.const 124)) (then
@@ -2643,13 +2647,24 @@
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
         (return)))
       (if (i32.and (call $gl32 (i32.add (local.get $arg1) (i32.const 4))) (i32.const 1)) (then
-      (if (i32.or (call $gl32 (i32.add (local.get $arg1) (i32.const 108)))
+      (local.set $caps2 (call $gl32 (i32.add (local.get $arg1) (i32.const 108))))
+      (if (i32.or (i32.and (local.get $caps2) (i32.const -131101)) ;; allowed: 0x2001c
             (i32.or (call $gl32 (i32.add (local.get $arg1) (i32.const 112)))
                     (call $gl32 (i32.add (local.get $arg1) (i32.const 116))))) (then
         (call $gs32 (local.get $arg2) (i32.const 0))
         (i32.store (global.get $reg_base) (i32.const 0x80004001)) ;; E_NOTIMPL
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
         (return)))))))
+    ;; Managed textures retain CPU storage; the existing dirty upload path
+    ;; synchronizes the GPU copy on use. Dynamic/static are access hints.
+    (if (local.get $caps2) (then
+      (if (i32.or
+            (i32.eqz (i32.and (call $gl32 (i32.add (local.get $arg1) (i32.const 104))) (i32.const 0x1000)))
+            (i32.eq (i32.and (local.get $caps2) (i32.const 12)) (i32.const 12))) (then
+        (call $gs32 (local.get $arg2) (i32.const 0))
+        (i32.store (global.get $reg_base) (i32.const 0x80070057))
+        (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
+        (return)))))
     (local.set $ddsd_wa (call $g2w (local.get $arg1)))
     (local.set $ddsd_flags (i32.load offset=4 (local.get $ddsd_wa)))
     ;; DDSURFACEDESC:
@@ -2867,6 +2882,11 @@
     (store.field DxObject misc2 (local.get $entry) (local.get $vidmem_bytes))
     (store.field DxObject flags (local.get $entry) (local.get $flags))
     (call $dx_surf_fmt_set (local.get $entry) (local.get $fmt))
+    (if (i32.eqz (call $dx_surface_caps2_set (local.get $entry) (local.get $caps2))) (then
+      (drop (call $dx_surface_release (local.get $obj)))
+      (i32.store (global.get $reg_base) (i32.const 0x8007000e))
+      (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
+      (return)))
     ;; DDSCAPS_MIPMAP=0x400000. Build the rest of the pyramid now, while the
     ;; level-0 geometry and format are still in hand. DDSD_MIPMAPCOUNT=0x20000
     ;; makes dwMipMapCount at +24 the caller's declared total level count;
@@ -4905,8 +4925,8 @@
   (func $dx_fill_surface_desc_native (param $wa i32) (param $entry i32) (param $size i32)
     (call $dx_fill_surface_desc (local.get $wa) (local.get $entry))
     (if (i32.eq (local.get $size) (i32.const 124)) (then
-      ;; Extended caps/storage is deliberately rejected at creation for now.
       (memory.fill (i32.add (local.get $wa) (i32.const 108)) (i32.const 0) (i32.const 16))
+      (i32.store offset=108 (local.get $wa) (call $dx_surface_caps2_get (local.get $entry)))
       (i32.store (local.get $wa) (i32.const 124)))))
 
   (func $handle_IDirectDrawSurface_QueryInterface (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
@@ -6391,7 +6411,7 @@
         (return)))
     (local.set $requested (call $gl32 (local.get $arg1)))
     (if (i32.eq (call $dx_native_desc_size (local.get $arg0)) (i32.const 124)) (then
-      (if (i32.or (call $gl32 (i32.add (local.get $arg1) (i32.const 4)))
+      (if (i32.or (i32.and (call $gl32 (i32.add (local.get $arg1) (i32.const 4))) (i32.const -131101))
             (i32.or (call $gl32 (i32.add (local.get $arg1) (i32.const 8)))
                     (call $gl32 (i32.add (local.get $arg1) (i32.const 12))))) (then
         (call $gs32 (local.get $arg2) (i32.const 0))
@@ -6417,6 +6437,14 @@
       (then
         (local.set $child (call $dx_surface_explicit_child (local.get $entry) (local.get $requested)))
         (local.set $actual (local.get $requested))))
+    ;; Native texture-management flags participate in attachment matching too.
+    (if (i32.and (i32.ne (local.get $child) (i32.const 0))
+          (i32.eq (call $dx_native_desc_size (local.get $arg0)) (i32.const 124))) (then
+      (if (i32.ne
+            (i32.and (call $dx_surface_caps2_get (call $dx_from_this (local.get $child)))
+              (call $gl32 (i32.add (local.get $arg1) (i32.const 4))))
+            (call $gl32 (i32.add (local.get $arg1) (i32.const 4))))
+        (then (local.set $child (i32.const 0))))))
     ;; Every requested capability must belong to the returned attachment.
     ;; Blitz probes a primary for TEXTURE|MIPMAP before converting loaded
     ;; images. Returning its unrelated back buffer makes Blitz copy that empty
@@ -6493,7 +6521,7 @@
           (else
             (local.set $entry (call $dx_from_this (local.get $arg0)))
             (if (i32.eq (local.get $size) (i32.const 16)) (then
-              (call $gs32 (i32.add (local.get $arg1) (i32.const 4)) (i32.const 0))
+              (call $gs32 (i32.add (local.get $arg1) (i32.const 4)) (call $dx_surface_caps2_get (local.get $entry)))
               (call $gs32 (i32.add (local.get $arg1) (i32.const 8)) (i32.const 0))
               (call $gs32 (i32.add (local.get $arg1) (i32.const 12)) (i32.const 0))))
             (call $gs32 (local.get $arg1)
@@ -16054,7 +16082,7 @@
 ;; defaults PS_SOLID=0, width=1, foreground=0. Style/width setters remain
 ;; E_NOTIMPL; no unsupported state can silently alter these defaults.
 ;; The previously unused +12 word in declared16-byte DX_SURF_META owns an
-;; eight-byte heap state {raw COLORREF,pen}. No global layout/capacity grows.
+;; twelve-byte heap state {raw COLORREF,pen,texture caps2}. No global layout/capacity grows.
 ;; Native creation already zeros all16bytes before publication. State is
 ;; shared by every interface view and freed on final surface retirement.
 (func $vbdd_draw_state_ptr (param $entry i32) (result i32)
@@ -16065,12 +16093,23 @@
  (local $state i32) (local $guest i32)
  (local.set $state (call $vbdd_draw_state_ptr (local.get $entry)))
  (if (local.get $state) (then (return (local.get $state))))
- (local.set $guest (call $heap_alloc (i32.const 8)))
+ (local.set $guest (call $heap_alloc (i32.const 12)))
  (if (i32.eqz (local.get $guest)) (then (return (i32.const 0))))
  (local.set $state (call $g2w (local.get $guest)))
- (call $zero_memory (local.get $state) (i32.const 8))
+ (call $zero_memory (local.get $state) (i32.const 12))
  (i32.store offset=12 (call $dx_surf_meta_ptr (local.get $entry)) (local.get $guest))
  (local.get $state))
+(func $dx_surface_caps2_get (param $entry i32) (result i32)
+ (local $state i32)
+ (local.set $state (call $vbdd_draw_state_ptr (local.get $entry)))
+ (if (result i32) (local.get $state) (then (i32.load offset=8 (local.get $state))) (else (i32.const 0))))
+(func $dx_surface_caps2_set (param $entry i32) (param $caps i32) (result i32)
+ (local $state i32)
+ (if (i32.eqz (local.get $caps)) (then (return (i32.const 1))))
+ (local.set $state (call $vbdd_draw_state_ensure (local.get $entry)))
+ (if (i32.eqz (local.get $state)) (then (return (i32.const 0))))
+ (i32.store offset=8 (local.get $state) (local.get $caps))
+ (i32.const 1))
 (func $vbdd_draw_state_reset (param $entry i32)
  (local $state i32) (local $pen i32) (local $guest i32)
  (local.set $guest (i32.load offset=12 (call $dx_surf_meta_ptr (local.get $entry))))

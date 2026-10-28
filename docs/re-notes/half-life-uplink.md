@@ -65,14 +65,13 @@ the goal.
 
 ## Installed-game launch
 
-Mount the whole installed directory relative to `hldemo.exe` and seed the
-runtime-loaded native DLLs:
+Use the registered app to mount the installed directory, including its runtime
+DLLs. Do not seed those DLLs: permanent EXE roots prevent renderer-restart
+unloading (see the 2026-10-25 findings below).
 
 ```sh
 /opt/homebrew/bin/timeout -s KILL 90 node test/run.js \
-  --exe=test/binaries/candidates/half-life-uplink-installer/installed/hldemo.exe \
-  --vfs-include='**/*' \
-  --dll-seed=test/binaries/candidates/half-life-uplink-installer/installed/hw.dll,test/binaries/candidates/half-life-uplink-installer/installed/sw.dll,test/binaries/candidates/half-life-uplink-installer/installed/hl_res.dll,test/binaries/candidates/half-life-uplink-installer/installed/a3dapi.dll,test/binaries/candidates/half-life-uplink-installer/installed/valve/dlls/hl.dll,test/binaries/candidates/half-life-uplink-installer/installed/valve/cl_dlls/client.dll \
+  --app=halflife_uplink \
   --no-build --max-seconds=70 --max-batches=10000000 --batch-size=1000
 ```
 
@@ -1261,3 +1260,148 @@ cooperative repeat despite its name: the fixture option was initially wrong;
 its recorded `crossOriginIsolated=false` is preserved. Only the final Worker
 run qualifies the threaded route. The isolated preview is served on
 `http://127.0.0.1:52670/index.html` while the release checkout is retained.
+
+## Menu repaint, cursor policy and renderer restart (2026-10-25/26)
+
+The reported gray Video submenu reproduces in cooperative Chrome after applying
+a resolution. Both MoveWindow and SetWindowPos had a direct COLOR_BTNFACE fill
+for classless dialogs, outside the application's erase/paint handling. Removing
+those fills preserves the custom menu background. Default DefDlgProc erasure,
+subclass erasure, parent/child paint ordering and Win16 positioning regressions
+pass. Removing the forced relativeMouse flag lets gameplay recentering request
+capture while menus expose the Windows cursor again; observed cursor display
+counts are negative in gameplay and positive in menus.
+
+The exact `Z_Free: freed a pointer without ZONEID` error reproduced after
+OpenGL 800×600 → 1024×768 → Resume. In hw.dll, the Cvar_Set caller at original
+VA `0x100721b7` freed the `model` cvar's stale string. Z_Free at `0x10043f30`
+expected magic `0x1d4a11` at pointer minus 16, but the allocation had become a
+zone header after restart. The six seeded DLLs were permanent EXE_ROOT modules,
+so their globals survived the renderer teardown. Mounting them as ordinary
+files lets LoadLibrary/FreeLibrary own their lifetime. The repeated resolution
+transition then resumed actual 1024×768 gameplay, with reloaded DLL generation
+2 and EXE_ROOT zero. No bypass of Z_Free or allocator checks was introduced.
+
+Final tested WASM: `493649ad48b23092e038fa43d224e6b540bc1aa84831fd297f5b9064680a4bed`.
+Evidence: `20261025-uplink-gl-final`; preceding failed/intermediate runs are
+`20261025-uplink-gray-trace2` and `20261025-uplink-gray-after`.
+
+Software and OpenGL were compared at 640×480 using the same F6 quicksave,
+reloaded with F7 after changing renderer. Reviewed `compare-save-3.png`
+(Software) and `compare-gl-resume-4.png` (OpenGL) show matching stairs, railings,
+wall/ceiling geometry, signs, light fixtures and HUD. Software has dithered
+shading and unfiltered texels; OpenGL smooths them. No missing objects were
+visible in this scene. This does not qualify water, combat effects or completion
+of the demo. The accompanying comparison.html displays both captures together.
+
+Direct3D is **not yet qualified**: the subsequent in-game switch returned to the
+desktop with ExitProcess(255), captured in `compare-d3d-resume-3.json/png`.
+It must not be reported as passing merely because the mode dialog accepted it.
+
+`20261026-uplink-worker-fresh` reached a correctly rendered OpenGL corridor,
+then later showed corrupt menu pixels and Out of memory after returning from
+gameplay. The logged refused allocation was `0xa6de3600` bytes (reason 5,
+oversized/overflowing request), not exhaustion of the ordinary memory pool.
+Worker mode therefore remains unqualified for this candidate. Earlier browser
+navigation/reconnect failures are preserved separately as harness errors.
+
+## Concurrent GDI menu corruption (2026-10-27)
+
+The oversized allocation originates in hldemo.exe bitmap-copy routine
+`0x411870`: GetObjectA at `0x4118e6` returns zero, but the caller uses the
+untouched stack BITMAP anyway. Garbage width/height produce a `0xa6de35f8`
+allocation, plus eight allocator bytes. The bitmap had just been created;
+the API history contains no intervening DeleteObject. Two OS threads allocating
+200 bitmaps reproduced only 145 unique handles and 179 distinct storage blocks.
+Shared object/DC scan-and-claim and DIB page reservations now use a short mutex.
+Rendering imports and image clearing occur after releasing it.
+
+That fixes disappearing bitmaps but is insufficient for menu pixels: the
+allocation-only build still copied the animated banner into unrelated menu
+rows. GDI surface descriptors, bitmap plans and conversion buffers were shared
+between instances. Each guest instance now has private GDI scratch storage;
+the browser's host shadow has its own partition even though it initializes
+using a guest slot number. This also keeps synchronous host calls from exposing
+another thread's in-progress descriptors.
+
+`test/test-gdi-allocation-workers.js` checks 6,000 concurrent bitmap/DC
+allocations, non-overlapping storage, live records and concurrent release/reuse.
+A barrier forces two threads to prepare descriptors before either consumes
+them; both output images must match their own source. The control with private
+scratch disabled fails this pixel check; the fixed implementation passes.
+Temporary API-history and OOM diagnostics have been removed from guest-rpc.js.
+Investigation evidence: `20261027-uplink-menu-query-failure`,
+`20261027-uplink-menu-lifetime`, `20261027-uplink-gdi-lock`,
+`20261027-uplink-menu-locked` (allocation fix only, still corrupt), and
+`20261027-uplink-menu-private` (initial menu clean; intermediate settled capture
+incomplete, not used for qualification). Final-build gameplay qualification is
+recorded separately in `20261027-uplink-final`.
+
+Final module `8694abe3aaa87e876234fff0329f17669f23a6b0e3dde3fe7ccef2968e1d8197`,
+layout `a23715cdaba2f34b`: fresh Worker main menu and Configuration → Video →
+back remain clean after 45 seconds. OpenGL gameplay, movement, pause and
+640×480 → 800×600 → resume pass; renderer DLL generation advances to 2.
+The Video Modes screen is complete on re-entry. Switching to Software 640×480
+also resumes gameplay and movement without the prior oversized allocation.
+
+The **Software pause menu remains broken**: after 15 seconds the screen still
+shows the game image plus animated banner. `software-gdi.png` proves menu
+labels exist in `_exclusiveGdiChildCanvas`, while the compositor retains the
+DirectDraw primary. The exclusive HWND is the main menu HWND (`0x10001`), so
+ordinary top-level GDI uploads are retained only as child overlays and hidden.
+`software-menu-settle-0.png` records the visible failure. This is a separate
+presentation/ownership issue, not a passing menu check; Direct3D also remains
+unqualified. The earlier Software/OpenGL scene comparison remains the parity
+evidence; this run's movement captures are not a matched-camera comparison.
+
+## Software controls and Direct3D managed textures (2026-10-28)
+
+Software's missing pause buttons were a compositor enumeration bug. Native
+BUTTON/STATIC children exist only in the canonical WAT window tree; the
+exclusive shared-surface overlay walked JavaScript window mirrors, which
+contained only the animated banner. `_exclusiveSharedChildRegions` now walks
+visible canonical descendants, clips to ancestors, and retains the existing
+upload-versus-primary ordering. The regression includes WAT-only controls,
+hidden ancestors, newer primary frames and both postprocessing routes.
+Fresh Worker run `20261028-uplink-software-final` verifies gameplay, movement,
+pause, Configuration/Video, resume and another settled pause. The Video screen
+has its full background and descriptions. Loaded WASM remains `8694abe3`;
+this is a host-renderer change.
+
+Direct3D's ExitProcess(255) was the EXE's exception body at `0x442481`, not a
+renderer-selection failure. The existing CPU-fault trace captured integer
+divide-by-zero (`0xc0000094`) in hw.dll block `0x1003865a`, at the
+`idiv [ebx+0xc]` instruction `0x10038669`. Texture record 423 had no dimensions.
+Its preceding CreateSurface requested DDSCAPS2 `0x14` (TEXTUREMANAGE and
+HINTDYNAMIC), which the native Surface4/7 ABI implementation rejected with
+E_NOTIMPL. The wrapper reports a debugger string, leaves the record unset,
+then divides by its width in a later texture update. Evidence:
+`20261028-uplink-d3d-cause/cpu-faults-final.json`.
+
+CreateSurface now accepts texture management and dynamic/static hints; it
+rejects non-texture use, conflicting hints, and unsupported extended storage
+such as cube maps. Existing CPU backing and dirty GPU uploads provide the
+managed copy. Caps persist in the surface-owned extra state, round-trip through
+GetCaps/GetSurfaceDesc/Lock, propagate to mip levels and participate in
+GetAttachedSurface matching. Final retirement frees the extra state alongside
+its existing VB pen state. No guest exception or division is bypassed.
+The native Surface4/7 test exercises repeated pixel updates, mip inheritance,
+caps matching and invalid requests. Mip-chain, texture release/arena and VB
+surface-blit regressions pass. Capability semantics follow Microsoft's
+[DDSCAPS2 reference](https://learn.microsoft.com/en-us/windows/win32/api/ddraw/ns-ddraw-ddscaps2).
+
+Build `1951f588c7818b86d3bc0aea61be08d1811e62699d976946b3f90c0bac2fd900`
+retains layout `a23715cdaba2f34b`. In `20261028-uplink-d3d-managed`, cooperative
+Chrome reaches textured corridor gameplay, movement and a complete pause menu
+with no recorded CPU fault. The introductory black fade is not a rendering
+failure; the later movement capture shows walls, stairs, railings, signs,
+lights and HUD. This is not a matched-camera comparison or demo-completion test.
+The same run applies 800×600, reloads the renderer DLL (generation 2), resumes
+textured gameplay and returns to the menu without Z_Free or a CPU fault.
+Fresh `20261028-uplink-d3d-worker` verifies the same final module with a guest
+Worker: textured corridor, W movement and complete pause menu. The menu has
+cursor display count 0, CSS cursor `default`, no hidden-cursor class and no
+pointer lock. No page errors, Z_Free, oversized allocation or process exit
+occurred. This run presents gameplay in a desktop-sized window; fullscreen
+Worker presentation, Safari/mobile, audio quality and completion remain outside
+this qualification.

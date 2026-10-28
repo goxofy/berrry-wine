@@ -13,7 +13,7 @@
   (global $GDI_BITMAP_FONT_STRIDE i32 (i32.const 64))
   (global $GDI_BITMAP_FONT_IO i32 (region.addr $GDI_BITMAP_FONT_IO 0))
   (global $GDI_BITMAP_FONT_IO_SIZE i32 (region.size $GDI_BITMAP_FONT_IO))
-  (global $GDI_BITMAP_FONT_DESC i32 (region.addr $GDI_BITMAP_FONT_DESC 0))
+  (global $GDI_BITMAP_FONT_DESC (mut i32) (region.addr $GDI_BITMAP_FONT_DESC 0))
   (global $GDI_BITMAP_FONT_DESC_SIZE i32 (region.size $GDI_BITMAP_FONT_DESC))
   (global $GDI_BITMAP_FONT_SYSTEM_PATH i32 (region.addr $GDI_BITMAP_FONT_STATIC 0x00000000))
   (global $GDI_BITMAP_FONT_SYSTEM_STATE i32 (region.addr $GDI_BITMAP_FONT_STATIC 0x0000001C))

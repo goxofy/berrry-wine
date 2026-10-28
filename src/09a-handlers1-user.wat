@@ -1729,20 +1729,13 @@
     (i32.const 1))
 
   (func $move_window_finish (param $arg0 i32) (param $flags i32)
-    (local $dlg_rec i32) (local $repaint i32) (local $cs i32)
+    (local $repaint i32) (local $cs i32)
     (if (i32.lt_s (call $wnd_table_find (local.get $arg0)) (i32.const 0)) (then (return)))
     (local.set $repaint (i32.eqz (i32.and (local.get $flags) (i32.const 8))))
     (local.set $cs (call $host_get_window_client_size (local.get $arg0)))
-    (local.set $dlg_rec (call $dlg_record_for_hwnd (local.get $arg0)))
     (call $windowpos_queue_ncpaint (local.get $arg0) (local.get $flags))
-    (if (i32.and
-          (i32.and
-            (i32.ne (local.get $dlg_rec) (i32.const 0))
-            (i32.ne (i32.load offset=4 (local.get $dlg_rec)) (i32.const 0)))
-          (i32.lt_s (call $wnd_get_class_slot (local.get $arg0)) (i32.const 0)))
-      (then
-        (if (local.get $repaint)
-          (then (drop (call $host_erase_background (local.get $arg0) (i32.const 16)))))))
+    ;; UpdateWindow below dispatches the owner's paint/erase handling. Do not
+    ;; overwrite an application-painted #32770 dialog with BTNFACE first.
     ;; If the main window is moved/resized before its first ShowWindow, refresh
     ;; the pending WM_SIZE that was seeded during CreateWindowExA. EmPipe does
     ;; exactly this; using the stale 0x0 create size moves its controls offscreen.

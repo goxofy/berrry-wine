@@ -1698,11 +1698,31 @@
     (i32.atomic.load offset=40 (global.get $SHARED_COUNTERS)))
 
   ;; Thread init — called by host after creating worker instance
+  ;; Raster kernels may run concurrently, and a rendering host call can pause
+  ;; one instance while another paints. A shared descriptor is therefore not
+  ;; temporary storage, even when each individual API is synchronous.
+  (func $gdi_thread_scratch_init (param $tid i32)
+    (local $base i32)
+    (local.set $base (i32.add (region.addr $GDI_THREAD_SCRATCH 0)
+      (i32.mul (select (i32.const 16) (local.get $tid) (global.get $host_shadow))
+        (i32.const 4096))))
+    (global.set $GDI_LINE_DESC (local.get $base))
+    (global.set $GDI_BLIT_DST_DESC (i32.add (local.get $base) (i32.const 80)))
+    (global.set $GDI_BLIT_SRC_DESC (i32.add (local.get $base) (i32.const 160)))
+    (global.set $GDI_BRUSH_DESC (i32.add (local.get $base) (i32.const 240)))
+    (global.set $GDI_BITMAP_FONT_DESC (i32.add (local.get $base) (i32.const 320)))
+    (global.set $GDI_BITMAP_PLAN (i32.add (local.get $base) (i32.const 400)))
+    (global.set $WINDOW_RECT_SCRATCH (i32.add (local.get $base) (i32.const 448)))
+    (global.set $GDI_BITMAP_NAME (i32.add (local.get $base) (i32.const 464)))
+    (global.set $GDI_BRUSH_ROW (i32.add (local.get $base) (i32.const 720)))
+    (global.set $GDI_BITMAP_INFO_SCRATCH (i32.add (local.get $base) (i32.const 976))))
+
   (func (export "init_thread") (param $tid i32)
       (param $img_base i32) (param $code_s i32) (param $code_e i32)
       (param $thunk_gs i32) (param $thunk_ge i32) (param $num_th i32)
       (param $main_rsrc_rva i32)
     (local $pe_off i32)
+    (call $gdi_thread_scratch_init (local.get $tid))
     ;; A reused Worker instance must not retain heap-backed queue overflow from
     ;; its previous guest thread. Do this before replacing allocator cursors.
     (call $post_queue_reset)

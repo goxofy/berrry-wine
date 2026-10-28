@@ -1894,19 +1894,19 @@
   (global $GDI_DC_SAVE_TABLE i32 (region.addr $GDI_DC_SAVE_TABLE 0))
   (global $GDI_DC_SAVE_TABLE_SIZE i32 (region.size $GDI_DC_SAVE_TABLE))
   (global $GDI_DC_SAVE_COUNT i32 (i32.const 256))
-  (global $GDI_LINE_DESC i32 (region.addr $GDI_LINE_DESC 0))
+  (global $GDI_LINE_DESC (mut i32) (region.addr $GDI_LINE_DESC 0))
   (global $GDI_LINE_DESC_SIZE i32 (region.size $GDI_LINE_DESC))
   ;; Two 80-byte surface descriptors for raster/blit destination and source.
   ;; The surface registry owns resolution; pixel kernels consume this scratch.
   (global $GDI_BLIT_DESC i32 (region.addr $GDI_BLIT_DESC 0))
-  (global $GDI_BLIT_DST_DESC i32 (region.addr $GDI_BLIT_DESC 0x00000000))
-  (global $GDI_BLIT_SRC_DESC i32 (region.addr $GDI_BLIT_DESC 0x00000050))
+  (global $GDI_BLIT_DST_DESC (mut i32) (region.addr $GDI_BLIT_DESC 0x00000000))
+  (global $GDI_BLIT_SRC_DESC (mut i32) (region.addr $GDI_BLIT_DESC 0x00000050))
   (global $GDI_BLIT_DESC_SIZE i32 (region.size $GDI_BLIT_DESC))
   ;; Bitmap creation handlers are synchronous. They share a parsed metadata
   ;; plan and an ANSI conversion buffer for LoadBitmapW resource names.
-  (global $GDI_BITMAP_PLAN i32 (region.addr $GDI_BITMAP_PLAN 0))
+  (global $GDI_BITMAP_PLAN (mut i32) (region.addr $GDI_BITMAP_PLAN 0))
   (global $GDI_BITMAP_PLAN_SIZE i32 (region.size $GDI_BITMAP_PLAN))
-  (global $GDI_BITMAP_INFO_SCRATCH i32 (region.addr $GDI_BITMAP_INFO_SCRATCH 0))
+  (global $GDI_BITMAP_INFO_SCRATCH (mut i32) (region.addr $GDI_BITMAP_INFO_SCRATCH 0))
   (global $GDI_BITMAP_INFO_SCRATCH_SIZE i32 (region.size $GDI_BITMAP_INFO_SCRATCH))
   (global $GUEST_SPAN_SCRATCH i32 (region.addr $GUEST_SPAN_SCRATCH 0))
   (global $GUEST_SPAN_SCRATCH_SIZE i32 (region.size $GUEST_SPAN_SCRATCH))
@@ -1916,18 +1916,18 @@
   (global $guest_span_cursor (mut i32) (i32.const 0))
   (global $guest_span_overflow (mut i32) (i32.const 0))
   (global $GDI_RGB555_MASKS i32 (region.addr $DIB_DEFAULT_RGB555_MASKS 0x00000000))
-  (global $GDI_BITMAP_NAME i32 (region.addr $GDI_BITMAP_NAME 0))
+  (global $GDI_BITMAP_NAME (mut i32) (region.addr $GDI_BITMAP_NAME 0))
   (global $GDI_BITMAP_NAME_SIZE i32 (region.size $GDI_BITMAP_NAME))
   ;; Window-coordinate resolution can run while a painter owns PAINT_SCRATCH.
   ;; Keep host GetWindowRect results in private high memory so surface/text
   ;; binding cannot overwrite the caller's RECT.
-  (global $WINDOW_RECT_SCRATCH i32 (region.addr $WINDOW_RECT_SCRATCH 0))
+  (global $WINDOW_RECT_SCRATCH (mut i32) (region.addr $WINDOW_RECT_SCRATCH 0))
   (global $WINDOW_RECT_SCRATCH_SIZE i32 (region.size $WINDOW_RECT_SCRATCH))
   ;; Pattern-brush sampling is synchronous and uses a private bitmap
   ;; descriptor so it cannot clobber active line/blit descriptors.
-  (global $GDI_BRUSH_DESC i32 (region.addr $GDI_BRUSH_DESC 0))
+  (global $GDI_BRUSH_DESC (mut i32) (region.addr $GDI_BRUSH_DESC 0))
   (global $GDI_BRUSH_DESC_SIZE i32 (region.size $GDI_BRUSH_DESC))
-  (global $GDI_BRUSH_ROW i32 (region.addr $GDI_BRUSH_ROW 0))
+  (global $GDI_BRUSH_ROW (mut i32) (region.addr $GDI_BRUSH_ROW 0))
   (global $GDI_BRUSH_ROW_SIZE i32 (region.size $GDI_BRUSH_ROW))
   (global $GDI_BITBLT_DECLINE i32 (region.addr $GDI_BITBLT_DECLINE 0))
   (global $GDI_BITBLT_DECLINE_SIZE i32 (region.size $GDI_BITBLT_DECLINE))
@@ -2469,6 +2469,12 @@
   ;; (08b-dll-loader.wat, "The loader lock"). Same layout as a LOCK_TABLE line.
   (global $DLL_LOAD_LOCK i32 (region.addr $DLL_LOAD_LOCK 0))
   (global $DLL_LOAD_LOCK_SIZE i32 (region.size $DLL_LOAD_LOCK))
+  ;; Shared GDI slot/handle and DIB page reservation. Never held across host
+  ;; rendering imports, guest callbacks, or acquisition of another lock.
+  (global $GDI_ALLOC_LOCK i32 (region.addr $GDI_ALLOC_LOCK 0))
+  (global $GDI_ALLOC_LOCK_SIZE i32 (region.size $GDI_ALLOC_LOCK))
+  (global $GDI_THREAD_SCRATCH i32 (region.addr $GDI_THREAD_SCRATCH 0))
+  (global $GDI_THREAD_SCRATCH_SIZE i32 (region.size $GDI_THREAD_SCRATCH))
   ;; Every CRITICAL_SECTION the guest has initialised, so that one owned by a
   ;; thread that has ended can be found and released. WASM addresses, not guest
   ;; ones: the release runs from whichever instance notices the exit, and in

@@ -231,9 +231,9 @@
         "init_thread"
       ],
       "targets": [],
-      "sha256": "97ffeee9efe9f5231f778188cb0937c7a06d26ce3a9c63fefd00967fcb5faaa4",
+      "sha256": "134eb73ac5e92a5aa0326c90c49aa85796bbec90aafa542268ea02efd8594ac2",
       "kind": "lifecycle",
-      "reason": "Starts a fresh private thread root after selecting its thread ID; existing process epoch retained. Expanded worker indexes reserve only the current worker code tail before decoding; lifecycle ownership unchanged.",
+      "reason": "Starts a fresh private thread root after selecting its thread ID; existing process epoch retained. Expanded worker indexes reserve only the current worker code tail before decoding. Selects private GDI scratch storage by instance slot without invoking callbacks; lifecycle ownership unchanged.",
       "ownership": "pending"
     },
     {
@@ -283,9 +283,9 @@
     {
       "file": "lib/apps.js",
       "name": "host-file",
-      "sha256": "5d312480dc18012af6f56b688dcd613b3d03323e7818f1e28ba965e859e46615",
+      "sha256": "a024c9f03a47a4378abea8bad525a4ea4c811772bd140b2782f4dc2d4a57c39d",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Review 20261021: Mad Bomber metadata previously reviewed. Entire delta from seal at 2ae81e402 to 80f8278a adds only Hock local selector/EXE/required manifest data (b000885e); no executable callback producer, restoration or lifetime change. Whole-file inventory and ownership pending retained. See docs/reviews/army-host-census-reconcile-20261021.md. Integration 20261022: Expanded worker cache review: WC3 configuration adds a boolean layout opt-in only; no callback or context restoration. Uplink desktop review 20261023: moves the existing app ID from local candidates to public desktop metadata; launch configuration, callbacks and ownership remain unchanged.",
+      "reason": "Uplink uses automatic mouse capture and mounts runtime DLLs as files instead of permanent EXE roots; existing LoadLibrary/FreeLibrary lifetime machinery owns callbacks.",
       "ownership": "pending"
     },
     {
@@ -379,9 +379,9 @@
     {
       "file": "lib/renderer.js",
       "name": "host-file",
-      "sha256": "3b7b3efb1dc48b73de6d24d0c01e10650b0cc84b0b8cd80df2b49baa3680b2b2",
+      "sha256": "d90f162458bf2743a5bda15d19341ed23983bcbfdf44391e63b7918059e1b744",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Startup review a339395: SW_FORCEMINIMIZE joins existing non-child minimization path; existing window object and restoration rectangle ownership unchanged.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. Uplink overlay review: canonical WAT child enumeration reads geometry synchronously; retains no guest callback or invocation context. Existing window and restoration ownership unchanged.",
       "ownership": "pending"
     },
     {

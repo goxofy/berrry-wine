@@ -564,6 +564,13 @@
     (i32.const 1))
 
   (func $gdi_object_delete (param $handle i32) (result i32)
+    (local $result i32)
+    (call $lock_acquire (global.get $GDI_ALLOC_LOCK))
+    (local.set $result (call $gdi_object_delete_locked (local.get $handle)))
+    (call $lock_release (global.get $GDI_ALLOC_LOCK))
+    (local.get $result))
+
+  (func $gdi_object_delete_locked (param $handle i32) (result i32)
     (local $p i32)
     (if (call $gdi_object_type (local.get $handle))
       (then

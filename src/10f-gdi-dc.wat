@@ -49,6 +49,7 @@
     (if (i32.and (i32.ne (local.get $p) (i32.const 0))
           (i32.eq (i32.load (local.get $p)) (local.get $hdc)))
       (then (return (local.get $p))))
+    (call $lock_acquire (global.get $GDI_ALLOC_LOCK))
     (local.set $limit (call $gdi_table_mark_limit
       (i32.const 2) (global.get $GDI_DC_STATE_COUNT)))
     (block $done (loop $scan
@@ -58,6 +59,7 @@
       (if (i32.eq (i32.load (local.get $p)) (local.get $hdc))
         (then
           (global.set $gdi_dc_state_hint (local.get $p))
+          (call $lock_release (global.get $GDI_ALLOC_LOCK))
           ;; A legacy hwnd+0x40000/0xC0000 DC can be touched before the
           ;; corresponding window record exists. That creates an otherwise
           ;; generic DC record with no window binding; once the hwnd is live,
@@ -138,6 +140,7 @@
         (call $gdi_table_mark_bump (i32.const 2) (i32.add (i32.div_u
           (i32.sub (local.get $empty) (global.get $GDI_DC_STATE_TABLE))
           (global.get $GDI_DC_STATE_STRIDE)) (i32.const 1)))
+        (call $lock_release (global.get $GDI_ALLOC_LOCK))
         ;; Lazy-adopted legacy window DCs bypass $host_alloc_window_dc, so they
         ;; also bypassed the normal visible-region setup. VBRUN queries
         ;; GetClipBox on these hwnd+0x40000 client DCs before deciding how much
@@ -151,6 +154,7 @@
               (else (call $dc_apply_client_clip
                 (local.get $hdc) (local.get $binding))))))
         (return (local.get $empty))))
+    (call $lock_release (global.get $GDI_ALLOC_LOCK))
     (i32.const 0))
 
   (func $gdi_dc_get_field (param $hdc i32) (param $offset i32) (param $default i32) (result i32)
@@ -963,6 +967,14 @@
   (global $GDI_DC_HANDLE_FIRST i32 (i32.const 0x00310001))
   (global $GDI_DC_HANDLE_LIMIT i32 (i32.const 0x00410000))
   (func $gdi_dc_alloc (result i32)
+    (local $result i32)
+    ;; Allocated memory DC handles never trigger legacy window clip setup.
+    (call $lock_acquire (global.get $GDI_ALLOC_LOCK))
+    (local.set $result (call $gdi_dc_alloc_locked))
+    (call $lock_release (global.get $GDI_ALLOC_LOCK))
+    (local.get $result))
+
+  (func $gdi_dc_alloc_locked (result i32)
     (local $handle i32) (local $attempts i32)
     ;; DC records are process-shared as well. A worker's stale counter must not
     ;; select its printer bitmap into an active main-thread screen/window DC.
@@ -2176,6 +2188,7 @@
   (func $gdi_dc_state_release (param $hdc i32)
     (local $entry i32) (local $color i32)
     (local.set $entry (call $gdi_dc_state_entry (local.get $hdc) (i32.const 0)))
+    (call $lock_acquire (global.get $GDI_ALLOC_LOCK))
     (if (local.get $entry)
       (then
         (local.set $color (i32.add (global.get $GDI_COLOR_ADJUST_TABLE)
@@ -2185,6 +2198,7 @@
         (memory.fill (local.get $color) (i32.const 0) (i32.const 24))))
     (if (local.get $entry)
       (then (memory.fill (local.get $entry) (i32.const 0) (global.get $GDI_DC_STATE_STRIDE))))
+    (call $lock_release (global.get $GDI_ALLOC_LOCK))
     (call $gdi_dc_aux_release (local.get $hdc))
     (call $gdi_dc_path_release (local.get $hdc))
     (call $gdi_dc_meta_release (local.get $hdc)))

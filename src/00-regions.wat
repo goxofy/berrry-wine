@@ -507,9 +507,9 @@
   (region.declare $PAGE_WATCH_ROOT (size 0x00001000) (align 0x00001000)
     (owner "03a-page-watch.wat:$page_watch_acquire"))
   (region.declare $DIB_PAGE_USED (size 0x00004000) (align 0x00001000)
-    (owner "10-helpers.wat:$dib_alloc"))
+    (owner "10-helpers.wat:$dib_reserve_locked"))
   (region.declare $DIB_PAGE_RUNS (size 0x00008000) (align 0x00001000)
-    (owner "10-helpers.wat:$dib_alloc"))
+    (owner "10-helpers.wat:$dib_reserve_locked"))
   (region.declare $GDI_REGION_BANDS (size 0x000D0000) (align 0x00001000)
     (owner "10d-gdi-region-path.wat:$gdi_rgn_bands"))
   (region.declare $GDI_REGION_WORK (size 0x00003400) (align 0x00001000)
@@ -651,6 +651,11 @@
   ;; 64-byte line, because every line of LOCK_TABLE is already spoken for.
   (region.declare $DLL_LOAD_LOCK (size 0x00000040) (align 0x00000040)
     (owner "01-header.wat:$DLL_LOAD_LOCK"))
+  (region.declare $GDI_ALLOC_LOCK (size 0x00000040) (align 0x00000040)
+    (owner "01-header.wat:$GDI_ALLOC_LOCK"))
+  ;; Sixteen guest instances plus a distinct host shadow buffer partition.
+  (region.declare $GDI_THREAD_SCRATCH (size 0x00011000) (align 0x00001000)
+    (owner "13-exports.wat:$gdi_thread_scratch_init"))
   (region.declare $CS_TABLE (size 0x00000400) (align 0x00000010)
     (stride 0x4 (count $CS_TABLE_ENTRIES))
     (owner "09a-handlers3-sync.wat:$cs_slot"))
@@ -898,7 +903,7 @@
   (region.declare-fixed $VIRTUAL_BACKING_BASE (base 0x08000000) (size 0x12000000) (align 0x00001000)
     (owner "01-header.wat:$VIRTUAL_BACKING_BASE"))
   (region.declare-fixed $DIB_BACKING_BASE (base 0x1C000000) (size 0x03F00000) (align 0x00001000)
-    (owner "10-helpers.wat:$dib_free_wasm"))
+    (owner "10-helpers.wat:$dib_free_locked"))
   (region.declare-fixed $THREAD_RPC (base 0x1FF00000) (size 0x00100000) (align 0x00001000)
     (owner "13-exports.wat:$run"))
   ;; JS control-block ABI: 64 i32 words per slot. guest-rpc.js owns words

@@ -228,6 +228,24 @@ const tailCalls = !process.argv.includes('--compat');
   // Ordinary 2D succeeds independently of cube support. Older interfaces must
   // not overwrite the next DWORD of a DDSCAPS (4-byte) caller allocation.
   const plain = create(desc(C.texture | C.system));
+  // GoldSrc's D3D wrapper uses TEXTUREMANAGE|HINTDYNAMIC (0x14).
+  // Rejecting it leaves its texture dimensions unset and later divides by 0.
+  for (const managedCaps of [0x14, 0x18, 0x20004]) {
+    const texture = create(desc(C.texture | C.complex | C.mip, managedCaps, 3));
+    assert.strictEqual(caps(texture)[1], managedCaps);
+    assert.strictEqual(read(describe(texture) + 108), managedCaps);
+    pixels(texture, 0xabc123, true); pixels(texture, 0xabc123);
+    pixels(texture, 0x123abc, true); pixels(texture, 0x123abc);
+    const level = attached(texture, C.texture | C.mip, managedCaps);
+    assert.strictEqual(caps(level)[1], managedCaps, 'mip inherits texture management');
+    attached(texture, C.texture | C.mip, managedCaps === 0x18 ? 4 : 8, false);
+    com(level, 2); com(texture, 2);
+  }
+  for (const invalid of [desc(C.system, 0x14), desc(C.texture, 0x1c)]) {
+    write(out.p, POISON);
+    assert.strictEqual(com(dd, 6, invalid, out.p, 0), 0x80070057);
+    assert.strictEqual(read(out.p), 0);
+  }
   const enumeration = captureCallback();
   ok(com(dd, 9, 0x11, 0, 0x5678, enumeration.pc), 'native EnumSurfaces callback');
   assert.strictEqual(read(enumeration.result), 124);
