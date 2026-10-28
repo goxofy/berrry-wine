@@ -298,8 +298,9 @@ const TRACE_API_FILTER = (TRACE_API_RAW && TRACE_API_RAW.includes('='))
   ? new Set(TRACE_API_RAW.split('=')[1].split(',').map(s => s.trim()).filter(Boolean))
   : null;
 // --trace-api-paused (with --quiet-api): install the --trace-api logging but keep
-// the WAT API log OFF until a control command {"action":"trace-api","on":true}
-// turns it on. Any --trace-api switches every Win32 call to three host calls
+// the WAT API log OFF when no other consumer needs it, until a control command
+// {"action":"trace-api","on":true} turns tracing on. Any --trace-api switches
+// every Win32 call to three host calls
 // (log, log_i32, log_api_exit), which slowed Black & White 2 about 4x and moved
 // a route's timing out from under its inputs; paused, the run is full speed up
 // to the moment worth tracing. {"on":false} pauses it again.
@@ -1801,6 +1802,8 @@ async function main() {
   // calls ($api_calls) and h.log sees only non-API log lines, so the total
   // is the sum -- the same number the per-call log used to produce.
   let apiLogOff = false;
+  // User trace visibility is independent of dispatch hooks needed by observers.
+  let traceApiOn = TRACE_API && !TRACE_API_PAUSED;
   // The WAT counter ($api_calls) runs only while the log is off. apiWatSeen is
   // the part of it already folded into apiCount when --trace-api-paused
   // switched the log on, so toggling never counts a call twice.
@@ -3297,6 +3300,7 @@ async function main() {
   for (const name of profileHostNames) wrapProfileHost(h, name);
 
   // --- Override logging ---
+  let morrowindNameObserver = null;
   let criticalTracePending = null;
   // Decoded API names, keyed by the guest pointer they were read from. This
   // runs on EVERY api call -- 904,207 of them in a 55s Black & White 2 window --
@@ -3315,13 +3319,14 @@ async function main() {
   // one Heroes III run. The count survives in WAT ($api_calls, apiTotal()).
   // The list is every reader of an API name or exit below, plus --esp-audit,
   // which wraps a worker's log. --quiet-api-fast is now an alias of this.
-  apiLogOff = QUIET_API &&
-    (!TRACE_API || TRACE_API_PAUSED) && !TRACE_API_COUNTS && !TRACE_CRITICAL &&
-    !TRACE_INPUT_DISPATCH && !ESP_DELTA && !ESP_AUDIT && !breakApis.length &&
+  const apiLogRequired = traceOn => !QUIET_API || traceOn ||
+    TRACE_API_COUNTS || TRACE_CRITICAL || TRACE_INPUT_DISPATCH || ESP_DELTA ||
+    ESP_AUDIT || breakApis.length || hasFlag('observe-morrowind-name') ||
     // Memory dumps accompany a paused API trace; they must not force its
     // dispatch logger on before the explicit trace-api control command.
     // Without --trace-api, memory-only tracing retains its existing behavior.
-    (!TRACE_API_MEM.length || (TRACE_API && TRACE_API_PAUSED));
+    (TRACE_API_MEM.length && (!TRACE_API || traceOn));
+  apiLogOff = !apiLogRequired(traceApiOn);
   h.log = (ptr, len) => {
     let t = apiNameCache.get(ptr);
     if (t === undefined) {
@@ -3344,6 +3349,7 @@ async function main() {
       comOrdRaw = true;
       pendingComApiId = -1;
     }
+    if (morrowindNameObserver) morrowindNameObserver.apiEnter(t);
     apiCount++;
     if (apiCounts) apiCounts.set(t, (apiCounts.get(t) || 0) + 1);
     if (TRACE_API) {
@@ -3398,7 +3404,7 @@ async function main() {
       } catch (_) {}
     }
 
-    for (const spec of TRACE_API_MEM) {
+    for (const spec of (!TRACE_API || traceApiOn) ? TRACE_API_MEM : []) {
       if (t !== spec.name) continue;
       try {
         const e = instance.exports;
@@ -3465,7 +3471,7 @@ async function main() {
       lastApiEsp = instance.exports.get_esp();
     }
 
-    if (TRACE_API && (!TRACE_API_FILTER || TRACE_API_FILTER.has(t))) {
+    if (traceApiOn && (!TRACE_API_FILTER || TRACE_API_FILTER.has(t))) {
       const e = instance.exports;
       const esp = e.get_esp();
       const imageBase = e.get_image_base();
@@ -3882,7 +3888,7 @@ async function main() {
       const delta = (espAfter - lastApiEsp) | 0;
       logs.push(`[ESP] ${lastApiName}: ${hex(lastApiEsp)} -> ${hex(espAfter)} delta=${delta >= 0 ? '+' : ''}${delta}`);
     }
-    if (TRACE_API && lastApiTraced) {
+    if (traceApiOn && lastApiTraced) {
       if (!lastApiEntry || !lastApiEntry.ret) {
         // An arbitrary integer diagnostic is not a final API return. Keep it
         // visible, but leave correlation for log_api_exit's authoritative EAX.
@@ -3890,7 +3896,7 @@ async function main() {
         flushDedup();
         logs.push('[i32] ' + hex(val));
       }
-    } else {
+    } else if (!TRACE_API || traceApiOn) {
       logs.push('[i32] ' + hex(val));
     }
   };
@@ -3935,8 +3941,9 @@ async function main() {
     };
   }
 
-  if (ESP_DELTA || TRACE_API || TRACE_CRITICAL) {
+  if (ESP_DELTA || TRACE_API || TRACE_CRITICAL || hasFlag('observe-morrowind-name')) {
     h.log_api_exit = () => {
+      if (morrowindNameObserver) morrowindNameObserver.apiExit();
       if (criticalTracePending) {
         try {
           const after = criticalTracePending.state();
@@ -3950,7 +3957,7 @@ async function main() {
         const delta = (espAfter - lastApiEsp) | 0;
         logs.push(`[ESP] ${lastApiName}: ${hex(lastApiEsp)} -> ${hex(espAfter)} delta=${delta >= 0 ? '+' : ''}${delta}`);
       }
-      if (TRACE_API && lastApiTraced) {
+      if (traceApiOn && lastApiTraced) {
         const dv = new DataView(memory.buffer);
         const imageBase = instance.exports.get_image_base();
         const fmtCtx = { dv, g2w: addr => translateGuest(addr, imageBase, memory.buffer), memory: memory.buffer, readStr, hex };
@@ -3962,7 +3969,7 @@ async function main() {
         if (typedRet) logs.push(`  ${typedRet.trim()}`);
         if (outInfo) logs.push(outInfo);
       }
-      if (TRACE_API && lastApiName === 'SendMessageA' && lastTreeItemTrace) {
+      if (traceApiOn && lastApiName === 'SendMessageA' && lastTreeItemTrace) {
         try {
           const imageBase = instance.exports.get_image_base();
           const textValue = readStr(RegionMap.g2w(lastTreeItemTrace.textGuest, imageBase),
@@ -4898,6 +4905,15 @@ async function main() {
     }
   }
 
+  // MORROWIND_NAME_IMPORT_BEGIN: before instantiation captures import references.
+  if (hasFlag('observe-morrowind-name')) {
+    const legacyEip = h.log_eip;
+    h.log_eip = pc => {
+      if (morrowindNameObserver) morrowindNameObserver.onEip(pc);
+      if (legacyEip) legacyEip(pc);
+    };
+  }
+  // MORROWIND_NAME_IMPORT_END
   const instance = await WebAssembly.instantiate(wasmModule, imports);
   ctx.exports = instance.exports;
   // Quiet runs silence the per-call API log from the first instruction, DLL
@@ -5279,9 +5295,10 @@ async function main() {
         return entry && entry.id === id ? entry.name : null;
       },
       shouldLog: (name) => workerApiShouldLog(
-        { traceApi: TRACE_API, quietApi: QUIET_API, filter: TRACE_API_FILTER }, name),
+        { traceApi: traceApiOn, quietApi: QUIET_API, filter: TRACE_API_FILTER }, name),
       formatValue: hex,
-      emit: (line) => logs.push(line),
+      // A return may arrive after a pause between this worker's entry/exit.
+      emit: (line) => { if (traceApiOn) logs.push(line); },
     });
     wh.log = workerApiLog.log;
     wh.log_i32 = workerApiLog.log_i32;
@@ -5568,6 +5585,27 @@ async function main() {
 
   applyStartupShow(instance.exports, getArg('startup-show', undefined));
   const { entry } = stageAndLoadPe(instance.exports, memory.buffer, exeBytes, console.log);
+  // MORROWIND_NAME_ATTACH_BEGIN: loaded image, before any guest initializer.
+  if (hasFlag('observe-morrowind-name')) {
+    morrowindNameObserver = require('../lib/morrowind-name-observer').install({
+      enabled: true, exeBytes, exports: instance.exports,
+      parallel: hasFlag('threads'), traceConflict: !!TRACE_EIP_RANGE,
+      read: (address, length) => {
+        if (!Number.isInteger(address) || address <= 0 || address + length > 0x100000000)
+          throw Error('invalid guest span');
+        const bytes = Buffer.alloc(length);
+        for (let i = 0; i < length; i++) {
+          const offset = translateGuest(address + i, instance.exports.get_image_base(), memory.buffer);
+          if (offset === 0xf0 || offset < 0 || offset >= memory.buffer.byteLength)
+            throw Error('unmapped guest span');
+          bytes[i] = new Uint8Array(memory.buffer)[offset];
+        }
+        return bytes;
+      },
+      emit: record => logs.push('[morrowind-name] ' + JSON.stringify(record)),
+    });
+  }
+  // MORROWIND_NAME_ATTACH_END
   applyVirtualAllocTop(instance.exports, VIRTUAL_ALLOC_TOP_ARG !== null
     ? Number(VIRTUAL_ALLOC_TOP_ARG) : (APP_ENTRY && APP_ENTRY.virtualAllocTop));
   if (CS_STEAL_AFTER && instance.exports.set_cs_steal_after) {
@@ -7310,14 +7348,21 @@ async function main() {
     if (cmd.action === 'trace-api') {
       if (!TRACE_API || !TRACE_API_PAUSED) throw new Error('trace-api needs --trace-api[=NAMES] --trace-api-paused');
       const on = cmd.on !== false;
+      const logOn = !!apiLogRequired(on);
       const watNow = instance.exports.get_api_calls ? instance.exports.get_api_calls() >>> 0 : 0;
-      if (on && apiLogOff) { apiCount += watNow - apiWatSeen; apiWatSeen = watNow; }
-      if (!on && !apiLogOff) apiWatSeen = watNow;
-      apiLogOff = !on;
-      const setLog = exports => { if (exports && exports.set_api_log) exports.set_api_log(on ? 1 : 0); };
+      if (logOn && apiLogOff) { apiCount += watNow - apiWatSeen; apiWatSeen = watNow; }
+      if (!logOn && !apiLogOff) apiWatSeen = watNow;
+      apiLogOff = !logOn;
+      if (!on) {
+        flushDedup();
+        lastApiTraced = false;
+        lastTreeItemTrace = null;
+      }
+      traceApiOn = on;
+      const setLog = exports => { if (exports && exports.set_api_log) exports.set_api_log(logOn ? 1 : 0); };
       setLog(instance.exports);
       if (threadManager) for (const [, t] of threadManager.threads) setLog(t.instance && t.instance.exports);
-      inheritWasm('set_api_log', on ? 1 : 0);
+      inheritWasm('set_api_log', logOn ? 1 : 0);
       logs.push(`[trace-api] ${on ? 'on' : 'paused'} at batch ${tickState.batch | 0}`);
       return { traceApi: on, batch: tickState.batch | 0 };
     }
