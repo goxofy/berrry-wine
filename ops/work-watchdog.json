@@ -10,7 +10,7 @@
     "staleMs": 180000,
     "cooldownMs": 900000,
     "consumers": [
-      {"agent": "codex-01a0ff91", "agentId": "codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5", "kind": "codex"}
+      {"agent": "codex-01a0ff91", "agentId": "codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5", "kind": "codex", "deliveryRequiredAfter": 123}
     ],
     "note": "Bot appends to scratch/telegram/inbox.jsonl; each consumer keeps scratch/telegram/inbox.<agent>.cursor (last id read). agentId resolves the pane via ops/terminals.json."
   },

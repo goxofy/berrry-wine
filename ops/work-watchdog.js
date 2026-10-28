@@ -75,7 +75,7 @@ async function inboxNudges({root,config,terminals,state,save,request,dir,now=Dat
   const file=path.join(root,inbox.INBOX),tgDir=path.join(root,'scratch/telegram');
   state.telegramInbox??={};
   for(const consumer of cfg.consumers){
-    let unread;try{unread=inbox.readUnreadSync(file,inbox.readCursorSync(inbox.cursorPath(tgDir,consumer.agent)));}catch(e){state.telegramInbox[consumer.agent]={...state.telegramInbox[consumer.agent],reason:'inbox read failed: '+e.message};continue;}
+    let unread;try{unread=inbox.readPendingSync(file,consumer);}catch(e){state.telegramInbox[consumer.agent]={...state.telegramInbox[consumer.agent],reason:'inbox read failed: '+e.message};continue;}
     const terminal=terminals.find(t=>sameAgent(consumer.agentId,t.agentId));
     const previous=state.telegramInbox[consumer.agent]||{};
     const d=inbox.nudgeDecision({unread,terminal,consumer,previous,now,config:{...cfg,paused:config.paused||cfg.paused}});
