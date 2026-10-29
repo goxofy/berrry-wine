@@ -63,7 +63,9 @@ class Backend:
 
     def create(self,parent,name,mode):
         self.valid_name(name)
-        n=self.nodes[parent]
+        n=self.nodes.get(parent)
+        if n is None:raise OSError(errno.ENOENT,'parent missing')
+        if not stat.S_ISDIR(n['mode']):raise OSError(errno.ENOTDIR,'parent non-directory')
         if name in n['names']:raise OSError(errno.EEXIST,'exists')
         self.charge(4096);ino=self.next;self.next+=1
         self.nodes[ino]=dict(mode=mode,data=bytearray(),names={},links=1,opens=0)
@@ -97,12 +99,12 @@ class Backend:
         if op==3:return pack('2Q',0,0)+self.attr(ino)
         if op==4:
             valid=unpack('I',data)[0]
+            if valid&~(1|2|4|8|16|32|64|128|256|512|1024):raise OSError(errno.EOPNOTSUPP,'setattr flags')
             if valid&8:
                 size=unpack('Q',data,16)[0];growth=max(0,size-len(self.nodes[ino]['data']))
                 if self.written+growth>self.write_limit:self.reject('filesystem cumulative write limit')
                 self.resize(ino,size);self.written+=growth
             # chmod/chown and timestamps do not change the allocation domain.
-            if valid&~(1|2|4|8|16|32|64|128|256|512|1024):raise OSError(errno.EOPNOTSUPP,'setattr flags')
             return pack('2Q',0,0)+self.attr(ino)
         if op==9:
             mode=unpack('I',data)[0]
@@ -138,6 +140,8 @@ class Backend:
         if op in (10,11):
             name=data.split(b'\0',1)[0];n=self.nodes[ino];child=n['names'].get(name)
             if child is None:raise OSError(errno.ENOENT,'unlink missing')
+            if op==10 and stat.S_ISDIR(self.nodes[child]['mode']):raise OSError(errno.EISDIR,'unlink directory')
+            if op==11 and not stat.S_ISDIR(self.nodes[child]['mode']):raise OSError(errno.ENOTDIR,'rmdir non-directory')
             if op==11 and self.nodes[child]['names']:raise OSError(errno.ENOTEMPTY,'directory not empty')
             del n['names'][name];self.nodes[child]['links']-=1;self.collect(child)
             return b''
@@ -145,18 +149,42 @@ class Backend:
             newdir=unpack('Q',data)[0];offset=8 if op==12 else 16
             if op==45 and unpack('I',data,8)[0]:raise OSError(errno.EOPNOTSUPP,'rename flags')
             old,new=data[offset:].split(b'\0')[:2];self.valid_name(old);self.valid_name(new)
+            for parent in (ino,newdir):
+                if parent not in self.nodes:raise OSError(errno.ENOENT,'rename parent missing')
+                if not stat.S_ISDIR(self.nodes[parent]['mode']):raise OSError(errno.ENOTDIR,'rename parent not directory')
             source=self.nodes[ino]['names'];dest=self.nodes[newdir]['names']
             if old not in source:raise OSError(errno.ENOENT,'rename source')
             if ino==newdir and old==new:return b''
+            moved=source[old]
+            if stat.S_ISDIR(self.nodes[moved]['mode']):
+                seen=set();pending=[moved]
+                while pending:
+                    child=pending.pop()
+                    if child==newdir:raise OSError(errno.EINVAL,'rename directory cycle')
+                    if child in seen:continue
+                    seen.add(child)
+                    node=self.nodes[child]
+                    if stat.S_ISDIR(node['mode']):pending.extend(node['names'].values())
             if new in dest:
                 previous=dest[new]
+                source_is_dir=stat.S_ISDIR(self.nodes[source[old]]['mode'])
+                dest_is_dir=stat.S_ISDIR(self.nodes[previous]['mode'])
+                if not source_is_dir and dest_is_dir:raise OSError(errno.EISDIR,'replacement is directory')
+                if source_is_dir and not dest_is_dir:raise OSError(errno.ENOTDIR,'replacement is not directory')
                 if self.nodes[previous]['names']:raise OSError(errno.ENOTEMPTY,'replacement directory')
                 self.nodes[previous]['links']-=1;self.collect(previous)
             dest[new]=source.pop(old)
             return b''
         if op==28:
             fh,offset,size=unpack('2QI',data)
-            names=[(b'.',ino),(b'..',1)]+list(self.nodes[ino]['names'].items());out=b''
+            parent=1
+            if ino!=1:
+                parents=[p for p,n in self.nodes.items()
+                         if stat.S_ISDIR(n['mode']) and ino in n['names'].values()]
+                if len(parents)!=1:
+                    raise OSError(errno.EIO,'directory parent is not unique')
+                parent=parents[0]
+            names=[(b'.',ino),(b'..',parent)]+list(self.nodes[ino]['names'].items());out=b''
             for i,(name,child) in enumerate(names):
                 if i<offset:continue
                 kind=4 if stat.S_ISDIR(self.nodes[child]['mode']) else 8
@@ -186,9 +214,10 @@ class Backend:
         self.fd=fds[0]
 
     def serve(self,status_path):
-        control=socket.socket(socket.AF_UNIX);control.bind(str(status_path));control.listen(1)
-        sel=selectors.DefaultSelector();sel.register(control,selectors.EVENT_READ);sel.register(self.fd,selectors.EVENT_READ)
+        control=None;sel=None
         try:
+            control=socket.socket(socket.AF_UNIX);control.bind(str(status_path));control.listen(1)
+            sel=selectors.DefaultSelector();sel.register(control,selectors.EVENT_READ);sel.register(self.fd,selectors.EVENT_READ)
             while True:
                 for key,mask in sel.select(1):
                     if key.fileobj is control:
@@ -205,7 +234,14 @@ class Backend:
                             self.failure='filesystem protocol failure: '+repr(e);answer=b'';error=-errno.EIO
                         if answer is not None:os.write(self.fd,pack('IiQ',16+len(answer),error,unique)+answer)
         finally:
-            control.close();os.close(self.fd)
+            try:
+                if sel is not None:
+                    sel.close()
+            finally:
+                try:
+                    if control is not None:control.close()
+                finally:
+                    os.close(self.fd)
 
 
 if __name__=='__main__':
