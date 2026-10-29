@@ -306,6 +306,7 @@ const gpuApis = new Map([
   ['glPushClientAttrib', 1], ['glPopClientAttrib', 0],
   ['glStencilMask', 1], ['glStencilFunc', 3], ['glStencilOp', 3], ['glClearStencil', 1],
   ['glColorMask', 4],
+  ['gluScaleImage', 9],
 ]);
 const gpuApiOrder = [...gpuApis.keys()];
 
@@ -316,7 +317,7 @@ out.push('  (func $wgl_api_available (param $id i32) (result i32)');
 // These WGL implementations dispatch to native handlers rather than GPU opcodes.
 const nativeWglApis = new Set(['wglSwapLayerBuffers', 'wglGetCurrentContext', 'wglGetCurrentDC']);
 for (const [id, api] of apiTable.entries()) {
-  if ((gpuApis.has(api.name) || nativeWglApis.has(api.name)) && /^(?:gl[A-Z]|wgl[A-Z])/.test(api.name)) {
+  if ((gpuApis.has(api.name) || nativeWglApis.has(api.name) || api.name === 'glTexCoord2dv') && /^(?:gl[A-Z]|wgl[A-Z])/.test(api.name)) {
     out.push(`    (if (i32.eq (local.get $id) (i32.const ${id})) (then (return (i32.const 1)))) ;; ${api.name}`);
   }
 }
