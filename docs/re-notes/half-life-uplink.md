@@ -1405,3 +1405,34 @@ pointer lock. No page errors, Z_Free, oversized allocation or process exit
 occurred. This run presents gameplay in a desktop-sized window; fullscreen
 Worker presentation, Safari/mobile, audio quality and completion remain outside
 this qualification.
+
+## Release integration and Direct3D device-window handoff (2026-10-29)
+
+Release fixes `8dffce834` were merged with main `ac4fdeb31` in `aa708f852`.
+The integrated module `e8e3ec59056a084984f0a80a6156281b6bade7fe993264fc248c7329cc2417ef`
+passes fresh Worker Software/OpenGL gameplay and pause-menu checks. The D3D
+windowed run records 121.2 seconds of audio: all 121 analysis windows are
+audible, with no detected stuck ring. This is an output/loop check, not a
+listening-quality or demo-completion qualification. Safari is skipped at the
+user's request. Evidence: `20261028-uplink-release-{gl,d3d,d3d-mode}` and
+`20261029-uplink-release-software`.
+
+The D3D fullscreen check uncovered a real owner loss. In
+`20261029-uplink-d3d-display-trace`, hw.dll first calls
+`SetCooperativeLevel(object, gameHwnd, 0x80)` (SETFOCUSWINDOW), then
+`SetCooperativeLevel(sameObject, NULL, 0x211)`
+(CREATEDEVICEWINDOW | EXCLUSIVE | FULLSCREEN). The previous handler stored
+the second NULL as the process presentation HWND, so the renderer-side instance
+reported no exclusive window. This explains the small default 320x240 image
+and the taskbar remaining visible even after selecting 640x480.
+
+Focus is now retained per DirectDraw object in its shared record. A focus-only
+call does not change another object's presentation mode. A managed device's
+primary presents through that object's registered focus window in our virtual
+display; there is no separate native OS display window. Missing/stale focus
+returns DDERR_NOFOCUSWINDOW, and conflicting SETFOCUSWINDOW/SETDEVICEWINDOW
+flags fail before mutation. The regression drives the real handler across two
+instances sharing memory, checks two independent objects, failure preservation,
+and returning to NORMAL. Flag roles follow the
+[DirectDraw cooperative-level documentation](https://learn.microsoft.com/nl-be/windows/win32/api/ddraw/nf-ddraw-idirectdraw7-setcooperativelevel);
+the error code is defined in [Wine's ddraw.h](https://github.com/wine-mirror/wine/blob/master/include/ddraw.h).

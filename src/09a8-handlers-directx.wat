@@ -14,7 +14,7 @@
   ;; +8  misc0 (DDraw/DSound: hwnd, DSBuffer: wave_handle, DIDev: device_type 1=kbd 2=mouse)
   ;; +12 width (u16) | height (u16); DIDev: DIPROP_BUFFERSIZE
   ;; +16 bpp (u16) | pitch (u16); DIDev: parent DirectInput version
-  ;; +20 misc1 (DDSurface: dib_ptr, DSound: DSSCL level, 0 before SetCooperativeLevel)
+  ;; +20 misc1 (DDSurface: dib_ptr, DSound: DSSCL level, DDraw: focus HWND)
   ;; +24 misc2 (DDSurface: color key low / surface byte size)
   ;; +28 flags (surface type: 1=primary,2=backbuf,4=offscreen; 0x100=has_colorkey;
   ;;            DSound root: initialized speaker configuration plus one)
@@ -4588,10 +4588,42 @@
 
   ;; SetCooperativeLevel(this, hwnd, dwFlags) — store the presentation owner.
   (func $handle_IDirectDraw_SetCooperativeLevel (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
-    (local $entry i32)
+    (local $entry i32) (local $target i32)
     (local.set $entry (call $dx_from_this (local.get $arg0)))
-    (store.field DxObject misc0 (local.get $entry) (local.get $arg1)) ;; store hwnd
-    (call $dx_coop_hwnd_set (local.get $arg1))
+    ;; SETFOCUSWINDOW and SETDEVICEWINDOW name different roles and cannot be
+    ;; combined. Keep focus on the DirectDraw object, not in instance globals:
+    ;; GoldSrc sets it in one call, then passes NULL with CREATEDEVICEWINDOW.
+    (if (i32.eq (i32.and (local.get $arg2) (i32.const 0x180)) (i32.const 0x180))
+      (then
+        (i32.store offset=0 (global.get $reg_base) (i32.const 0x80070057))
+        (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 16)))
+        (return)))
+    (if (i32.and (local.get $arg2) (i32.const 0x80))
+      (then
+        (store.field DxObject misc1 (local.get $entry) (local.get $arg1))
+        ;; Registering focus alone does not change the current cooperative
+        ;; mode or steal presentation from another DirectDraw object.
+        (if (i32.eqz (i32.and (local.get $arg2) (i32.const 0x18)))
+          (then
+            (i32.store offset=0 (global.get $reg_base) (i32.const 0))
+            (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 16)))
+            (return)))))
+    (local.set $target (local.get $arg1))
+    (if (i32.and
+          (i32.ne (i32.and (local.get $arg2) (i32.const 0x200)) (i32.const 0))
+          (i32.eqz (local.get $target)))
+      (then
+        ;; Our virtual display presents the managed device's primary through
+        ;; its focus window. There is no separate native OS display window.
+        (local.set $target (load.field DxObject misc1 (local.get $entry)))
+        (if (i32.or (i32.eqz (local.get $target))
+              (i32.lt_s (call $wnd_table_find (local.get $target)) (i32.const 0)))
+          (then
+            (i32.store offset=0 (global.get $reg_base) (i32.const 0x8876025a)) ;; DDERR_NOFOCUSWINDOW
+            (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 16)))
+            (return)))))
+    (store.field DxObject misc0 (local.get $entry) (local.get $target))
+    (call $dx_coop_hwnd_set (local.get $target))
     ;; DDSCL_EXCLUSIVE = 0x10 (Diablo passes 0x13 = EXCLUSIVE|FULLSCREEN|
     ;; ALLOWREBOOT). Dropping back to DDSCL_NORMAL clears it again.
     (call $dx_exclusive_set
@@ -4606,7 +4638,7 @@
     ;; showed a bare desktop.
     (if (i32.and
           (i32.ne (i32.and (local.get $arg2) (i32.const 0x10)) (i32.const 0))
-          (i32.ge_s (call $wnd_table_find (local.get $arg1)) (i32.const 0)))
+          (i32.ge_s (call $wnd_table_find (local.get $target)) (i32.const 0)))
       (then
         ;; Do not use the guest WS_VISIBLE bit as a proxy for host visibility.
         ;; SetWindowLong(GWL_STYLE) changes that bit without performing a
@@ -4614,7 +4646,7 @@
         ;; DirectDraw to reveal its device window. Repeating SW_SHOW for an
         ;; already-visible renderer window is harmless and keeps both views in
         ;; sync when the application changed only the guest-side style.
-        (drop (call $host_show_window (local.get $arg1) (i32.const 5)))))
+        (drop (call $host_show_window (local.get $target) (i32.const 5)))))
     (i32.store offset=0 (global.get $reg_base) (i32.const 0))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 16))))
 
