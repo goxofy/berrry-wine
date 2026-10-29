@@ -8,6 +8,8 @@ const crypto = require('crypto');
 const { readPE } = require('../../lib/pe');
 const filename = require.resolve('../../lib/morrowind-name-observer');
 const { install } = require(filename);
+// Synthetic guest address in the fixture's Map, not a WASM region base.
+const TEXT_GUEST = 0x04201000;
 const exeBytes = fs.readFileSync(process.argv[2]);
 const pe = readPE(exeBytes);
 const runner = fs.readFileSync(path.join(__dirname, '../../test/run.js'), 'utf8');
@@ -85,8 +87,8 @@ function fixture(installer = install, options = {}) {
   }
   function hit(pc) { context.importedEip(pc); sync(); }
   const target = 0x4101000, stack = 0x7401000;
-  function setText(s) { const bytes = Buffer.from(s); u32(target + 0x168, 0x4200000);
-    u32(target + 0x16c, bytes.length); put(0x4200000, bytes); }
+  function setText(s) { const bytes = Buffer.from(s); u32(target + 0x168, TEXT_GUEST);
+    u32(target + 0x16c, bytes.length); put(TEXT_GUEST, bytes); }
   function builder() { r.eax = target; hit(0x5e672d); setText('|'); }
   function poll({ hr = 0, count = 1, scan = 0x20, thread, wrong = false, caller = 0x58072b } = {}) {
     r.esp = stack;
@@ -186,7 +188,7 @@ for (const options of [{ wrong: true }, { thread: 2 }, { caller: 0x5adc52 }]) {
   const text = q.records.find(x => x.kind === 'name-callback').text;
   check(text.length === 100 && text.hex.length === 62 && text.truncated, 'bounded text31');
 }
-for (const [pointer, length] of [[0, 1], [0xfffffff0, 32], [0x4200000, 0x100001]]) {
+for (const [pointer, length] of [[0, 1], [0xfffffff0, 32], [TEXT_GUEST, 0x100001]]) {
   const q = fixture(); q.builder(); q.poll(); q.translate();
   q.u32(q.target + 0x168, pointer); q.u32(q.target + 0x16c, length); q.callback();
   check(q.records.some(x => x.kind === 'unavailable'), 'invalid pointer/length');
