@@ -127,11 +127,12 @@ for (const mode of ['call','replay']) {
   // prefix. Check both input and output failures through each real boundary.
   for (const invalidSide of ['input','output']) {
     f=fixture(mode); f.bytes.fill(0xcd,16384,32768); f.bytes.fill(39,4096,8192);
-    f.map(p => p>=0x20000000 && p<0x20002000
-      ? (p<0x20001000 ? 24576+(p&4095) : 0xf0) : p);
+    const faultBase = 0x30000000; // Synthetic guest VA, not a WASM region boundary.
+    f.map(p => p>=faultBase && p<faultBase+8192
+      ? (p<faultBase+4096 ? 24576+(p&4095) : 0xf0) : p);
     const before=f.bytes.slice(16384,32768);
-    equal(f.scale([L,4,1,U8,invalidSide==='input'?0x20000ffe:4096,
-      4,1,U8,invalidSide==='output'?0x20000ffe:16384]),100901,mode+' malformed '+invalidSide+' status');
+    equal(f.scale([L,4,1,U8,invalidSide==='input'?faultBase+4094:4096,
+      4,1,U8,invalidSide==='output'?faultBase+4094:16384]),100901,mode+' malformed '+invalidSide+' status');
     equal(f.bytes.slice(16384,32768),before,mode+' malformed '+invalidSide+' whole-output atomicity');
   }
   f=fixture(mode); f.bytes.fill(0xcd,16384,16400);

@@ -253,9 +253,8 @@
     (global.set $gl_tex_r (f32.const 0))
     (global.set $gl_tex_q (f32.const 1))
     (global.set $gl_wat_stat_calls (i64.add (global.get $gl_wat_stat_calls) (i64.const 1)))
-    (i32.store (global.get $reg_base) (i32.const 0))
-    (i32.store offset=16 (global.get $reg_base)
-      (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
+    (i32.store offset=0 (global.get $reg_base) (i32.const 0))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
 
   ;; The OpenGL 1.1 surface outside the measured set. Unreal-engine OpenGlDrv
   ;; resolves its whole GL table through GetProcAddress and refuses to bind if

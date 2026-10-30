@@ -162,7 +162,8 @@ assert.strictEqual(scale(0x1907, 1024, 2, 0x1401), 100901);
 assert(u8.slice(dst, dst + 128).every(v => v === 0xCD), 'late unmapped output page is rejected before any writes');
 translate = p => p;
 // Guest continuity does not imply contiguous sparse physical backing.
-const sparseIn = 0x10000000, sparseOut = 0x20000000;
+// Synthetic guest VAs, independent of the runtime's allocated region map.
+const sparseIn = 0x10000000, sparseOut = 0x30000000;
 translate = p => p >= sparseIn && p < sparseIn + 8192
   ? 32768 + (p - sparseIn < 4096 ? p - sparseIn : p - sparseIn + 4096)
   : p >= sparseOut && p < sparseOut + 8192
