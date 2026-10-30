@@ -41,6 +41,19 @@ pixels exist only after a legal move *and* a reply, so counting them is a
 one-predicate check that the whole round trip works;
 `test/test-pawn-directinput7-gameplay.js` uses exactly that.
 
+## October 30 headless GL provider blocker
+
+Run `20261030T2247Z-pawn-gl-move` used the same pinned module and original
+inputs as the software move above, requesting `--headless-gl` for 9,000
+batches. The optional native `@node-3d/webgl` and `@node-3d/glfw` dependencies
+were unavailable. The log explicitly reports unavailable WebGL, then a guest
+NULL call at batch 1,576; execution stopped after 1,812 batches. The process
+nevertheless returned **0**, so exit status alone is not a valid gameplay
+oracle. The inspected composited image shows the initial chess position,
+without a completed move or reply. This is an environment-blocked GL attempt,
+not GL rendering acceptance. A fresh browser WebGL run remains needed; the
+successful software move does not fill that gap.
+
 ## "This program requires DirectX 9 or later!"
 
 This message is a lie, and it cost a session to work that out. It is not the
