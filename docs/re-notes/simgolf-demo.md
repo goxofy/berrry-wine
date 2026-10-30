@@ -1238,6 +1238,58 @@ The other big blitters are live programs: `0x10017b69` (5324 blocks per
 entry), `0x1001546b` and `0x10016e88`. That includes the colour-key LUT loop
 the 2026-09 browser profile blamed.
 
+## 2026-10-30: original browser putting-green construction
+
+Run `scratch/runs/20261030T2236Z-simgolf-action/` advances the original demo
+beyond its retained course using trusted browser keyboard/mouse input. I
+inspected `course-before.png` (welcome dialog and empty grass),
+`welcome-dismissed.png`, `tee-preview.png` (actually labelled **Putting Green**),
+`putting-green-built.png`, and `final-built-course.png`. Enter dismisses the
+welcome dialog; clicking the build button at browser (110,628), the putting
+green thumbnail at (335,653), then grass at (235,460) constructs a visible green
+with flags and a small attendant structure. The balance changes from 120,000
+to 110,000. Moving the pointer away leaves the construction visible; golfers
+continue moving. Escape opens the game's retirement dialog; Enter selects
+“Wait, I don't want to quit yet!”, and clicking the build button closes its
+palette. This is successful construction, not evidence of a completed golf
+hole, player swing, scoring, audio, or long-term stability.
+
+The local loopback browser route was `simgolf_demo` via `index.html?debug&no-log&gl-renderer=webgl`,
+Chrome 151.0.7922.108, main guest thread on the page (`WINE_THREADS=false`),
+1024x768 browser viewport and 800x600 guest drawable. Read-only replay
+instrumentation observed the executing context's `WebGLBackend`, WebGL 1,
+`software=false`; the WAT `gl_sw_enabled()` export returned 0. Its reported
+renderer was WebKit WebGL, with unmasked string
+`ANGLE (Intel, Mesa Intel(R) UHD Graphics 620 (KBL GT2), OpenGL 4.6 (Core Profile) Mesa 23.2.1)`.
+Launch arguments requested SwiftShader; that request is not the backend
+measurement and this run makes no physical-GPU claim. All 24 observed input
+events were trusted, with paired key and button releases.
+
+The retained module copied from `build/wine-assembly.wasm` at launch and the
+actual HTTP response both hash to
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`
+(1,892,586 bytes). Its compiled source commit is **unknown**; checkout HEAD at
+launch was `b2745ff6f370a7a7d2a8c89ce76a150209240094`, which is not a claim
+about module provenance. `retained.wasm`, `loaded.wasm`, `loaded-module.json`,
+`registration.json`, `served.jsonl`, and `provenance.json` preserve exact tested
+identities. The original installed fixture remains 1,763 files / 65,166,518
+bytes; all before/after SHA-256 values match. The lazy runtime actually served
+1,103 distinct installed files, including golf.exe and all five DLL seeds;
+every served file matches its original hash. The package source/hash and
+extraction recipe remain those above; the installer was not recovered or
+reverified in this run. No asset edits or guest-state writes were used.
+
+`python3 scratch/runs/20261030T2236Z-simgolf-action/verify.py` passes module,
+served/original asset, backend, trusted input, screenshot existence, and cleanup
+checks (`verification.json`). The global evidence checker still reports the
+pre-existing unrelated Zuma reference outside its run; this run's metadata
+references only its own artifacts. No emulator defect was encountered, so
+there is no source repair or build claim. Browser PID 1051807 exited, loopback
+ports 18700/18701 and CDP 37375 closed, and the private profile was removed;
+/home retained more than 9 GB free. No Boat or assigned box was used (ID,
+state, expiry: N/A). Next gap: construct a full tee-to-green hole and attempt
+native player play/scoring on the original course.
+
 So the next SimGolf lever is `adc r32,m32` taking the carry from a 16-bit
 `add` in the uop compiler. In this window it is the only `adc` in any
 declined scan (4 heads).
