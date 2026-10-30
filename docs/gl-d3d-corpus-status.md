@@ -1,5 +1,25 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: paired original Twist renders; motion differs
+
+Runs `20261030T2304Z-dx-twist-browser` and
+`20261030T2304Z-dx-twist-software` contain inspected original `dx_twist`
+initial/final frames. Both render a dark textured object with a yellow/black
+radiation symbol. Software shape and orientation change; WebGL frames appear
+stationary. WebGL animation is unverified, and the cause remains undiagnosed.
+This is a concrete follow-up gap rather than a scene-correctness pass.
+
+Both loaded module `7e8d3194…` from the passing canonical build of
+`8cfa97b0d`, with unchanged source hashes recorded in the copied build
+manifest. Chrome 151/ANGLE SwiftShader observed guest threads enabled;
+WebGL used `D3DIMGpu`, while software selected DX2–7 WAT without it.
+Each run verified 39 input hashes and 38 served SDK responses. Its
+`investigation.json` references captures, route/build evidence and cleanup.
+Both own browsers exited, six ports closed and private profiles were removed;
+no Boat was used. FPS overlays are not benchmarks. Pixel parity, complete scene
+correctness and the historical 27-app goal remain unqualified.
+
+
 ## October 30: Tunnel renders from a verified canonical build
 
 Runs `20261030T2317Z-dx-tunnel-browser` and
