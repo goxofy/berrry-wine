@@ -1,0 +1,9 @@
+{
+  "createdEpoch": 1793341485.3427582,
+  "expiryEpoch": 1793343281.131,
+  "cutoffEpoch": 1793342685.3427582,
+  "handbackEpoch": 1793342865.3427582,
+  "shutdownEpoch": 1793342985.3427582,
+  "ttl": 1800,
+  "owner": "this task; explicit delegated verified snapshot-stop"
+}

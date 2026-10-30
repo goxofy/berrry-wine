@@ -1,0 +1,67 @@
+[
+  {
+    "path": "runtime.json",
+    "bytes": 9965,
+    "sha256": "059b0d9ab353c32fa32fc006d80ed9e263cb95be066cd6e6818e52adb4846ac8"
+  },
+  {
+    "path": "done.json",
+    "bytes": 113,
+    "sha256": "504c30d7f57beb597f0574e0a108df3b46765ea2e54db0108e68357bef8ddcce"
+  },
+  {
+    "path": "compile.json",
+    "bytes": 1081,
+    "sha256": "e20cb8bac1d619557a81ebd16125a899a915de6c07bcc3a5c6ccf79a5f2a0af0"
+  },
+  {
+    "path": "compile.stdout",
+    "bytes": 316,
+    "sha256": "87c4e0fd3f42bccc7cf466dd579bbea7af45fd3b36d221fa2a60f814145e5040"
+  },
+  {
+    "path": "runtime.stdout",
+    "bytes": 7141,
+    "sha256": "b08d8bebf005bed11bfc712d214dfca46bca7ed13d927ab0b79246768309a158"
+  },
+  {
+    "path": "startup.stdout",
+    "bytes": 1646,
+    "sha256": "0d91f08d9a5877235b5324d7c7242f6302aab8df16ed97c48db2b63e99e6f6de"
+  },
+  {
+    "path": "before.png",
+    "bytes": 136760,
+    "sha256": "bc919a5423476c23686c8d0231a4480e51b20250338cec7b09b50447641014f9"
+  },
+  {
+    "path": "startup.stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "startup.json",
+    "bytes": 2590,
+    "sha256": "6efc5c2bd9cafeaf0d241e04457b9116f9251d2a7dac22f36495518de7182098"
+  },
+  {
+    "path": "compile.stderr",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "runtime.stderr",
+    "bytes": 1452,
+    "sha256": "97a17268ff4c845b2ac4dd03b9ecc3cb7f54a857f43ba94086fa890bd322a384"
+  },
+  {
+    "path": "remote-environment.json",
+    "bytes": 775,
+    "sha256": "6d2a3a2c4c28594586d3a477d26d89c38c68226a4d8588d6e32980402abe97fa"
+  },
+  {
+    "path": "module-manifest.json",
+    "bytes": 278,
+    "sha256": "952f051c8c2ae15e973cd3b1916cb922dd5c10288e01f6e22dc592932264aa4b"
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "historicalDifferences": [
+    "lib/apps.js",
+    "lib/region-map.generated.js",
+    "lib/renderer.js",
+    "lib/thread-manager.js",
+    "lib/host-audio.js"
+  ],
+  "missingImportNames": [],
+  "unresolvedLocalRequires": [
+    {
+      "source": "tools/disasm.js",
+      "require": "./tools/disasm"
+    }
+  ],
+  "packetFiles": 318,
+  "allHostImportNamesPresent": true
+}

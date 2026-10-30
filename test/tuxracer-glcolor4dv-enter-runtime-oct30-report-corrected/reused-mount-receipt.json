@@ -1,0 +1,10 @@
+{
+  "path": "/tmp/tuxracer-glcolor4dv-canonical-enter-runtime-oct30/raw/mount-configuration-filename-only.stdout",
+  "sha256": "14c73c68d0afa4886d9530ee121c0c94b3af50c48a7cc33f8dc9fee90e2ca6f9",
+  "configurationUnchanged": true,
+  "argv": [
+    "--app=tuxracer_original_061a"
+  ],
+  "count": 157,
+  "commaFiles": []
+}

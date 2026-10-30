@@ -1,0 +1,10 @@
+{
+  "wine-assembly.compat.wasm": {
+    "bytes": 1884298,
+    "sha256": "772042e817c6fd51ee78687ef6ab289892737a2dd07f86350ee76e4aabfb484b"
+  },
+  "wine-assembly.wasm": {
+    "bytes": 1881725,
+    "sha256": "7ca70c76956a388f2f75f3d08c1694f32bb00ebc021c6dd71d26cf0d868a0ddd"
+  }
+}

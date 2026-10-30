@@ -1,0 +1,56 @@
+{
+  "candidateId": null,
+  "startedAt": "2026-10-30T06:25:50.671613+00:00",
+  "outcome": "failed",
+  "verification": "reviewed",
+  "summary": "Inspected real title; Enter dispatched batch21787. Prior glColor4dv trap absent; first next trap glVertex2dv batch21839 at0x00425cbb. No after PNG/gameplay acceptance.",
+  "checkpoint": "title-to-late-Enter",
+  "command": [
+    "/home/user/.nvm/versions/node/v24.22.1/bin/node",
+    "--max-old-space-size=512",
+    "test/run.js",
+    "--app=tuxracer_original_061a",
+    "--no-build",
+    "--wasm=build/wine-assembly.wasm",
+    "--gl-renderer=software",
+    "--no-threads",
+    "--max-seconds=45",
+    "--max-batches=1000000",
+    "--quiet-api",
+    "--quiet-blocks",
+    "--quiet-fs",
+    "--png=capture/after.png",
+    "--gl-census",
+    "--input=17000:png:capture/before.png,18000:keydown:13,26000:keyup:13",
+    "--trace-input-dispatch"
+  ],
+  "build": {
+    "commit": "4068d12a28b5a96260dfbdd8fb26a8954f35d923",
+    "wasmSha256": "7ca70c76956a388f2f75f3d08c1694f32bb00ebc021c6dd71d26cf0d868a0ddd",
+    "sourceManifest": "source-manifest.json"
+  },
+  "environment": {
+    "engine": "Node v24.22.1",
+    "renderer": "software",
+    "threads": "cooperative --no-threads",
+    "boat": "bx_ay56d76c",
+    "hostBaseline": "898d2ec8d9db7d4f9236d9eb705adfd431ea19c9",
+    "candidateRegionMirror": true
+  },
+  "screenshots": [
+    {
+      "path": "before.png",
+      "label": "Reviewed title at batch17000"
+    }
+  ],
+  "artifacts": [
+    "runtime.stdout",
+    "runtime.stderr",
+    "runtime.json",
+    "compile.json",
+    "module-manifest.json"
+  ],
+  "afterScreenshot": null,
+  "appId": "tuxracer_original_061a",
+  "corpusRegistration": "not found in authoritative root corpus; investigation only"
+}

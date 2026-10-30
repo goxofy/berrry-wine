@@ -1,0 +1,31 @@
+{
+  "argv": [
+    "/home/user/.nvm/versions/node/v24.22.1/bin/node",
+    "--max-old-space-size=512",
+    "tools/build-compile-wat.js"
+  ],
+  "startedAt": 1793341544.6184528,
+  "finishedAt": 1793341550.6653721,
+  "elapsed": 6.046920177000004,
+  "exit": 0,
+  "denial": null,
+  "peakProcessTreeRSS": 350449664,
+  "admission": {
+    "allocated": 56840192,
+    "budget": 268435456,
+    "reserve": 8388608,
+    "MemAvailable": 7346778112
+  },
+  "logs": {
+    "compile.stdout": {
+      "bytes": 316,
+      "sha256": "87c4e0fd3f42bccc7cf466dd579bbea7af45fd3b36d221fa2a60f814145e5040",
+      "tail": "Compiler: watx (from default)\nWATX entry: src/main.watx\nRegion layout: CANONICAL \u2014 271 regions (14 pinned/derived, 256 allocated, 1 span), floor 0x00000100\nRegion layout hash: a23715cdaba2f34b\nBuild complete: build/wine-assembly.wasm (1881725 bytes)\nBuild complete: build/wine-assembly.compat.wasm (1884298 bytes)\n"
+    },
+    "compile.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tail": ""
+    }
+  }
+}
