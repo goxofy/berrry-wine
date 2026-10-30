@@ -814,3 +814,47 @@ page exception, guest trap or `FreeLibrary failed` was recorded; static-harness
 HTTP 404 messages remain. Audio, FPS, networking and Worker rendering are not
 qualified. Own Chrome and both servers closed, ports checked, profile removed,
 no Boat/test boxes used, and /home free space stayed above 2 GB.
+
+## 2026-10-30: bounded WebGL combat attempt; defeat still unverified
+
+Run `scratch/runs/20261030T2334Z-quake2-combat/result.json` reuses the
+retained module and original extraction through registered Launch → Game →
+Easy. Inspected captures show the lower debris doorway, a live armored enemy
+in its corridor, native blaster bursts, player health 53 → 17 → 0, and ordinary
+Enter autosave reload to health 100. A second approach collects normal health
+pickups (102 and 114 visible), encounters the enemy again, then loses health
+90 → 20 → 0. A second ordinary autosave completes. The final approach remains
+in the starting room. **Enemy defeat and subsequent room progression are not
+verified.** Close enemy poses and red particles do not establish a kill; the
+corpse by the debris predates combat. The filenames `enemy-down.png` and
+`next-room.png` actually show the player's death/Load Game menu, as explicitly
+recorded in `inspected.json`.
+
+The concrete execution limit was two player deaths during close corridor
+aiming; no emulator blocker or causal runtime repair was proven. Short native
+arrow holds produced uneven observed turn distances, but this run does not
+establish an input implementation defect. A direct CDP relative-motion
+experiment was visually inconclusive and temporarily resized the viewport to
+800×600; subsequent native commands restored 1024×768. All recorded DOM inputs
+are trusted browser events. No console command, guest-memory write, health or
+ammo edit, enemy edit, cheat, or asset modification was used.
+
+Actual backend probes identify original **`ref_gl` / emulator WebGL 1**, with
+`gl_sw_enabled() = 0`, threads and render Worker disabled. Despite the retained
+harness requesting SwiftShader flags, the live context reports **ANGLE Intel
+Mesa UHD Graphics 620 (KBL GT2), OpenGL 4.6 Core / Mesa 23.2.1**. This is the
+observed backend, not a SwiftShader claim. The exact downloaded module remains
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`;
+its compiled source commit remains unknown, so current-main certification is
+not claimed. Served host hashes are retained; `lib/host-audio.js` changed in
+the shared tree after being served, and its recorded served hash must not be
+replaced by the later file's hash. All 67 registered files, including 65
+original assets and the documented pak hash, match the preceding run. The
+installer remains unavailable for a fresh extraction comparison.
+
+The bounded attempt closed its browser and both servers, checked all three
+ports and browser PID absent, removed its profile, and retained useful images
+before teardown; no Boat was used and /home remained above 2 GB free. There
+was no observed page exception, guest trap or `FreeLibrary failed`; static
+harness HTTP 404s remain. The task's defeat/progression acceptance is **not
+met**, rather than recast as a successful gameplay or emulator repair result.
