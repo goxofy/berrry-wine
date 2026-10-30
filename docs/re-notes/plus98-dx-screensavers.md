@@ -445,3 +445,21 @@ none puts up a message box:
 `scr_geometry` gave 1 colour at 8000 batches and 44 at 4000, so these are
 animating and a single capture is a sample, not a verdict — take several
 budgets before reading anything into one number.
+
+### 2026-10-30: original Jazz scene after 180000 batches
+
+Run `20261030T2236Z-jazz-scene` used registered `scr_jazz`, original assets,
+software D3DIM and guest `d3drm.dll`, `--tick-ms-per-batch=2`, no guest threads,
+and a 50-second wall guard. The retained module is SHA-256
+`1dbddeafbeff685596095d18a4fd9240820b00b0fa293d21ac03393f9f652fb1`, compiled
+from `d4fb06b465988b52d98f5c9299c47c8391537f1e`; this is not a test of later main.
+It exited 0 after 180000 batches in 45.599 seconds. The final PNG explicitly
+selected primary DX slot 3 (640×480), rather than the offscreen surface.
+
+Personally inspected `jazz-80000.png` shows a small cluster of white shapes;
+`jazz-final.png` clearly shows five large lit musical notes and many smaller
+notes radiating over black. This resolves the partial-scene limitation of the
+earlier `20261030T2226Z-d3drm-four-scenes` Jazz capture. The sparse early image
+does not establish a renderer defect. This run establishes an original software
+scene, not browser/WebGL parity, audio, physical GPU behavior or current-main
+validation. Commands, asset hashes and inspected artifacts are in the run folder.
