@@ -1,0 +1,161 @@
+{
+  "status": "BLOCKED-before-canonical-build",
+  "task": "tuxracer-vertex-color-gameplay-owner-policy-oct30",
+  "candidate": "a998bf36b108275335af501d8ae774731495b9b2",
+  "branch": "test/tuxracer-vertex-color-gameplay-owner-policy-oct30",
+  "runtime": {
+    "completeCanonicalCompile": false,
+    "moduleSHA256": null,
+    "instantiated": false,
+    "originalPEExecuted": false,
+    "beforePNG": null,
+    "afterPNG": null,
+    "EnterDelivered": false,
+    "previousVertexTrapCleared": "unknown; not run",
+    "gameplay": "NOT QUALIFIED"
+  },
+  "sourceManifest": {
+    "path": "source-manifest.json",
+    "sha256": "b4c8e15abac596f027685b227548c435263355ac5ef6444c2d6bc3a7649198bb",
+    "canonicalInputs": 128,
+    "totalInputs": 141,
+    "changedCanonicalInputs": [
+      "src/09a8b-handlers-opengl.wat",
+      "src/09b2-dispatch-table.generated.wat"
+    ],
+    "generatedDispatchSHA256": "6c2c885a88a33da79048d7a2eab2c453a8ddcc393e5a31b2467d19535580dadb"
+  },
+  "reusedTests": "/tmp/tuxracer-glcolor4dv-repair-oct30/reconciliation-coordinator-completion.json; combined4+4, mutants and replay already passed; not repeated",
+  "host": {
+    "documentedBaseline": "898d2ec8d9db7d4f9236d9eb705adfd431ea19c9",
+    "exactFiles": [
+      {
+        "path": "host.js",
+        "bytes": 369423,
+        "sha256": "7154fbbcfb3381cddfecaeb07dbf4301e6a68fc43850b4f085264b6cb412e993"
+      },
+      {
+        "path": "test/run.js",
+        "bytes": 692809,
+        "sha256": "f96e9bb924700ee571e2904e097f80742ff55638399898ae1dc32454af05b02d"
+      },
+      {
+        "path": "lib/gl-compat.js",
+        "bytes": 116057,
+        "sha256": "6593bc0ae954d750f1800513799005c1797cdefeb3e68c70a46e06f209ec41a2"
+      },
+      {
+        "path": "lib/gl-render-host.js",
+        "bytes": 15356,
+        "sha256": "0eb27b404eab6d5e078d4431dc5641743bcb85db8c858de8ab428602ebab6812"
+      },
+      {
+        "path": "lib/gl-command-stream.js",
+        "bytes": 7907,
+        "sha256": "ff09abb9f6c7d5a9d68082b1d1903ebdc7466eb50b9a265e249959b52477dc61"
+      }
+    ],
+    "candidateMirror": {
+      "oid": "30168b23536c4828e8996ad5046e248e671be127",
+      "bytes": 36333,
+      "sha256": "a0aba0e2e8bfd1e6767142cb240853b788dd430918e8bab767bc6398d4360763"
+    },
+    "importFormsIdentical": 290,
+    "wholeRuntimeCurrentMain": false,
+    "testedThisTask": false
+  },
+  "media": {
+    "archive": {
+      "parts": [
+        "packet.tar.gz"
+      ],
+      "bytes": 10722706,
+      "sha256": "0c1b282fcb6f720c78090dce8156b2d321f9ee5839f414b09a068d033961629b",
+      "rows": 318,
+      "softwareModuleSmoke": true
+    },
+    "executable": {
+      "path": "test/binaries/candidates/tuxracer-original-061a/game/tuxracer-win32-0.61a/tuxracer.exe",
+      "bytes": 274432,
+      "sha256": "a40fd89429d76f379bc7b36d17126bcc61ce487687cb5e951f7757aa6b740971"
+    },
+    "allFilePins": "/tmp/tuxracer-glcolor4dv-canonical-enter-runtime-oct30-report-corrected/standing-packet-manifest.json",
+    "manifestFilesResolved": 157,
+    "testedThisTask": false
+  },
+  "blocker": {
+    "at": "2026-10-30T07:10:02.519128+00:00",
+    "cause": "Task-owned supervisor used shared live.stdout/live.stderr for overlapping archive transfer and read-only source review/main lookup. One invocation unlinked the other invocation capture file; FileNotFoundError interrupted transport.",
+    "firstFailure": {
+      "at": 1793344037.470253,
+      "error": "FileNotFoundError(2, 'No such file or directory')"
+    },
+    "lastCompletedTransfer": "standing-transfer-0137; later attempted chunk progress uncertain",
+    "originalLogs": "operations.jsonl.gz",
+    "limitsRejected": false,
+    "sourceOrGuestExecution": false,
+    "action": "Preserved original wrapper/failure/logs. Failure finally snapshot-stopped the one authorized Boat. No resume/replacement; no compile/runtime/main integration. Corrected unique per-command captures and serialized compressed-log appends tested locally with two concurrent commands.",
+    "correction": "control-v2.py",
+    "test": "wrapper-isolation-check.json"
+  },
+  "boat": {
+    "id": "bx_bavweftt",
+    "created": {
+      "archiveAfter": "2026-10-30T07:36:19.889Z",
+      "commands": {
+        "forward": "boat forward bx_bavweftt --remote 3000 --local 3000",
+        "ssh": "boat ssh bx_bavweftt"
+      },
+      "desktopUrl": null,
+      "event": "ready",
+      "id": "bx_bavweftt",
+      "ip": "2001:41d0:1004:40f0:100::34",
+      "state": "ready",
+      "url": "https://box-node-ea4254e0b0189fbb.on.boat.dev"
+    },
+    "schedule": {
+      "createdEpoch": 1793343981.1395793,
+      "expiryEpoch": 1793345779.889,
+      "cutoffEpoch": 1793345181.1395793,
+      "handbackEpoch": 1793345361.1395793,
+      "shutdownEpoch": 1793345481.1395793,
+      "ttl": 1800,
+      "owner": "this task; explicit delegated verified snapshot-stop"
+    },
+    "disposition": {
+      "verifiedStopped": true,
+      "snapshotVerifiedAt": "2026-10-30T07:07:20.159Z",
+      "stoppedAt": "2026-10-30T07:07:20.203Z",
+      "id": "bx_bavweftt",
+      "closeoutStarted": 1793344037.4705958
+    }
+  },
+  "mainIntegration": {
+    "attempted": false,
+    "reason": "Conditional runtime gate not reached; no source change on main"
+  },
+  "resources": {
+    "at": 1793344202.5391107,
+    "sizes": {
+      "/tmp/tuxracer-glcolor4dv-repair-oct30": 29364224,
+      "/tmp/tuxracer-glcolor4dv-canonical-enter-runtime-oct30-report-corrected": 5922816,
+      "/tmp/tuxracer-glcolor4dv-canonical-enter-runtime-oct30": 3428352,
+      "/tmp/tuxracer-vertex-color-gameplay-owner-policy-oct30": 438272,
+      "/home/user/wine-assembly/scratch/usage-watch/tuxracer-vertex-color-gameplay-owner-policy-oct30": 352256
+    },
+    "used": 39505920,
+    "budget": 67108864,
+    "publicationReserve": 8388608,
+    "free": 3395395584,
+    "remainingAggregate": 188108800,
+    "MemAvailable": 3613147136,
+    "RAMPolicy": "observation only; no admission hold",
+    "diskFloor": 1610612736,
+    "checks": {
+      "allocation": true,
+      "disk": true
+    }
+  },
+  "workersSpawned": 0,
+  "telegram": false
+}

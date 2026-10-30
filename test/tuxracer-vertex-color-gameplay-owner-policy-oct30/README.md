@@ -1,0 +1,14 @@
+# Accepted Tux Racer vertex/color: build/runtime blocked before execution
+
+Pinned candidate: `a998bf36b108275335af501d8ae774731495b9b2`.
+The implementation and focused tests were previously accepted. This task did not compile a module or execute the guest, so it makes no new render, Enter, vertex-trap clearance, or gameplay claim. No main integration occurred.
+
+The canonical 128-input closure and 13 compiler inputs were checked against exact candidate Git blob identities. Two compiled inputs changed from the previously built color candidate: the OpenGL handler and generated dispatch. The dispatch SHA-256 is `6c2c885a88a33da79048d7a2eab2c453a8ddcc393e5a31b2467d19535580dadb`. The existing host/media archive was hash-verified in place, with unchanged relevant import/renderer/region ABI. Its baseline is historical, not current main. The filename-bearing registered manifest parser receipt resolves 157 files.
+
+During transfer to the single TTL1800 Boat `bx_bavweftt`, simultaneous task-wrapper calls shared temporary output filenames. One removed the other capture, causing FileNotFoundError. The finally handler snapshot-stopped the Boat before complete transfer, source staging, compilation or runtime. Snapshot verified at `2026-10-30T07:07:20.159Z`, stopped at `2026-10-30T07:07:20.203Z`. No replacement or resume was attempted. Original denials, failed wrapper and logs remain intact.
+
+`control-v2.py` assigns unique per-command capture files and locks compressed-log append. `wrapper-isolation-check.py` ran two overlapping commands and verified both exact independent outputs and a valid shared compressed log. Limits remain: Python soft DATA128MiB, Git child DATA256MiB, inherited Node DATA/AS, local process-tree RSS512MiB/supervisor128MiB, CPU90/wall120, generated/index file12MiB, stdout/stderr capture512KiB. RAM availability is observation only. Host disk floor is 1610612736 bytes after remaining aggregate growth, within the same 64MiB task allocation including retained roots and an8MiB publication reserve.
+
+Recovery recipe for a separately authorized attempt: reuse the pinned standing archive and predecessor canonical packet referenced by `preflight.json`; replace only the candidate delta from the manifest; use `control-v2.py` with `boat-run-v2.py` and `remote-worker.py`, from a fresh owned output directory after validating paths and limits. The original `boat-run.py`/`control.py` are failure evidence, not the recovery runner. The v2 isolation check is local harness verification only; the v2 Boat recipe has not been run. A new bounded task must own any runtime/Boat allocation. Do not resume this snapshot under this completed task.
+
+No PNGs or module are published because neither was produced. `completion-receipt.json` identifies all unknown acceptance fields explicitly. Hash-pinned source/host/media input receipts do not establish runtime acceptance.

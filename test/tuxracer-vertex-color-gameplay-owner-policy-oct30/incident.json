@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-30T07:10:02.519128+00:00",
+  "cause": "Task-owned supervisor used shared live.stdout/live.stderr for overlapping archive transfer and read-only source review/main lookup. One invocation unlinked the other invocation capture file; FileNotFoundError interrupted transport.",
+  "firstFailure": {
+    "at": 1793344037.470253,
+    "error": "FileNotFoundError(2, 'No such file or directory')"
+  },
+  "lastCompletedTransfer": "standing-transfer-0137; later attempted chunk progress uncertain",
+  "originalLogs": "operations.jsonl.gz",
+  "limitsRejected": false,
+  "sourceOrGuestExecution": false,
+  "action": "Preserved original wrapper/failure/logs. Failure finally snapshot-stopped the one authorized Boat. No resume/replacement; no compile/runtime/main integration. Corrected unique per-command captures and serialized compressed-log appends tested locally with two concurrent commands.",
+  "correction": "control-v2.py",
+  "test": "wrapper-isolation-check.json"
+}

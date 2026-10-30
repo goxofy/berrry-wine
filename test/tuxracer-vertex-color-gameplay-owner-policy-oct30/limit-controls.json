@@ -1,0 +1,7 @@
+{
+  "PASS": true,
+  "fileBytes": 655360,
+  "fileLimit": 12582912,
+  "captureLimit": 524288,
+  "captureOverflowRejected": true
+}
