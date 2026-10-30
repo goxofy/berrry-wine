@@ -1569,3 +1569,57 @@ menu test passes. No emulator code changed or full build was required.
 Browser PID 1061424 and ports 18702/18703/34249 are gone, the owned profile
 is removed, and over 9 GB remained free. No Boat box was used
 (ID/state/expiry: N/A); there is no assigned runtime to shut down or hand back.
+
+## Arrival weapons, headcrab combat and tripmines (2026-10-30)
+
+Run `20261030T2256Z-uplink-satellite` repeats original New Game → Easy,
+the scientist/control-room sequence, outside elevator button and aimed interior
+**E** activation. The amber button and LOADING screen are inspected again.
+Beyond the red-lit arrival, native movement reaches the adjacent supply room
+and picks up a crowbar. Crowbar attacks break wooden crates and open the route
+into the next corridor. Headcrabs attack: inspected captures show a close live
+attacker, red damage indicators and health falling from 100 through 90/75 to
+65. Subsequent crowbar attacks leave two motionless headcrab bodies in view.
+This verifies an actual combat encounter beyond the arrival area.
+
+The next guard and security office are reached with native E interaction.
+Original pickups provide a pistol, 17/34 ammunition and health 80. Further crate
+breaking reaches a room with dead scientists, headcrabs, green supply crates
+and a DANGER canister. A native firing attempt there ends at health zero and
+LOADING; the precise cause of death was not isolated. The game reloads normally
+and movement/combat continue. The final inspected route reaches a red-lit
+doorway crossed by blue tripmine beams, with health 35. The satellite objective
+and crossing this hazard remain unverified. No emulator defect was reproduced;
+there is no source repair or full-build claim.
+
+Useful inspected captures are `breakroom-route.png` (crowbar pickup),
+`corner-route.png` (nearby attacker), `headcrab-live.png`,
+`headcrab-melee.png`, `guard-room-two.png`, `office-supplies.png` (pistol and
+ammunition), `storage-exit.png` (later scientist/headcrab room),
+`pistol-fired.png` (health zero/loading), `post-death.png` (normal reload), and
+`tripmine-doorway.png` (next hazard). `actions.jsonl`, per-capture proof JSON,
+`final-runtime.json` and `verification.json` retain the native route, 136 paired
+trusted key presses and mouse attacks. Two ordinary F6 saves were requested
+through gameplay; no preexisting installed save was available. No console
+commands, guest-memory writes or original-asset edits supplied progress.
+
+The loaded module is again
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`.
+The run preserves the exact retained module and compile delta
+`0885b41b740ea9626601f5ca3f060623b460c5cfc0ba11d22f368473be9d6a8c`,
+with the earlier base `e83de2a04141` provenance described above.
+`source-identity.json` preserves the prior manifest;
+`launch-source-identity.json` separately hashes this launch's host/source files.
+This is not a fresh current-main compilation. Actual HTTP response hashes are
+in `served.jsonl`. All 65 original installed files remain unchanged and all 22
+fetched originals match their pins. The installed-menu regression passes.
+
+The observed backend remains hw.dll generation 1, `WebGLBackend` WebGL 1,
+ANGLE/Mesa Intel UHD 620, software disabled, zero software triangles and GL
+error zero; frame sequence advances 16307 → 35071. No page exception is
+recorded. This is cooperative gameplay without an audio-quality, cross-backend
+or completed-demo claim. Browser PID 1079200 is gone, dynamic ports
+38277/42053/45893 are closed, and the private profile is removed. About 9 GB
+remains free. No Boat was used; box ID/state/expiry are N/A and no assigned
+runtime requires handoff. Next: safely clear the tripmine doorway and continue
+toward the satellite objective using ordinary gameplay.
