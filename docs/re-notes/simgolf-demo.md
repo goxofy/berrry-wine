@@ -1290,6 +1290,63 @@ ports 18700/18701 and CDP 37375 closed, and the private profile was removed;
 state, expiry: N/A). Next gap: construct a full tee-to-green hole and attempt
 native player play/scoring on the original course.
 
+## 2026-10-30: tee-to-green hole opened; null virtual call blocks further play
+
+Run `scratch/runs/20261030T2245Z-simgolf-hole/` uses fresh original-demo
+frames and trusted browser input. The **Build Course** button is the large
+golfer button at browser (47,610); its palette contains separate Tee and Green
+tools at (268,654) and (321,654). This differs from the **Add Buildings**
+palette used for the earlier practice putting green. On the first generated
+Christmas Pines course, placing a tee at (310,465) and green at (475,350)
+produced the visible label **Hole 1 / 150 yards / Par 3** and the native prompt
+**Press 'h' to open hole** (`hole-created.png`); money changed from 120,000 to
+119,500 to 118,500. Pressing H ended that guest session, without retained
+diagnostics identifying its cause.
+
+A second launch in the same browser generated a different terrain layout.
+The old green coordinates were now outside the course; placing the green on
+land at (400,500) and pressing H kept the guest running. I inspected the
+flagged green, tee markers and arriving/moving golfers in
+`attempt2-opened.png` and `attempt2-palette-closed.png`. Selecting Boris opens
+his native panel (`gary-selected-later.png`): **Boris (Professor)**, Normal,
+age 37, Nice and Nice, with a hole-1/par-3 score grid containing 0. That is an
+initial score panel, **not a completed stroke score**. Gary's tutorial advances
+to “We've built one hole, let's build more!” (`gary-native-panel.png`). No
+controlled practice round, confirmed swing/ball flight or completed score was
+verified.
+
+The concrete continuation blocker is retained in `terminal-lifecycle.json`:
+the second guest reached EIP zero during continued simulation, with last block
+`golf.exe+0x4fce1` (VA `0x0044fce1`), previous block `0x0044fcd7`,
+ECX `0x01617064` and EDX zero. Original-binary disassembly shows that block
+loads the object's vtable into EDX and executes `call [edx+0x10]` at
+`0x0044fcec`. The host stopped at its EIP-zero check, not its exception handler.
+The browser resize marking this stop is timestamped 22:45:46.829Z, before the
+22:45:52.106Z right-click probe; that later probe did not cause this exit.
+The origin of the invalid object/vtable remains undiagnosed. No guest writes,
+asset edits or speculative emulator repair were made.
+
+The loaded and retained module both have SHA-256
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`
+(1,892,586 bytes); its compiled source commit remains unknown. Checkout HEAD
+at launch was `3a228c05b`. The local route, Chrome version and thread mode
+match the preceding run. Replay inspection measured the first launch's actual
+`WebGLBackend`, WebGL 1, `software=false`, 800x600 drawable, with the same
+ANGLE/Mesa renderer string. The observer deduplicates context handle 1, so
+it does not independently measure the second launch's backend; the WAT
+software-enabled export was not successfully sampled. All 117 recorded input
+events were trusted with paired releases. All 1,763 original installed file
+hashes remained unchanged, and all 1,105 distinct installed files actually
+served matched their originals. `verify.py` checks these identities, native
+input, retained failure, captures and cleanup. Browser PID 1059035 is absent,
+ports 18710/18711/CDP 34571 are closed and its private profile is removed;
+the controller acknowledged quit but ended before writing its final cleanup
+record, so `cleanup.json` records direct process/port verification. No Boat or
+assigned box was used (ID/state/expiry N/A); /home retained over 9 GB free.
+Next: trace the null vtable's allocation/lifetime and repeat native player
+practice play through a completed score. No code/build correctness claim is
+made by this documentation-only run.
+
 So the next SimGolf lever is `adc r32,m32` taking the carry from a 16-bit
 `add` in the uop compiler. In this window it is the only `adc` in any
 declined scan (4 heads).
