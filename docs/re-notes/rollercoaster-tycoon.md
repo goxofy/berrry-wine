@@ -40,7 +40,7 @@ is linked here rather than attached to a different dashboard candidate.
 ```
 timeout -s KILL 250 node test/run.js --app=rct --quiet-api \
   --batch-size=200000 --max-batches=20000 --max-seconds=90 \
-  --no-close --png=/tmp/rct.png
+  --no-close --png=rct.png
 ```
 
 A healthy capture is the animated demo park: the RollerCoaster Tycoon logo top
@@ -205,7 +205,7 @@ construction UI, rather than only the animated title-screen attract mode.
 
 ```bash
 bash tools/build.sh
-RCT_SCREENSHOT=/private/tmp/rct-construction.png node test/test-rct-gameplay.js
+RCT_SCREENSHOT=rct-construction.png node test/test-rct-gameplay.js
 ```
 
 The test launches one `--control-stdin --frozen` CLI process, advances only by
@@ -240,3 +240,24 @@ the global whole-GET provider and zero HTTP Range requests, including the
 older lazy RCT manifest. Tested on stable deployed WASM in cooperative
 Chrome/SwiftShader. Downloaded source bytes stay resident until provider
 close, independently of VFS chunk eviction; this costs additional memory.
+
+## Additional dated branch findings
+
+These historical observations supplement the current facts above; they do not establish a new current-main runtime result.
+
+## Earlier camera and test-sensitivity findings (2026-09-12)
+
+The mostly black Forest Frontiers view was recentered by toolbar Map
+`(246,15)`, then a map-window click `(120,160)`; zoom out `(118,15)`
+also exposed fully rendered terrain. The initial camera faced near the
+map's north corner. This rules out missing viewport painting for that
+picture; whether the original scenario intentionally saves that origin
+was unverified.
+
+The old gameplay gate checked only a difference of more than10,000 pixels
+between two images, and could pass on the same mostly black park. Its
+clean-build bisect selected `7065931d` removing an empty-PeekMessage
+yield/steps reset. Restoring that reset changed the gate verdict without
+changing the picture, so it was a masking change, not a renderer repair.
+Disabling colorkey8, reverting the GDI object/DC count expansion, and
+reverting peek paint/timer filtering did not fix this test sensitivity.

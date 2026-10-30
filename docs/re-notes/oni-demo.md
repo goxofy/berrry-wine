@@ -110,3 +110,102 @@ texture coordinates through the appropriate GL state/encoder/backend path,
 with projective-coordinate tests; retain fail-fast behavior until implemented.
 No level screenshot/player control qualification. Audio also remains unverified
 (browser logs report suspended AudioContext).
+
+## Additional dated branch findings
+
+These historical observations supplement the current facts above; they do not establish a new current-main runtime result.
+
+## Ordinary Load Game route (2026-10-12)
+
+Root resumed the limit-blocked worker's preserved `/home/user/oni-wt` on
+bx_n47sae4r after restoring missing stdole2.tlb. Built module SHA256
+36029bde5328648e01f74b124c984c676745986acd47df945ca9a078b3bb26ef,
+checkout HEAD09277c7c2 (software fog fix). No source change for this replay.
+CLI software GL, unchanged legacy fixture `/home/user/oni-demo-preflight/game`.
+Click320,240 at5400 batches skips intro; click440,310 at7000 opens Load Game.
+At12000 batches the reviewed menu lists TCTF Training and Syndicate Warehouse.
+Normal level selection is available without modifying guest scripts or saves.
+Evidence `20261012T0147Z-oni-loadgame`.
+
+Harness caveat: root initially used `keypress:Escape` / `keypress:Space`,
+but this CLI expects numeric key codes. Do not attribute the successful menu
+route to those invalid actions. Use27/32 and87 for W in subsequent controls.
+
+Select Syndicate Warehouse at240,59 at8500, then Load185,445 at9000.
+The60000-batch capture reaches a rendered warehouse and Health Meter Training
+dialog (`20261012T0149Z-oni-warehouse`). The numeric-key repeat
+`20261012T0150Z-oni-warehouse-input` shows the intro cinematic still playing
+at41000; the scheduled40000 Close and42000 W therefore precede the health
+dialog. Its final image is still modal. Neither run proves walking; defer
+Close and the movement probe until after the observed60000-batch modal.
+
+### Warehouse movement verified against control
+
+`20261012T0152Z-oni-warehouse-late`: Close465,410 at65000; reviewed66000
+image is unobstructed gameplay. Hold W (VK87) at67000..77000, stop85000.
+The final image shows Konoko beyond the starting corner, attacked by an enemy,
+health depleted and a weapon-pickup prompt. Matching85000-batch no-W run
+`20261012T0153Z-oni-warehouse-control` retains the starting corner/door and
+full health. Both use the same normal menu route, numeric intro keys27/32,
+unchanged guest data and module above. This verifies ordinary movement in
+Syndicate Warehouse; it does not fix the separate training standing-turn gate.
+No browser/touch/audio/FPS qualification follows from this CLI result.
+Next register the legacy demo layout and reproduce this route in the browser,
+gating controls on visible dialog/gameplay state rather than fixed wall time.
+
+## Local-only registration (2026-10-12 02:06Z)
+
+Commit4e6f18393 on codex/dr2-registration adds candidate `oni-demo` and app
+`oni_demo`, outside the public desktop catalog. SHA1-pinned repack archive:
+d5e687481a2a11b147636ab73fce980717773d8c. Extract to `archive`, copy the
+`Older Oni apps/Windows 98-ME` directory to `game`, then copy
+`GameDataFolderX` to `game/GameDataFolder`. No modern OniX executable is used.
+On temporary bx_jnfg98zw, extraction from the preserved archive plus the
+fetcher's `--prepare` path passes:32 browser-manifest files; legacy executable
+SHA256 matches d1579b3a...7a12d above. Static registry/local-only/unique-ID/path
+checks pass. Fresh network fetch produced no completion receipt and remains
+unverified. Evidence `20261012T0206Z-oni-registration/validation.json`.
+Touch WASD/Action/Jump/Menu is declared but not yet validated. Registration
+is queued for ops integration, not merged or publicly deployed.
+
+## Registered browser gameplay verified (2026-10-12 02:51Z)
+
+Run0243Z-oni-browser on temporary bx_hqxvzbnm, Chrome155.0.8059.39,
+WebGL/Threads, viewport1000x800. Fresh build passed, actual module SHA256
+36029bde5328648e01f74b124c984c676745986acd47df945ca9a078b3bb26ef
+matches the CLI-tested build. The committed oni_demo entry and prepared
+32-file manifest reach the menu with no temporary app-registration override.
+
+Click465,550 opens Load Game. The attempted Warehouse row250,290 and
+Load200,690 instead entered TCTF Training; do not report a verified browser
+Warehouse selection. step2.png shows the orientation prompt. Ordinary mouse
+motion (500,500 ->150,500 ->550,500) turns the view and advances that prompt
+to WASD movement (step3). Holding W3s visibly moves Konoko and advances to
+diagonal movement (step4). A further turn plus W+A1.5s advances to the control
+console objective (step5). These game-owned prompt transitions and reviewed
+position changes verify player-controlled browser gameplay without guest
+patches. The standing-turn problem is not universal: it persisted in the
+earlier CLI tutorial probes but did not reproduce here.
+
+Exact mouse/key commands, screenshots, environment and logs are in the run
+folder. The final script stage is complete and its browser/server auto-closed;
+outer boat exec returned141, so use recovered script artifacts for completion.
+Touch controls, audio and FPS remain unverified. Next mobile/touch validation
+and ops integration; do not mark the game public or fully release-qualified.
+
+## Touch-direction validation (2026-10-12 03:16Z)
+
+Run0307Z-oni-touch uses the same Chrome155/module36029bde...26ef with
+isMobile/hasTouch enabled. New Game465,489 -> Start260,493 reaches training;
+ordinary mouse movement clears orientation. Chrome touch events start at
+the visible direction pad center, drag45px upward, hold2s and release. The
+reviewed step2 shows displacement and the tutorial advances from walking
+to diagonal movement: forward touch input verified, without a keyboard
+substitute. A subsequent upper-left drag delivers both A and W (logged),
+but the diagonal prompt remains while Konoko is against a wall. Do not
+claim that tutorial step complete; repeat on open floor before diagnosing
+touch-direction logic. Final844x390 capture keeps the game and controls
+visible in landscape, with controls in side gutters. This is Chromium touch
+emulation, not Safari or physical-phone validation. Action/Jump, touch-only
+menu/aiming, audio and FPS remain unverified. Core registered compatibility
+can move to ops review; keep these follow-ups separate from launch/gameplay.
