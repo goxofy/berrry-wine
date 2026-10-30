@@ -323,9 +323,9 @@
     {
       "file": "lib/host-audio.js",
       "name": "host-file",
-      "sha256": "dfe99e5850c7789a0e6dcf2a7dc699ac180d9a90912127fd710821f0783aa60b",
+      "sha256": "f8770324b616c3041d5a331e73f97fe2aa65089f7ed345f625b2ab082568111b",
       "kind": "host-entry",
-      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. MIDI lifecycle/timing review 20261020: immutable registration retains callback, instance, exports and routing owner; function queue guards reentrancy and retries busy/throw, browser pump guards await and removes only the same head. Window backpressure retains head; changed owner is rejected; event DONE rejects mutex encoding. Completion removes pending ownership before notification; drain detaches old queue and close retires handle before notification. Fractional timing remainder and running/queued division restrictions reviewed; no invocation token or nonlocal coverage claimed.",
+      "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. MIDI lifecycle/timing review 20261020: immutable registration retains callback, instance, exports and routing owner; function queue guards reentrancy and retries busy/throw, browser pump guards await and removes only the same head. Window backpressure retains head; changed owner is rejected; event DONE rejects mutex encoding. Completion removes pending ownership before notification; drain detaches old queue and close retires handle before notification. Fractional timing remainder and running/queued division restrictions reviewed; no invocation token or nonlocal coverage claimed. Review 20261030: snapshot cursor rounds elapsed PCM frames before converting to bytes; no callback registration, invocation, cancellation, queue, or restoration change. Ownership remains pending.",
       "ownership": "pending"
     },
     {

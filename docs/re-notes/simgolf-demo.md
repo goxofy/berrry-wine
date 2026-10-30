@@ -1521,3 +1521,64 @@ A/B timing (box 3, `tools/uop-game-ab.js --games=sg --branch-clock`):
 - Gameplay phase 2500..4000: 1.3/1.4s against 1.9/2.0s.
 
 The full table, with H3 and WC3g (both neutral), is in uop-tier-design.md §15.1.
+
+## 2026-10-30: JGL write history and a proven PCM cursor defect
+
+Run `scratch/runs/20261030T2312Z-simgolf-jgl/` retains the original working
+driver/module and adds allocation, write, and call-slot observations. No guest
+memory or installed asset was patched. The original 1,763-file asset census
+is unchanged. `causal-history.json` and `served-verification.json` contain the
+machine-readable evidence; diagnostic compiler changes remain in the run directory.
+
+The exact original call is `10017a39: call [edx+18]`, following the object-word
+load at `10017a35`. Twenty valid native call snapshots establish vtable
+`00adf938`, slot `00adf950`, method `00ac4d30` (original `10041d30`), which
+returns `this+408`. This is the palette-buffer accessor, not the earlier
+independent faulting palette pointer. Objects `0156299c` and `012a37ac` each
+have a captured 2,080-byte allocation and constructor transition to this vtable;
+no captured free or replacement allocation spans either object before overwrite.
+
+Two diagnostic runs catch the actual writer. The loaded second copy of
+`sound.dll` has base `0115d000`; block `011628b8` maps to original `100058b8`.
+Its `100058c4: mov WORD PTR [edi],ax` converter advances ESI by eight and EDI
+by two. In `probe3`, writes at object-minus-one and object-plus-one change
+`00adf938 -> 00adf980 -> 00800080`. ECX is already negative, and the loop
+continues across both live objects. The independent `lean` run captures the
+same writer storing zeros. This establishes the overwriting loop, but not the
+origin of its bad count. These runs terminate differently from the prior
+`10017a39`/`80008000` snapshot; they are not an exact replay of that terminal
+call. Probe3's intermediate UI inputs also include a corrected viewport error;
+the lean overwrite does not require those viewport changes.
+
+A separate proven emulator defect is the snapshot audio clock reporting
+partial PCM frames. The retained original-module retest reports a stereo
+16-bit cursor of 25,142 bytes (frame size four), and converter-entry snapshots
+show odd destination addresses. The original caller divides lock lengths by
+four, then doubles the frame count before entering its unguarded converter.
+A zero-count entry would therefore explain the underflow, but was not captured:
+the bounded breakpoint run's full entry history is retained in
+`original2/audio-history.json`. Do not claim that missing causal step as proved.
+
+`lib/host-audio.js` now rounds elapsed snapshot playback to complete PCM frames
+before converting to bytes. The focused regression fails against the old
+calculation (`actual 3`, `expected 0`) and passes with the fix, covering browser
+and guest clocks, stereo/mono, 8/16-bit, and ring wrap. Existing cursor, ring-wrap,
+frequency, and refresh tests pass. The callback census changes only the reviewed
+host-audio hash/reason; invocation ownership remains pending. The required locked
+build passes with explicit exit status zero in `build-final.exit`; its module
+is `d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`.
+
+The fresh `fixed` native retest deliberately retains the supplied original
+`7e8d3194…` module with the repaired host JavaScript, WebGL selected, SwiftShader,
+and cooperative guest threads. Inspected screenshots establish a 75-yard par-3
+open for play, Gary's practice setup, the practice scorecard, and tee shot controls.
+Initial zeroes on that scorecard are not completed strokes. Native construction
+inputs accidentally removed the green once; it was rebuilt through the original
+UI. Subsequent intended shot clicks again applied the construction tool; none
+establish a scored stroke or an input-emulation defect. At closeout the guest
+is still running with both tracked object words valid. The exact invalid-call
+regression and completed scored shot remain unproven. Next capture converter
+entry arguments and the preceding DirectSound lock outputs without a timing-heavy
+breakpoint, then verify native play-tool selection before repeating the stroke.
+All local test browsers, ports, and private profiles are cleaned up; no Boat box
+was used or shut down. See `result.json` for final module/backend/cleanup evidence.
