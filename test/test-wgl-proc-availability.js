@@ -31,6 +31,7 @@ async function main() {
   for (const name of ['glActiveTextureARB', 'glClientActiveTextureARB',
     'glMultiTexCoord2fARB', 'glTexParameterfv', 'glGetTexParameterfv',
     'glTexCoord2d', 'glTexCoord2dv',
+    'glColor3dv', 'glColor4dv',
     'wglSwapLayerBuffers', 'wglGetCurrentContext', 'wglGetCurrentDC']) {
     const thunk = lookup(name);
     assert.notStrictEqual(thunk, 0, `${name} remains available`);

@@ -33,10 +33,11 @@ for(const s of sources) {
 }
 const api=JSON.parse(read('src/api_table.json'));
 const id=4235;assert.strictEqual(api[id].name,'glColor4dv');
+const rgbId=4222;assert.strictEqual(api[rgbId].name,'glColor3dv');
 const vertexId=4448;assert.strictEqual(api[vertexId].name,'glVertex2dv');
 const page='$dispatch_api_table_page_'+Math.floor(id/256);
 const vertexPage='$dispatch_api_table_page_'+Math.floor(vertexId/256);
-const roots=['$dispatch_api_table',page,vertexPage,'$wgl_api_available','$handle_glColor4dv','$handle_glVertex2dv',
+const roots=['$dispatch_api_table',page,vertexPage,'$wgl_api_available','$handle_glColor3dv','$handle_glColor4dv','$handle_glVertex2dv',
   '$gl_wat_encode_call','$gl_append_vertex','$gl_append_vertex4'];
 // No matrix/raster/backend work is needed for a color or list setter. These
 // observers are inert fixture endpoints. All other excluded paths trap.
@@ -74,19 +75,26 @@ for(const p of ['src/09a8cb-gl-bitmap.wat','src/09a8cc-gl-stencil.wat','src/09a8
   for(const m of s.matchAll(/\(global (\$\w+) /g))if(!globals.has(m[1]))globals.set(m[1],form(s,m.index));
 }
 roots.forEach(n=>{if(funcs.has(n))visit(n);});
-function boot(mutation='',failAlloc=false,failPage=-1) {
+function boot(mutation='',failAlloc=false,failPage=-1,colorId=id) {
   const parts=[...selected.values()];
   if(mutation==='vertex-route') {
     const i=parts.findIndex(s=>s.startsWith('(func '+vertexPage+' '));
     const before=parts[i];parts[i]=before.replace('(call $handle_glVertex2dv ', '(call $handle_gl_unimplemented ');
     assert.notStrictEqual(parts[i],before);
+  } else if(mutation==='rgb-route') {
+    const i=parts.findIndex(s=>s.startsWith('(func '+page+' '));
+    const before=parts[i];parts[i]=before.replace('(call $handle_glColor3dv ', '(call $handle_gl_unimplemented ');
+    assert.notStrictEqual(parts[i],before);
   } else if(mutation) {
-    const i=parts.findIndex(s=>s.startsWith('(func $handle_glColor4dv '));
+    const i=parts.findIndex(s=>s.startsWith(mutation==='cleanup'?'(func $handle_glColor3dv ':'(func $gl_color_dv '));
     assert(i>=0);
     const before=parts[i];
     if(['r','g','b','a'].includes(mutation))parts[i]=before.replace(`(local.get $${mutation}))`,'(f32.const 1))');
     else if(mutation==='stride')parts[i]=before.replace('(i32.const 24)', '(i32.const 12)');
-    else if(mutation==='opcode')parts[i]=before.replace('(i32.const 25)', '(i32.const 23)');
+    else if(mutation==='opcode')parts[i]=before.replace('(i32.const 25)', colorId===rgbId?'(i32.const 28)':'(i32.const 23)');
+    else if(mutation==='rgb-alpha')parts[i]=before.replace('(local.set $a (f32.const 1))','(local.set $a (f32.const 0))');
+    else if(mutation==='rgb-stride')parts[i]=before.replace('(i32.const 16)', '(i32.const 12)');
+    else if(mutation==='cleanup')parts[i]=before.replace('(i32.const 8))))','(i32.const 12))))');
     assert.notStrictEqual(parts[i],before,'mutation must change production body');
   }
   const needed=new Set([...parts.join('\n').matchAll(/\(global\.(?:get|set) (\$\w+)/g)].map(m=>m[1]));
@@ -106,13 +114,13 @@ function boot(mutation='',failAlloc=false,failPage=-1) {
     ${[...traps.values()].join('\n')}
     ${parts.join('\n')}
     (func (export "invoke") (param $p i32)
-      (call $dispatch_api_table (i32.const ${id}) (local.get $p) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
+      (call $dispatch_api_table (i32.const ${colorId}) (local.get $p) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
     (func (export "invokeVertex") (param $p i32)
       (call $dispatch_api_table (i32.const ${vertexId}) (local.get $p) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
     (func (export "other") (param $id i32)
       (call $dispatch_api_table (local.get $id) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
     (func (export "vertexAvailable") (result i32) (call $wgl_api_available (i32.const ${vertexId})))
-    (func (export "available") (result i32) (call $wgl_api_available (i32.const ${id})))
+    (func (export "available") (result i32) (call $wgl_api_available (i32.const ${colorId})))
     (func (export "encode") (param $op i32) (param $stack i32) (result i32)
       (call $gl_wat_encode_call (local.get $op) (local.get $stack) (i32.const 0)))
     (func (export "context") (global.set $gl_current_context (i32.const 1)))
@@ -129,20 +137,21 @@ function boot(mutation='',failAlloc=false,failPage=-1) {
     0x8000+(((p-0x50000000)>>>12)*0x2000)+(p&4095):p-0x400000+4096;
   const e=new WebAssembly.Instance(new WebAssembly.Module(result.wasmBinary),{fixture:{g2w:t,
     alloc:n=>{if(failAlloc)return 0;const p=next;next=(next+n+7)&~7;return p+4190208;},free:()=>frees++}}).exports;
-  return {e,t,v:new DataView(e.memory.buffer),frees:()=>frees,moduleSHA:hash(result.wasmBinary),transformSHA:hash(transformed)};
+  return {e,t,v:new DataView(e.memory.buffer),components:colorId===rgbId?3:4,failAlloc:()=>{failAlloc=true;},frees:()=>frees,moduleSHA:hash(result.wasmBinary),transformSHA:hash(transformed)};
 }
 function acceptance(h) {
   const {e,t,v}=h;
   const cases=[[0x404003,[-1.25,2.75,0.10000000000000002,.375]],
     [0x50000ff5,[Math.PI,-Math.E,1.000000059604645,.123456789]],
     [0x50002fff,[-0,1e30,-1e-30,-.625]],
-    [0x50004fe8,[.25,.5,.75,1.0000000596046448]]];
-  const write=(p,a)=>{const b=Buffer.alloc(32);a.forEach((x,i)=>b.writeDoubleLE(x,i*8));for(let i=0;i<32;i++)v.setUint8(t(p+i),b[i]);};
+    [0x50004fe8,[.25,.5,.75,1.0000000596046448]]].map(([p,a])=>[p,h.components===3?[...a.slice(0,3),1]:a]);
+  const write=(p,a)=>{const b=Buffer.alloc(h.components*8);a.slice(0,h.components).forEach((x,i)=>b.writeDoubleLE(x,i*8));for(let i=0;i<b.length;i++)v.setUint8(t(p+i),b[i]);};
   const color=()=>{e.mode(4);const n=e.count();e.vertex();return Array.from(new Float32Array(e.memory.buffer,e.vertices()+n*4+12,4));};
   const call=(op,args=[])=>{v.setUint32(0x3000,0xcafebabe,true);args.forEach((x,i)=>v.setUint32(0x3004+i*4,x>>>0,true));return e.encode(op,0x3000);};
   const f=x=>{const b=Buffer.alloc(4);b.writeFloatLE(x);return b.readUInt32LE();};
   const expectedReplay=[];
   for(const [p,a] of cases) {
+    if(h.components===3)call(25,[.75,.5,.25,.125].map(f));
     write(p,a);v.setUint32(272,0x402800,true);v.setUint32(256,0xdeadbeef,true);
     v.setUint32(t(0x402800),0xcafebabe,true);v.setUint32(t(0x402804),p,true);
     const before=Buffer.from(new Uint8Array(e.memory.buffer,t(0x402800),24));
@@ -201,7 +210,7 @@ acceptance(h);
 function combined(h) {
   const {e,t,v}=h;
   assert.strictEqual(e.vertexAvailable(),1);
-  const rgba=[-.25,.375,1.25,.625];
+  const rgba=[-.25,.375,1.25,h.components===3?1:.625];
   const cp=0x50006003;
   function doubles(p,a) {
     const b=Buffer.alloc(a.length*8);a.forEach((x,i)=>b.writeDoubleLE(x,i*8));
@@ -224,7 +233,7 @@ function combined(h) {
     assert.deepStrictEqual(Array.from(a.slice(3,7)),rgba,'production color setter feeds production vertex route');
   }
   const n=e.count();e.mode(-1);e.invokeVertex(cases[0][0]);assert.strictEqual(e.count(),n);
-  for(const name of ['glColor3dv','glMultMatrixd','glGetBooleanv','glRectf']) {
+  for(const name of ['glColor3d','glMultMatrixd','glGetBooleanv','glRectf']) {
     const row=api.find(a=>a.name===name);assert.strictEqual(row.handler,'gl_unimplemented');
     assert.throws(()=>e.other(row.id),WebAssembly.RuntimeError,name+' stays fail-fast');
   }
@@ -238,10 +247,30 @@ for(const args of [['',true],['',false,0x50001]]) {
   assert.strictEqual(b.v.getUint32(272,true),0x402800,'failure preserves ESP');
 }
 for(const p of [0xffffffe1,0xffffffff])assert.throws(()=>h.e.invoke(p),WebAssembly.RuntimeError,'guest vector cannot wrap');
+const rgb=boot('',false,-1,rgbId);acceptance(rgb);combined(rgb);
+for(const m of ['r','g','b','rgb-alpha','rgb-stride','opcode','cleanup','rgb-route'])
+  assert.throws(()=>acceptance(boot(m,false,-1,rgbId)),m==='rgb-route'?WebAssembly.RuntimeError:assert.AssertionError,m+' RGB mutation rejected');
+// RGB ends at the page boundary: there is no alpha read or fourth-component
+// mapping requirement. The shared cases also place unrelated bytes after RGB.
+const edge=boot('',false,0x50001,rgbId),ep=0x50000fe8;
+for(let i=0;i<3;i++)edge.v.setFloat64(edge.t(ep+i*8),[.25,-.5,2][i],true);
+edge.v.setUint32(272,0x402800,true);edge.e.invoke(ep);edge.e.mode(4);edge.e.vertex();
+assert.deepStrictEqual(Array.from(new Float32Array(edge.e.memory.buffer,edge.e.vertices()+12,4)),[.25,-.5,2,1]);
+for(const args of [['',true,-1,rgbId],['',false,0x50001,rgbId],['',false,0x50000,rgbId]]) {
+  const b=boot('',false,args[2],rgbId);
+  [.125,.25,.5,.75].forEach((x,i)=>b.v.setFloat32(0x3004+i*4,x,true));
+  b.e.encode(25,0x3000);if(args[1])b.failAlloc();
+  b.v.setUint32(272,0x402800,true);b.v.setUint32(256,0xdeadbeef,true);
+  b.e.mode(4);b.e.vertex();const before=Buffer.from(new Uint8Array(b.e.memory.buffer,b.e.vertices(),76));
+  assert.throws(()=>b.e.invoke(0x50000ff5),WebAssembly.RuntimeError);
+  assert.strictEqual(b.v.getUint32(272,true),0x402800);assert.strictEqual(b.v.getUint32(256,true),0xdeadbeef);
+  b.e.vertex();assert.deepStrictEqual(Buffer.from(new Uint8Array(b.e.memory.buffer,b.e.vertices()+76,76)),before,'failure preserves current color');
+}
+for(const p of [0xffffffe9,0xffffffff])assert.throws(()=>rgb.e.invoke(p),WebAssembly.RuntimeError,'RGB vector cannot wrap');
 // Stable command ABI: canonicalization adds no new opcode or argument layout.
 const compat=require('../lib/gl-compat');const stream=require('../lib/gl-command-stream');
 assert.strictEqual(compat.CALL_INDEX.glColor4f,25);assert.strictEqual(compat.CALL_INDEX.glColor4fv,26);
 assert.strictEqual(compat.CALL_INDEX.gluScaleImage,141);assert.strictEqual(compat.CALLS.length,142);
 assert.strictEqual(stream.ARG_WORDS[25],4);
-console.log(JSON.stringify({PASS:true,cases:4,vertexCases:4,combinedColorVertex:true,vertexRouteMutationRejected:true,mutations:['r','g','b','a','stride','opcode'],displayListReplay:true,packedCommandReplay:true,fixtureSHA:hash(fs.readFileSync(__filename)),
+console.log(JSON.stringify({PASS:true,cases:8,vertexCases:8,rgbImplicitAlpha:true,rgbNoFourthRead:true,rgbFailurePreservesColor:true,combinedColorVertex:true,vertexRouteMutationRejected:true,mutations:['r','g','b','a','stride','opcode','rgb-alpha','rgb-stride','cleanup','rgb-route'],displayListReplay:true,packedCommandReplay:true,fixtureSHA:hash(fs.readFileSync(__filename)),
   moduleSHA:h.moduleSHA,transformSHA:h.transformSHA,sourceSHA:files.map((p,i)=>[p,hash(sources[i])])}));

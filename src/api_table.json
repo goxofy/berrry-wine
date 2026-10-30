@@ -36111,7 +36111,7 @@
     "nargs": 1,
     "convention": "stdcall",
     "hash": 2206318080,
-    "handler": "gl_unimplemented"
+    "handler": "glColor3dv"
   },
   {
     "id": 4223,
