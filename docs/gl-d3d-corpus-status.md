@@ -1,5 +1,22 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: original Tunnel WebGL motion verified after extents fix
+
+Run `20261030T2325Z-dx-tunnel-gpu-extents` retested original `dx_tunnel`
+with the canonical module retained from the passing build for GPU Execute
+extent repair `de2e338c4`. Two personally inspected browser captures show
+changed tunnel orientation and texture position. A bounded trace of 284
+copy/present events contains 94 distinct scene-region hashes on both primary
+surface and render target, excluding the text overlay.
+
+Chrome 151/ANGLE SwiftShader loaded module
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`.
+All served-response hashes match their local inputs. The run's `result.json`
+records module identity, captures and verified cleanup: browser exited, three
+ports closed, private profile removed, no Boat. This closes the earlier
+unverified WebGL motion finding for Tunnel; pixel parity, full scene correctness,
+performance and completion of the 27-app corpus remain unqualified.
+
 ## October 30: Twist WebGL animation repaired
 
 The original `dx_twist` browser run `20261030T2320Z-dx-twist-gpu-extents`
