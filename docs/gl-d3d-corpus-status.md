@@ -1,5 +1,24 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: Globe motion verified on both repaired-build routes
+
+Runs `20261030T2330Z-dx-globe-webgl` and
+`20261030T2330Z-dx-globe-software` each contain two personally inspected
+captures of the original SDK Globe executable. The shaded, textured sphere
+changes orientation on both routes. This closes the earlier unverified WebGL
+motion finding after GPU Execute extent repair `de2e338c4`; it does not resolve
+the historical texture-band correctness question or establish pixel parity.
+
+Both Chrome 151/ANGLE SwiftShader runs loaded retained canonical module
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`.
+WebGL had the owning host's `d3dimGpu` and GPU selection enabled; software
+had neither. Guest threads were disabled in both. Each run verified 38 original
+SDK input hashes and all 182 served-response hashes. Its `result.json` records
+frames, build/backend evidence and cleanup: browser absent, three ports closed,
+private profile removed, no Boat. The different orientations and sphere sizes
+are not a same-frame comparison; FPS, full scene correctness and completion of
+the historical 27-app corpus remain unqualified.
+
 ## October 30: original Tunnel WebGL motion verified after extents fix
 
 Run `20261030T2325Z-dx-tunnel-gpu-extents` retested original `dx_tunnel`
@@ -401,7 +420,7 @@ Receipt groups used in the table:
 | `dx_tunnel` / M | H September 23 rendering report; exact software ID/source U. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; exact source/module U. | Same missing source/scene/ID/membership evidence as Boids; FPS U. |
 | `dx_twist` / M | H September 23 rendering report; exact software ID/source U. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; exact source/module U. | Same missing source/scene/ID/membership evidence as Boids; FPS U. |
 | `dx_flip3dtl` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, textured cube. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; later P10 Node GL reports 33k draws/zero fallback. | Recover paired images and browser source/module; sample interaction/FPS U. Original membership remains unproved. |
-| `dx_globe` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, sphere. | H B6 browser; P10 Node GL reports 233k draws. | Rendering is not texture correctness: [SDK note](re-notes/dx-sdk-d3drm-samples.md) retains a texture-band defect. Recover same-scene paired frames and membership; menu regression tests are narrower than visual acceptance. FPS U. |
+| `dx_globe` / M | L `20261030T2330Z-dx-globe-software`: original textured sphere visibly rotates; canonical module `d83e413f…`, source `de2e338c4`. | L `20261030T2330Z-dx-globe-webgl`: original textured sphere visibly rotates on owning D3DIMGpu, same module/source. | Two inspected frames per route, 38 original inputs and 182 served hashes each. Threads disabled, cleanup verified. Texture-band correctness, same-frame parity, FPS and historical membership remain unqualified. |
 | `dx_viewer` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, renders. | H B6 browser; H P10 Node GL. | Recover reviewed scene/identity evidence and membership. SDK Open/Change Color tests alone do not prove scene correctness; FPS U. |
 | `mcm` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, routed Stunt Quarry race, 200 s. | H P10 Node GL routed race, 225k draws/zero fallback reported; older September 20 browser report lacks exact ID here. | Recover route/input/frame receipts; don't promote Node GL to browser. FPS and original membership U. |
 | `arcanum_demo` / M | H `20261008T1431Z-arcanum-gameplay-qualified`, browser cooperative software D3DIM, crash-site westward movement. | H same run, explicit browser WebGL, westward movement. | [Review](../ops/handoffs/arcanum-gameplay-20261008.md) pins module `d8d4096f957ed51cecab589b5a1ec7bf402336f13959ce0710faf2f7d3c68960`; full tested closure is missing `provenance/pins.json` (branch base `7e4ce05ce` alone is insufficient). WebGL 434/20.127145 s = **21.562919 visible presentations/s**, idle scene, not scanout. Software FPS rejected because observer missed OffscreenCanvas. Recover bundle/membership. |

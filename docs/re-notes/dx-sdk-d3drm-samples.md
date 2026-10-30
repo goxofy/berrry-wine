@@ -1,5 +1,24 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 30: Globe motion verified on both repaired-build routes
+
+Runs `20261030T2330Z-dx-globe-webgl` and
+`20261030T2330Z-dx-globe-software` each contain two personally inspected
+captures of the original SDK Globe executable. The shaded, textured sphere
+changes orientation on both routes. This closes the earlier unverified WebGL
+motion finding after GPU Execute extent repair `de2e338c4`; it does not resolve
+the historical texture-band correctness question or establish pixel parity.
+
+Both Chrome 151/ANGLE SwiftShader runs loaded retained canonical module
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`.
+WebGL had the owning host's `d3dimGpu` and GPU selection enabled; software
+had neither. Guest threads were disabled in both. Each run verified 38 original
+SDK input hashes and all 182 served-response hashes. Its `result.json` records
+frames, build/backend evidence and cleanup: browser absent, three ports closed,
+private profile removed, no Boat. The different orientations and sphere sizes
+are not a same-frame comparison; FPS, full scene correctness and completion of
+the historical 27-app corpus remain unqualified.
+
 ## October 30: original Tunnel WebGL motion verified after extents fix
 
 Run `20261030T2325Z-dx-tunnel-gpu-extents` retested original `dx_tunnel`
