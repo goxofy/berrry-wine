@@ -1187,11 +1187,12 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: GLD3D-CORPUS-27-20261006
   status: active (remaining texture source audit; both-backend gameplay incomplete)
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  worker: legacy-texture-rest-oct20
+  worker: tuxracer-glrectf-gameplay-main-oct30 (fresh original-game lane; other corpus work remains)
   prev-owner: claude:1863d2b5-bc58-4c0b-9c15-00fc951f0256 (fleet stopped)
   created: 2026-10-06T02:09:48.337Z
   accepted-by: claude:80aa9e95-435b-4acb-aeea-8ae3d860613c
   Next: Surface4/7 ABI is merged. legacy-texture-rest-oct20 owns remaining noncube capability contracts. Cube advertisement correctionf856627 is off main pending fullVM, not cube storage support. Hype bounded browser logical FPS independently accepted20261021:188callbacks/10708.68ms=17.5558518884 on software ANGLE/SwiftShader WebGL; see HYPE-BROWSER-FPS-20261013 and docs/reviews/hype-fps-independent-integration-20261021.md. Historical27 membership and software/WebGL gameplay coverage remain incomplete; exact local path checks are in docs/re-notes/dashboard-actionable-reconciliation-20261020.md.
+  note: 2026-10-30T20:38Z coordinator: Shared main now includes scalar glTexCoord2d c4b301780 and checked glColor3dv 1d175df71, each with focused tests, locked build, and one canonical original TuxRacer native-input retest. The latest retest clears both APIs and stops at glRectf API4394 (EIP0x00416436); repair plus original-game retest is active. Retained run20261030T2030Z-tuxracer-glcolor3dv has inspected MainMenu frames only; Practice/race and software/WebGL gameplay coverage remain unverified. Parallel original Enigma lane reached Tutorial Oxyd Stones1 with inspected mouse-controlled ball movement (run20261030T2035Z-enigma-gameplay, tested source934fd8290); this is separate 2D gameplay evidence, not a GL/D3D backend pass.
   Done: Status table for the full GL/D3D set in docs (software + WebGL per app, with run ids), and each fixed app has a reviewed in-game screenshot and commit on main.
   Evidence: memory project_gl_d3d_corpus_goal (27-app set, 2026-09-22); tools/gfx-app-census.js; tools/gl-name-census.js
 
