@@ -1,5 +1,26 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: PTCT paired original browser rendering
+
+Run `20261030T2351Z-ptct-paired-browser` captures the original registered
+Please the Cookie Thing intro on software and WebGL. Two personally inspected
+frames per route show gray/white geometric beams changing shape and position
+on black. The software route reports `gl_sw_enabled() == 1` without a GPU
+presentation layer; WebGL has an owning GPU layer whose sequence advances
+from 132 to 169. Normal startup uses the registered dialog command, without
+a guest patch. Guest threads were disabled.
+
+Both routes loaded canonical module SHA-256
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`
+(source fix `de2e338c4`). Each registration's executable and all 144 served
+response hashes were verified. Chrome 151 was launched with ANGLE SwiftShader
+flags; the GPU vendor string was not queried. Both browsers and static servers
+closed, private profiles were removed, and no Boat was used. Exact timestamps,
+input pins, capture hashes and cleanup checks are in `investigation.json` and
+the two route `verification.json` files. This establishes visible animation,
+not full intro correctness, same-frame parity, FPS, physical GPU performance
+or original 27-app membership.
+
 ## October 30: six screensavers, consolidated paired browser captures
 
 Run `20261030T2340Z-screensaver-browser-batch` completes inspected scene
@@ -507,7 +528,7 @@ Receipt groups used in the table:
 | `warcraft3_demo` / E | H W8: `20261008T0400Z-warcraft3-software-runtime`. | H W8: `20261008T0156Z-warcraft3-campaign-world-runtime`. | Reports review selection/opposing movement on both OpenGL arms; FPS/audio/combat U. Recover bundles and original membership. This says nothing about D3D8 gameplay; preserve laptop Warcraft III ownership/pause. |
 | `halflife_uplink` / E | H dated table: September 22 corridor/HUD on software GL; exact run ID/source U. | H `20261006T2100Z-hl-uplink-lazy-mci`, browser GL corridor/HUD after fix `5f4bac8c`; exact tested source/module U. | `4-gameplay-webgl-lazy.png` absent with bundle; source fix is not exact run identity. Ordinary input/FPS not separately established by these summaries. Recover both identities and original membership. |
 | `simgolf_demo` / M | H dated table: software gameplay; exact October 6 ID/source U. | H `20261006T0503Z-simgolf_demo-webgl-route-w5`, browser GL course/build bar; tested source/module U. | Historical screenshot review, not fresh controls/FPS qualification. Recover software ID, browser bundle/identities and original membership. Cursor edge-scroll can explain a black view. |
-| `ptct` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, software GL beams. | H P10 Node GL beams; B6 describes browser beams in `20261006T1840Z-gld3d-webgl`. | Correctness explicitly unverified, zero texture uploads in P10. The old 0.35 presents/s is not qualified gameplay FPS. Recover images/expected content and original membership; presentation demo input applicability unresolved. |
+| `ptct` / M | L `20261030T2351Z-ptct-paired-browser/software`: changing geometric beams, WAT rasterizer enabled. | L same run root: changing beams on owning GPU layer; same canonical `d83e413f…`, source `de2e338c4`. | Two inspected frames per route; one executable input and 144 served hashes each verified, cleanup verified. Full intro correctness, parity, FPS and historical membership remain U. |
 | `mw3` / M | H older cockpit gameplay; exact routed software ID/source U. | H `20261010T2110Z-mw3-webgl-cockpit-w5`, Node `--headless-gl --d3dim-gpu`, cockpit/forward movement, 49,818 draws/zero fallback reported; tested source/module U. | Node result is not browser proof. Recover both routed bundles/identities, screenshot/input receipts and original membership; FPS U. |
 | `dx_boids` / M | L `20261030T2348Z-boids-scene-diagnosis/software`: moving colored flock triangles and cyan boundaries, canonical `d83e413f…`. | L same run, root frames: moving colored triangles/boundaries, same module/source `de2e338c4`. | Two inspected frames per route; 38 input and 179 served hashes each verified; backend and cleanup verified. Full scene correctness, FPS, parity and membership U. |
 | `dx_tunnel` / M | H September 23 rendering report; exact software ID/source U. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; exact source/module U. | Same missing source/scene/ID/membership evidence as Boids; FPS U. |
