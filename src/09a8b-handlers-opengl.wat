@@ -256,6 +256,54 @@
     (i32.store offset=0 (global.get $reg_base) (i32.const 0))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
 
+  ;; glColor4dv(const GLdouble *v). Snapshot all guest components before
+  ;; entering the encoder. Canonical scalar opcode 25 owns current color,
+  ;; GL_COMPILE/COMPILE_AND_EXECUTE capture and replay, and packed vertices.
+  ;; Keep signed/out-of-range floating colors unclamped here, as glColor4f
+  ;; does; rasterization owns clamping. No persistent command opcode changes.
+  (func $handle_glColor4dv (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (local $r f32) (local $g f32) (local $b f32) (local $a f32)
+    (local $guest i32) (local $stack i32)
+    ;; This 32-byte vector crosses at most one guest page boundary. Reject
+    ;; wraparound and missing translations before gl64 can read the sentinel.
+    (if (i32.gt_u (local.get $arg0) (i32.const 0xffffffe0)) (then (unreachable)))
+    (if (i32.eq (call $g2w (local.get $arg0)) (global.get $NULL_SENTINEL)) (then (unreachable)))
+    (if (i32.eq (call $g2w (i32.add (local.get $arg0) (i32.const 31))) (global.get $NULL_SENTINEL)) (then (unreachable)))
+    (local.set $r (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (local.get $arg0)))))
+    (local.set $g (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $arg0) (i32.const 8))))))
+    (local.set $b (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $arg0) (i32.const 16))))))
+    (local.set $a (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $arg0) (i32.const 24))))))
+    ;; An invocation-owned synthetic stack avoids overwriting guest arguments
+    ;; or relying on a shared scratch buffer during nested list execution.
+    (local.set $guest (call $gl_alloc_affine (i32.const 20)))
+    (if (i32.eqz (local.get $guest)) (then (unreachable)))
+    (local.set $stack (call $g2w (local.get $guest)))
+    (i32.store (local.get $stack) (i32.const 0))
+    (f32.store offset=4 (local.get $stack) (local.get $r))
+    (f32.store offset=8 (local.get $stack) (local.get $g))
+    (f32.store offset=12 (local.get $stack) (local.get $b))
+    (f32.store offset=16 (local.get $stack) (local.get $a))
+    (drop (call $gl_wat_encode_call (i32.const 25) (local.get $stack) (i32.const 0)))
+    (call $heap_free (local.get $guest))
+    (i32.store offset=0 (global.get $reg_base) (i32.const 0))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
+
+  ;; glVertex2dv(const GLdouble *v): Tux Racer's two-component double vector.
+  ;; Use guest loads for each component (including non-affine page crossings),
+  ;; then the same packed-float vertex pipeline as glVertex2f/glVertex2fv.
+  ;; Supply z=0; gl_append_vertex supplies w=1 and preserves current attributes
+  ;; and the existing outside-Begin behavior. No new command-stream opcode.
+  (func $handle_glVertex2dv (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (if (i32.eqz (call $gl_wat_init)) (then (unreachable)))
+    (global.set $gl_wat_stat_calls (i64.add (global.get $gl_wat_stat_calls) (i64.const 1)))
+    (call $gl_append_vertex
+      (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (local.get $arg0))))
+      (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $arg0) (i32.const 8)))))
+      (f32.const 0))
+    (i32.store (global.get $reg_base) (i32.const 0))
+    (i32.store offset=16 (global.get $reg_base)
+      (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
+
   ;; The OpenGL 1.1 surface outside the measured set. Unreal-engine OpenGlDrv
   ;; resolves its whole GL table through GetProcAddress and refuses to bind if
   ;; a single name is missing, so every GL 1.1 entry point is an api_table

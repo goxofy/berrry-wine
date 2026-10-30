@@ -3786,6 +3786,7 @@
     (if (i32.eq (local.get $id) (i32.const 4215)) (then (return (i32.const 1)))) ;; glClearDepth
     (if (i32.eq (local.get $id) (i32.const 4217)) (then (return (i32.const 1)))) ;; glClearStencil
     (if (i32.eq (local.get $id) (i32.const 4227)) (then (return (i32.const 1)))) ;; glColor3ub
+    (if (i32.eq (local.get $id) (i32.const 4235)) (then (return (i32.const 1)))) ;; glColor4dv
     (if (i32.eq (local.get $id) (i32.const 4244)) (then (return (i32.const 1)))) ;; glColorMask
     (if (i32.eq (local.get $id) (i32.const 4252)) (then (return (i32.const 1)))) ;; glDeleteLists
     (if (i32.eq (local.get $id) (i32.const 4257)) (then (return (i32.const 1)))) ;; glEndList
@@ -3811,6 +3812,7 @@
     (if (i32.eq (local.get $id) (i32.const 4430)) (then (return (i32.const 1)))) ;; glTexCoord4f
     (if (i32.eq (local.get $id) (i32.const 4431)) (then (return (i32.const 1)))) ;; glTexCoord4fv
     (if (i32.eq (local.get $id) (i32.const 4442)) (then (return (i32.const 1)))) ;; glTexParameterfv
+    (if (i32.eq (local.get $id) (i32.const 4448)) (then (return (i32.const 1)))) ;; glVertex2dv
     (if (i32.eq (local.get $id) (i32.const 4460)) (then (return (i32.const 1)))) ;; glVertex4f
     (if (i32.eq (local.get $id) (i32.const 4461)) (then (return (i32.const 1)))) ;; glVertex4fv
     (if (i32.eq (local.get $id) (i32.const 4466)) (then (return (i32.const 1)))) ;; wglGetCurrentContext
@@ -21090,7 +21092,7 @@
       (call $handle_gl_unimplemented (local.get $arg0) (local.get $arg1) (local.get $arg2) (local.get $arg3) (local.get $arg4) (local.get $name_ptr))
       (return)
     ) ;; 4235: glColor4dv
-      (call $handle_gl_unimplemented (local.get $arg0) (local.get $arg1) (local.get $arg2) (local.get $arg3) (local.get $arg4) (local.get $name_ptr))
+      (call $handle_glColor4dv (local.get $arg0) (local.get $arg1) (local.get $arg2) (local.get $arg3) (local.get $arg4) (local.get $name_ptr))
       (return)
     ) ;; 4236: glColor4i
       (call $handle_gl_unimplemented (local.get $arg0) (local.get $arg1) (local.get $arg2) (local.get $arg3) (local.get $arg4) (local.get $name_ptr))
@@ -21980,7 +21982,7 @@
       (call $handle_gl_unimplemented (local.get $arg0) (local.get $arg1) (local.get $arg2) (local.get $arg3) (local.get $arg4) (local.get $name_ptr))
       (return)
     ) ;; 4448: glVertex2dv
-      (call $handle_gl_unimplemented (local.get $arg0) (local.get $arg1) (local.get $arg2) (local.get $arg3) (local.get $arg4) (local.get $name_ptr))
+      (call $handle_glVertex2dv (local.get $arg0) (local.get $arg1) (local.get $arg2) (local.get $arg3) (local.get $arg4) (local.get $name_ptr))
       (return)
     ) ;; 4449: glVertex2iv
       (call $handle_gl_unimplemented (local.get $arg0) (local.get $arg1) (local.get $arg2) (local.get $arg3) (local.get $arg4) (local.get $name_ptr))

@@ -36213,8 +36213,7 @@
     "name": "glColor4dv",
     "nargs": 1,
     "convention": "stdcall",
-    "hash": 3405348805,
-    "handler": "gl_unimplemented"
+    "hash": 3405348805
   },
   {
     "id": 4236,
@@ -37903,8 +37902,7 @@
     "name": "glVertex2dv",
     "nargs": 1,
     "convention": "stdcall",
-    "hash": 3714975380,
-    "handler": "gl_unimplemented"
+    "hash": 3714975380
   },
   {
     "id": 4449,
