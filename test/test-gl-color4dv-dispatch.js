@@ -33,8 +33,10 @@ for(const s of sources) {
 }
 const api=JSON.parse(read('src/api_table.json'));
 const id=4235;assert.strictEqual(api[id].name,'glColor4dv');
+const vertexId=4448;assert.strictEqual(api[vertexId].name,'glVertex2dv');
 const page='$dispatch_api_table_page_'+Math.floor(id/256);
-const roots=['$dispatch_api_table',page,'$wgl_api_available','$handle_glColor4dv',
+const vertexPage='$dispatch_api_table_page_'+Math.floor(vertexId/256);
+const roots=['$dispatch_api_table',page,vertexPage,'$wgl_api_available','$handle_glColor4dv','$handle_glVertex2dv',
   '$gl_wat_encode_call','$gl_append_vertex','$gl_append_vertex4'];
 // No matrix/raster/backend work is needed for a color or list setter. These
 // observers are inert fixture endpoints. All other excluded paths trap.
@@ -56,7 +58,7 @@ function visit(n) {
   }
   assert(s,'missing production signature '+n);
   if(excluded.has(n)||n.startsWith('$handle_')&&!roots.includes(n)||
-      n.startsWith('$dispatch_api_table_page_')&&n!==page) {
+      n.startsWith('$dispatch_api_table_page_')&&!roots.includes(n)) {
     const signature=s.slice(n.length+6).match(/^(\s*\((?:param|result)[^)]*\))*/)[0];
     traps.set(n,`(func ${n} ${signature} (unreachable))`);return;
   }
@@ -74,7 +76,11 @@ for(const p of ['src/09a8cb-gl-bitmap.wat','src/09a8cc-gl-stencil.wat','src/09a8
 roots.forEach(n=>{if(funcs.has(n))visit(n);});
 function boot(mutation='',failAlloc=false,failPage=-1) {
   const parts=[...selected.values()];
-  if(mutation) {
+  if(mutation==='vertex-route') {
+    const i=parts.findIndex(s=>s.startsWith('(func '+vertexPage+' '));
+    const before=parts[i];parts[i]=before.replace('(call $handle_glVertex2dv ', '(call $handle_gl_unimplemented ');
+    assert.notStrictEqual(parts[i],before);
+  } else if(mutation) {
     const i=parts.findIndex(s=>s.startsWith('(func $handle_glColor4dv '));
     assert(i>=0);
     const before=parts[i];
@@ -101,6 +107,11 @@ function boot(mutation='',failAlloc=false,failPage=-1) {
     ${parts.join('\n')}
     (func (export "invoke") (param $p i32)
       (call $dispatch_api_table (i32.const ${id}) (local.get $p) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
+    (func (export "invokeVertex") (param $p i32)
+      (call $dispatch_api_table (i32.const ${vertexId}) (local.get $p) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
+    (func (export "other") (param $id i32)
+      (call $dispatch_api_table (local.get $id) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
+    (func (export "vertexAvailable") (result i32) (call $wgl_api_available (i32.const ${vertexId})))
     (func (export "available") (result i32) (call $wgl_api_available (i32.const ${id})))
     (func (export "encode") (param $op i32) (param $stack i32) (result i32)
       (call $gl_wat_encode_call (local.get $op) (local.get $stack) (i32.const 0)))
@@ -172,6 +183,14 @@ function acceptance(h) {
   assert(h.frees()>0,'temporary canonical stack released');
 }
 const h=boot();
+if(process.argv.includes('--expect-vertex-unimplemented')) {
+  acceptance(h);
+  assert.strictEqual(api[vertexId].handler,'gl_unimplemented');
+  assert.strictEqual(h.e.vertexAvailable(),0);
+  assert.throws(()=>h.e.invokeVertex(0x404003),WebAssembly.RuntimeError);
+  console.log(JSON.stringify({PASS:true,baseline:'color passes; pinned production vertex dispatch traps',moduleSHA:h.moduleSHA}));
+  process.exit(0);
+}
 if(process.argv.includes('--expect-unimplemented')) {
   assert.strictEqual(api[id].handler,'gl_unimplemented');
   assert.throws(()=>acceptance(h),WebAssembly.RuntimeError);
@@ -179,6 +198,39 @@ if(process.argv.includes('--expect-unimplemented')) {
   process.exit(0);
 }
 acceptance(h);
+function combined(h) {
+  const {e,t,v}=h;
+  assert.strictEqual(e.vertexAvailable(),1);
+  const rgba=[-.25,.375,1.25,.625];
+  const cp=0x50006003;
+  function doubles(p,a) {
+    const b=Buffer.alloc(a.length*8);a.forEach((x,i)=>b.writeDoubleLE(x,i*8));
+    for(let i=0;i<b.length;i++)v.setUint8(t(p+i),b[i]);
+  }
+  doubles(cp,rgba);e.mode(-1);e.invoke(cp);e.mode(4);
+  const cases=[[0x404003,-1.25,2.75],[0x50000ffc,Math.PI,-123.125],
+    [0x50001ff8,1.0000000000000002,-0],[0x50003007,1e30,-1e-30]];
+  for(const [p,x,y] of cases) {
+    doubles(p,[x,y]);v.setUint32(256,0xdeadbeef,true);v.setUint32(272,0x402800,true);
+    v.setUint32(t(0x402800),0xcafebabe,true);v.setUint32(t(0x402804),p,true);
+    const before=Buffer.from(new Uint8Array(e.memory.buffer,t(0x402800),24));
+    const n=e.count();e.invokeVertex(p);
+    assert.strictEqual(e.count(),n+19);assert.strictEqual(v.getUint32(272,true),0x402808);
+    assert.strictEqual(v.getUint32(256,true),0);
+    assert.deepStrictEqual(Buffer.from(new Uint8Array(e.memory.buffer,t(0x402800),24)),before);
+    const a=new Float32Array(e.memory.buffer,e.vertices()+n*4,19);
+    assert(Object.is(a[0],Math.fround(x)));assert(Object.is(a[1],Math.fround(y)));
+    assert.strictEqual(a[2],0);assert.strictEqual(a[14],1);
+    assert.deepStrictEqual(Array.from(a.slice(3,7)),rgba,'production color setter feeds production vertex route');
+  }
+  const n=e.count();e.mode(-1);e.invokeVertex(cases[0][0]);assert.strictEqual(e.count(),n);
+  for(const name of ['glColor3dv','glTexCoord2d','glMultMatrixd','glGetBooleanv','glRectf']) {
+    const row=api.find(a=>a.name===name);assert.strictEqual(row.handler,'gl_unimplemented');
+    assert.throws(()=>e.other(row.id),WebAssembly.RuntimeError,name+' stays fail-fast');
+  }
+}
+combined(h);
+assert.throws(()=>combined(boot('vertex-route')),WebAssembly.RuntimeError,'lost vertex route rejected');
 for(const m of ['r','g','b','a','stride','opcode'])assert.throws(()=>acceptance(boot(m)),assert.AssertionError,m+' rejected');
 for(const args of [['',true],['',false,0x50001]]) {
   const b=boot(...args);b.v.setUint32(272,0x402800,true);
@@ -191,5 +243,5 @@ const compat=require('../lib/gl-compat');const stream=require('../lib/gl-command
 assert.strictEqual(compat.CALL_INDEX.glColor4f,25);assert.strictEqual(compat.CALL_INDEX.glColor4fv,26);
 assert.strictEqual(compat.CALL_INDEX.gluScaleImage,141);assert.strictEqual(compat.CALLS.length,142);
 assert.strictEqual(stream.ARG_WORDS[25],4);
-console.log(JSON.stringify({PASS:true,cases:4,mutations:['r','g','b','a','stride','opcode'],displayListReplay:true,packedCommandReplay:true,fixtureSHA:hash(fs.readFileSync(__filename)),
+console.log(JSON.stringify({PASS:true,cases:4,vertexCases:4,combinedColorVertex:true,vertexRouteMutationRejected:true,mutations:['r','g','b','a','stride','opcode'],displayListReplay:true,packedCommandReplay:true,fixtureSHA:hash(fs.readFileSync(__filename)),
   moduleSHA:h.moduleSHA,transformSHA:h.transformSHA,sourceSHA:files.map((p,i)=>[p,hash(sources[i])])}));
