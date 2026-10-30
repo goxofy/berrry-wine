@@ -1,5 +1,25 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: paired original Globe browser renders
+
+Runs `20261030T2302Z-dx-globe-browser` and
+`20261030T2305Z-dx-globe-software` add inspected initial/final captures of
+original `dx_globe`. Both show the titled Direct3DRM sample with a dark shaded
+sphere and yellow/black textured band. Software captures show a change in
+orientation; WebGL animation is not established. Their different apparent
+sizes and orientations are not a pixel-parity comparison or correctness verdict.
+
+Chrome 151 used ANGLE SwiftShader with guest threads observed enabled.
+The WebGL UI/console and `D3DIMGpu` identify that route; the software UI/console
+identify the DX2–7 WAT rasterizer, with no `D3DIMGpu`. The queried host
+`backend` property was unavailable, and OpenGL `gl_sw_enabled()` does not
+identify the D3DIM route. Both loaded retained module `7e8d3194…` (full hash
+in each `loaded-module.json`), compiled source revision unknown. Each run
+verified 39 input hashes and 38 fetched SDK responses. Browser processes and
+servers are gone and temporary profiles removed. Evidence and limits are in
+each run's `investigation.json`; no FPS, full scene correctness, current-main
+build, or complete historical 27-app claim follows from these captures.
+
 ## October 30 Boids browser animation
 
 The original `dx_boids` sample rendered moving colored flock triangles and
