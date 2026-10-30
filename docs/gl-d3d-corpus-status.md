@@ -1,5 +1,24 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: paired original Flip3DTL browser animation
+
+Runs `20261030T2311Z-dx-flip3dtl-browser` and
+`20261030T2311Z-dx-flip3dtl-software` each contain inspected initial/final
+captures of original `dx_flip3dtl`: a Windows 95 textured cube changes
+orientation on both routes. The window identifies itself as Flip3D DISPLAY
+HAL. The guest FPS overlay is not an independently measured benchmark.
+
+Chrome 151/ANGLE SwiftShader used WebGL with `D3DIMGpu` in the first run;
+the second selected the DX2–7 WAT software rasterizer and had no `D3DIMGpu`.
+Guest threads were observed enabled in both. Both loaded retained module
+`7e8d3194…`, compiled source revision unknown, and verified all 39 input
+hashes and 38 served SDK response hashes. Each run's `investigation.json`
+records evidence and cleanup: browser gone, three ports closed, private
+profile removed, no Boat. These observations establish animated textured
+output on both routes, not pixel parity, full scene correctness, performance,
+or completion of the historical 27-app corpus.
+
+
 ## October 30: Viewer original-mesh startup failure
 
 `20261030T2308Z-dx-viewer-browser/investigation.json` records a fresh
