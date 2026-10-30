@@ -219,4 +219,3 @@ class Acceptance(unittest.TestCase):
             assert 'setattr evidence limit' in result['error']
 
 if __name__=='__main__': unittest.main(verbosity=2)
-

@@ -61,4 +61,3 @@ def verify(raw, repo):
                 lifecycle=life,newMountedInvocations=0)
 if __name__=='__main__':
     print(json.dumps(verify(pathlib.Path(sys.argv[1]),pathlib.Path(__file__).resolve().parents[2]),sort_keys=True))
-
