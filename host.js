@@ -4268,6 +4268,31 @@ class WineAssembly {
         const asset = await assetLoads.get(key);
         checkCancelled();
         let data = asset.data;
+        // Validate the fetched original, before registry edits, image decoding,
+        // or any VFS alias can expose it. Range-backed entries retain their
+        // existing provider contract; required manifest files are always eager.
+        if (!asset.provider && item && typeof item === 'object') {
+          if (item.size !== undefined &&
+              (!Number.isSafeInteger(item.size) || item.size < 0 || data.byteLength !== item.size)) {
+            throw new Error('Asset size mismatch: ' + url);
+          }
+          if (item.sha256 !== undefined) {
+            if (typeof item.sha256 !== 'string' || !/^[a-f0-9]{64}$/i.test(item.sha256)) {
+              throw new Error('Invalid asset SHA-256: ' + url);
+            }
+            // The launcher already supports Node crypto, browser SubtleCrypto,
+            // and plain-HTTP browsers through its tested pure-JS fallback.
+            const hashing = (typeof window !== 'undefined' && window.watxLauncher) ||
+              (typeof require !== 'undefined' ? require('./lib/watx-launcher') : null);
+            if (!hashing || typeof hashing.sha256Hex !== 'function') {
+              throw new Error('Asset SHA-256 validation unavailable: ' + url);
+            }
+            if (await hashing.sha256Hex(data) !== item.sha256.toLowerCase()) {
+              throw new Error('Asset SHA-256 mismatch: ' + url);
+            }
+            checkCancelled();
+          }
+        }
         if (typeof item === 'object' && item.iniSet) {
           // Registry INI edits; test/run.js applies the same helper.
           const appFiles = typeof window !== 'undefined' ? window.appFiles : null;
