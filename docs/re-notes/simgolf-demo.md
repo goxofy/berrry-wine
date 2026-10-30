@@ -1347,6 +1347,84 @@ Next: trace the null vtable's allocation/lifetime and repeat native player
 practice play through a completed score. No code/build correctness claim is
 made by this documentation-only run.
 
+## 2026-10-30: null-call interface identified; original failure not reproduced
+
+Run `scratch/runs/20261030T2252Z-simgolf-null/` narrows the earlier
+`0044fcec` failure to a **JGL palette**, rather than an unidentified golfer
+object. Original-binary disassembly and a fresh live object agree:
+
+- Startup `004380d8` passes wrapper `007e5dd8` and the string at `004ac2e8`,
+  `Bodies\MaleSwap01`, to loader `00469070`. The preceding resource uses the
+  same name and wrapper `007e5d80`; wrappers are spaced by `0x58` bytes.
+- Wrapper vtable `0049e854` has initializer `0046fab0`: it first releases old
+  resources through `0046faf0`, requests a palette from manager
+  `[00802460]` slot `+0x6c`, and stores the result at wrapper `+4`.
+- JGL factory original VA `10040820` allocates `0x820` bytes and calls
+  constructor `100417e0`. That installs vtable `1005c938` and records the
+  wrapper backlink at object `+0x808`. The live object was `01617064`, the
+  **same address** as the earlier failing ECX. Its backlink was `007e5dd8`;
+  vtable `00adf938` resolves to `1005c938` using JGL runtime base `00a83000`.
+- Vtable slot `+0x10` is original VA `10041aa0`, runtime `00ac4aa0`. Its
+  thiscall contract is `(outputRgb, firstIndex, count)`, ending in `ret 0x0c`.
+  It reads three bytes from each four-byte palette entry at object `+8` and
+  writes packed RGB triples. The failing caller requests entries 0..119 into
+  its local buffer. Its `0x31c`-byte stack frame accommodates those 360 bytes.
+- Normal JGL destruction `10041830` clears `[owner+4]` when the backlink is
+  nonzero, installs base vtable `1005c95c`, and runs the base destructor.
+  The deleting destructor `10041810` subsequently frees the object when its
+  flag requests deletion. The caller's wrapper-pointer null check would
+  therefore skip an ordinarily destroyed palette with an intact backlink.
+
+These are disassembly-derived interface names, not recovered C++ symbols.
+`palette-lifecycle-disassembly.txt`, full EXE/DLL disassemblies,
+`object-initial.json`, and `final-palette-lifetime.json` retain the details.
+The initial live vtable was already valid before gameplay; its exact
+constructor execution was not breakpoint-captured.
+
+A watchpoint on the palette's first word recorded **no change** through
+native construction/opening of a 125-yard par-3 hole on Ocean's Edge
+(`opened.png`, inspected). Watchpoints disable the uop tier, so the run then
+removed the watchpoint and checked the first word after each execution
+quantum with the tier guard confirmed zero (`passive-installed.json`). That
+also recorded no change through arriving golfers, the first-green-fee
+tutorial and continued simulation into June. The final retained palette had
+the same pointer/vtable/backlink, with matching live/compiled palette serial
+46226. This is not an original-failure reproduction or a fix.
+
+**Unresolved causal distinction:** the previous failure retains EDX=0 after
+`mov edx,[ecx]`, but does not retain memory at `01617064` at that moment.
+Consequently, a cleared vtable word and an interpreter load/register error
+remain distinguishable hypotheses. No allocation overlap, stale-pointer
+release, offending write or faulty opcode has been proven. Capture both the
+object word and EDX at `0044fce1`/`0044fcec` on the next reproduction before
+changing code. Neither the call nor guest bytes were patched or skipped.
+
+Native people/player selection attempts did not establish a practice round,
+swing or completed score. Escape eventually opened Gary's retirement-choice
+dialog (`final-course.png`, inspected); that is not scoring. Some exploratory
+CDP connections used Puppeteer's default viewport and temporarily changed
+input geometry. `geometry*.json`, `input-mapping.json`, and
+`proper-mapping.json` preserve this limitation; later connections explicitly
+used `defaultViewport:null`, restoring 1024x768. Do not treat missed selection
+clicks as an emulator defect or compare terrain coordinates across layouts.
+
+The loaded/retained module remains SHA-256
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`,
+compiled source commit unknown. `provenance.json` records checkout HEAD when
+sampled, not proof of compilation provenance. Route: local loopback Chrome
+151, main guest on page (`WINE_THREADS=false`), WebGL requested; no actual
+WebGL backend observer was installed in this run, while the final WAT
+`gl_sw_enabled()` sample was 0. All 1,763 original assets / 65,166,518 bytes
+remain unchanged; all 1,110 distinct served fixture files match their hashes.
+`verify.py` passes those checks, retained/loaded module identity, 159 trusted
+input events with paired releases, stable final palette, and cleanup.
+Browser PID 1073634 exited; dynamic loopback ports 44163/34411 and CDP 41101
+closed; private profile and own watcher were removed/stopped. No Boat or
+assigned box was used (ID/state/expiry N/A); /home retained over 9 GB free.
+No source edit, focused code regression, or full-build correctness claim is
+made. The next task is still the original failure reproduction with object
+memory retained, followed by native practice/player scoring.
+
 So the next SimGolf lever is `adc r32,m32` taking the carry from a 16-bit
 `add` in the uop compiler. In this window it is the only `adc` in any
 declined scan (4 heads).
