@@ -189,3 +189,58 @@ Only this documentation changed. The browser, local HTTP/control servers and
 own board watcher were closed; the temporary profile was removed. Disk remained
 above 2 GB free. No Boat boxes were used or assigned (ID/state/expiry: N/A).
 Next useful work is the stale restart overlay or a fresh collision-debris capture.
+
+## Restart console history resolved — 2026-10-30
+
+Evidence: `scratch/runs/20261030T2232Z-gltron-overlay/investigation.json`.
+The red upper-left crash/winner lines are intentional persistent console
+history in the original game. They are not the current round's status banner.
+No emulator code, original assets, or guest configuration changed.
+
+The retained original 0.70 source and installed Win32 binary agree:
+`processEvent` (`004035ac`) sends crash and winner strings through
+`displayMessage(TO_CONSOLE, ...)` (`004106b9`), which formats and appends them
+through `consoleAddLine` (`0041052d`). Its buffer is at guest `0042b240`,
+position at `0042b238`, and scroll offset at `0042b23c`.
+`drawGame` clears the color/depth buffers and, with original `show_console`,
+calls `drawConsole` (`00406fbb`); `consoleDisplay` (`004105ee`) selects the
+latest five stored lines at this 800×600 setting. There is no expiry timer.
+`consoleInit` clears history at application initialization, not round restart.
+Original source excerpts and executable disassembly are retained in the run.
+
+`keyboardPause`'s default key path at `0040ae87` calls `initData` (`00403229`)
+when pauseflag is 2 (finished). It resets pauseflag to 1 (running), resets
+player trails/speeds and sets winner to -1, without touching the console.
+The separate large pause/winner banner comes from `displayPause` / `drawPause`.
+Original-code execution counters recorded restart once, console display 25
+times, three crash branches, one stop branch and four console appends at the
+first observed restart. Diagnostics only read gameplay memory; counter writes
+were emulator debug controls. Counters were then disabled for fresh captures.
+
+Personally inspected browser frames `fresh-finished.png`,
+`fresh-restart-right.png`, `restart-frame007.png`, `restart-finished.png` and
+`final-menu.png`: player two wins, native Return restarts, native A/S bends
+fresh yellow trails while old console lines persist, player one collides with
+a trail and explodes into visible debris, player three wins, and Escape
+returns to the original menu. Paired state samples establish winner -1,
+four positive speeds of 8.5 and zero trail offsets on reset, unchanged console
+history, then player-one speed -1 and a new appended crash, followed by winner
+index 2 and a new `winner: 3`. Frame sequence advances from 290 to 308.
+Individual state samples and presented frames can straddle a guest frame;
+the immediate restart capture still contains the preceding pause presentation.
+The later moving/impact/outcome captures establish the rendered progression.
+
+Exact loaded Wasm remains `7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`,
+with provenance retained in the preceding repair/browser investigations.
+Chrome 151.0.7922.108 used actual WebGLBackend/WebGL 1, software counters zero;
+all 92 original files and served bytes matched their prior pinned hashes.
+Sixteen paired trusted Return/A/S/Escape inputs passed, as did focused state,
+console-history, module/backend/asset checks and original registration tests.
+An initial evidence reader failed because TextDecoder rejects shared views;
+copying the read bytes repaired that scratch-only reader. No guest trap occurred.
+No production build was needed for this documentation-only conclusion.
+Browser, HTTP/control/CDP ports and temporary profile were cleaned up; disk
+remained above 2 GB. No assigned Boat boxes (ID/state/expiry: N/A).
+The earlier stale-overlay limitation is resolved within this scope; remaining
+rendering parity limits above are unchanged. Next useful gameplay work is
+longer native survival/steering, rather than clearing original console history.
