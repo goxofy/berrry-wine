@@ -1,3 +1,23 @@
+## 2026-10-30 — build-scoped lexical scan reuse
+
+Recover the lexical mechanism from stranded chains01/05 (candidate
+8f0813f167687f110829d03d102bd016a1b26164), adapting only the compiler and its
+current build callers. One build invocation shares immutable successful
+top-level ranges and heads across tail, compatibility and optional named
+compiles. Exact source strings key the cache, including transformed VFS text;
+failures are rescanned with the current filename. No AST, source location,
+include resolution, macro, declaration or allocator state is retained.
+Dropping the caller-owned scope releases the cache. WINE_WAT_FRONTEND_REUSE=0
+provides the uncached control. No historical staging/admission wrappers return.
+
+`test/watx-compiler-frontend-reuse.test.js` compares emitted CLI artifacts and
+failure stderr, option permutations, changed/deleted includes, aliases, macros,
+syntax/type errors, fresh AST locations and mutation isolation. A filename-only
+cache control must diverge. Scanner counts demonstrate avoided lexical work;
+fixture timing does not establish whole-build speedup.
+
+Manifest-sha256: e084e33e2a672085f3981e61aab943dc6fa09a5da4f549eb82d7077b7061fad4
+
 ## 2026-10-20 — bounded source-location capacity for the 129-source closure
 
 The callback ownership census on ScreenSaver reconciliation f37815f4 failed at
