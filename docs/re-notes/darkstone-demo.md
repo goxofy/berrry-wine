@@ -1,5 +1,46 @@
 # Darkstone demo 1.0
 
+## Original skeleton combat, October 30
+
+Run `scratch/runs/20261030T2158Z-darkstone-combat/` personally inspected
+combat on committed main `10952264c12cb1d4e2f2a096f59e8b367a1fb82b`, after
+alpha repair `328b6631a`. Canonical compilation of committed sources produced
+module `4649ee5fcf5a10a0212e690d826940bf0ba6445bea678bcac3978c0464bd67c6`
+(1,891,324 bytes); the Chrome HTTP response matches. The frozen archive excludes
+other workers' uncommitted changes. All 15 installed original assets match
+the served manifest and remain unchanged after the run. No guest memory,
+exports, save files or synthetic input queues were modified.
+
+Chrome 151, isolated guest Workers, WebGL, 1280×900 page and 640×480 native
+canvas followed the established CODEX warrior creation and Town exit. In
+Ardyl, ordinary ground clicks `(.65,.35)` then `(.78,.60)` reach the clearing
+with a skeleton beside CODEX. `clearing.png` shows its raised sword;
+`combat-before-live.png` already shows automatic melee engagement. A native
+left-button hold at `(.64,.48)` for 4,500 ms starts at
+21:58:12.086 UTC, logged as trusted DOM input at page `(611,510)`.
+`attack-held-after.png` shows white death particles and the skeleton gone;
+`attack-settled.png` and `combat-completed.png` confirm its persistent absence.
+Native `I` opens the inventory: `inventory-health.png` explicitly reads
+**LIFE 32/35**, **MANA 25/25**, with a nonzero experience bar. Initial Town
+health looks full, but no initial numeric health or enemy HP was collected.
+Automatic combat preceded the explicit attack, so this does not isolate the
+click as the sole cause of damage or death. It establishes original combat
+during ordinary native input, beyond locomotion. No combat blocker reproduced
+and no runtime repair was necessary.
+
+Owning legacy endpoint 1 has advancing WebGL submissions, finishing at
+103,283 draws / 1,287,543 consumed calls, zero observed errors/fallbacks and
+zero native/fallback software completions; `declinedClears=1` remains explicit.
+Software combat, child render ownership, audio, FPS and save/reload were not
+tested. Refused perf-telemetry connections remain in the console log. Quit
+was acknowledged and PAGE CLOSED logged; the outer browser and server
+returned 143, cause unknown. Postflight verifies debugger port 35309 and
+private server port 18175 closed, with no own runtime remaining. No Boat was
+created or touched. Exact inputs, times, frame hashes, source/module/assets,
+recovery recipe and limitations are retained in the run. A useful next step
+is manual-mode combat with an initial numeric health baseline, followed by
+software-backend combat; this run makes no manual-only attribution claim.
+
 ## Package and installation
 
 The local package comes from the Windows 98 A-D archive recorded in
