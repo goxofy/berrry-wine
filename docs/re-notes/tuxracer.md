@@ -1,5 +1,39 @@
 # Tux Racer original Win32 progression
 
+The 2026-10-30 full-course run in
+`scratch/runs/20261030T2133Z-tuxracer-finish/` finished **Frozen River** using
+ordinary Enter, P, Enter and held Up input. Personally inspected gameplay
+frames progress through HUD 00:26.35 / fish 2, 00:56.04 / fish 5,
+01:26.44 / fish 10 and 01:56.83 / fish 16. The inspected **Race Over** screen
+reports **Time 02:08.45, Herring 17, Score 0**. Matching later captures retain
+that result. Up release is dispatched and the relocated, verified SDL key
+array returns to zero. Native Enter then returns to the inspected Frozen River
+selection, which displays the same best result, including score 000000.
+
+The tested source is clean runtime main `27d8413c67a7226765662115b4cb9463da17b322`
+(including the previously merged screensaver changes), module
+`69bd55de38f5d19f9e05f73cb301b6897717c544a5ed3f9c49734aecf42f3924`, runner
+`c82398cf64e381ef2a729696280e4eab858eb51b7deb956f2b150281691b5748`, Node
+v24.18.1, WAT software GL, cooperative threads and `--real-ticks`. The locked
+full build and native display-list/material suite pass. All 158 original
+assets were verified by the existing staging recipe from the retained extracted
+payload; the canonical 157-file mount preflight passed. The run retains the exact
+module, source manifest, empty runtime-source patch, per-asset hashes, commands,
+input dispatch, SDL samples and captures. No runtime repair was needed.
+
+The successful invocation lasted 222.773 wall seconds, exited 0, and its process
+group was reaped; private port 18173 closed. Its detached controller also exited.
+An earlier invocation's controller ended with SIGTERM (cause unknown) after
+63 seconds; the still-running game lost its stdin producer and did not respond
+to an attempted pipe reconnection. That invocation was explicitly stopped and
+is retained as a harness interruption, without a finish claim. The successful
+second invocation added a private HTTP fallback and detached its controller.
+No Boat, additional checkout, guest-state write, synthetic result, or public
+deployment was used. Canonical ignored assets remain staged for recovery.
+This proves a complete original Practice race and its displayed result; it does
+not qualify competitive clock accuracy, browser/WebGL gameplay, audio or FPS.
+The next useful gate is browser/WebGL completion and rendering/input parity.
+
 The original 0.61a game is registered as `tuxracer_original_061a`. Preserve
 its canonical local manifest. The
 retained payload and static closure recipe are described in
