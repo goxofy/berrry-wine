@@ -57,6 +57,25 @@ no Boat was used. This establishes a visible animated scene on both routes,
 not same-frame pixel parity, FPS, physical GPU behavior, a full screensaver
 cycle or completion of the historical 27-app set.
 
+## October 30: longer Boids captures establish flock rendering
+
+Run `20261030T2348Z-boids-scene-diagnosis` extends the short paired
+captures below. Two personally inspected frames per route now show colored
+flock triangles and cyan boundaries changing on both software and WebGL.
+The short captures did not establish a missing-geometry defect; no emulator
+change was made. Both launches served the retained canonical module
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`
+from source fix `de2e338c4`. All 38 registered inputs and 179 served response
+hashes per route verified against local bytes. Host `d3dimGpu` was present
+only on WebGL. Chrome 151 used ANGLE SwiftShader; page Worker threading was
+requested off. The per-app `wine.threads` default remained true and does not
+prove Worker execution; no thread-mode comparison was performed.
+
+The browsers and static servers are closed and profiles removed; no Boat was
+used. This proves observed flock animation, not same-frame parity, physical
+GPU behavior, FPS, full scene correctness, or recovery of the historical
+27-member list. Shared SDK Viewer aliases retain their documented provenance.
+
 ## October 30: paired Boids motion, incomplete scene acceptance
 
 Runs `20261030T2335Z-dx-boids-webgl` and
@@ -490,7 +509,7 @@ Receipt groups used in the table:
 | `simgolf_demo` / M | H dated table: software gameplay; exact October 6 ID/source U. | H `20261006T0503Z-simgolf_demo-webgl-route-w5`, browser GL course/build bar; tested source/module U. | Historical screenshot review, not fresh controls/FPS qualification. Recover software ID, browser bundle/identities and original membership. Cursor edge-scroll can explain a black view. |
 | `ptct` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, software GL beams. | H P10 Node GL beams; B6 describes browser beams in `20261006T1840Z-gld3d-webgl`. | Correctness explicitly unverified, zero texture uploads in P10. The old 0.35 presents/s is not qualified gameplay FPS. Recover images/expected content and original membership; presentation demo input applicability unresolved. |
 | `mw3` / M | H older cockpit gameplay; exact routed software ID/source U. | H `20261010T2110Z-mw3-webgl-cockpit-w5`, Node `--headless-gl --d3dim-gpu`, cockpit/forward movement, 49,818 draws/zero fallback reported; tested source/module U. | Node result is not browser proof. Recover both routed bundles/identities, screenshot/input receipts and original membership; FPS U. |
-| `dx_boids` / M | L `20261030T2335Z-dx-boids-software`: changing cyan outlines, canonical `d83e413f…`. | L `20261030T2335Z-dx-boids-webgl`: changing cyan outlines, same module/source `de2e338c4`. | Two inspected frames per route; flock/scene correctness not established. Inputs, served hashes, backend and cleanup verified. FPS, parity and membership U. |
+| `dx_boids` / M | L `20261030T2348Z-boids-scene-diagnosis/software`: moving colored flock triangles and cyan boundaries, canonical `d83e413f…`. | L same run, root frames: moving colored triangles/boundaries, same module/source `de2e338c4`. | Two inspected frames per route; 38 input and 179 served hashes each verified; backend and cleanup verified. Full scene correctness, FPS, parity and membership U. |
 | `dx_tunnel` / M | H September 23 rendering report; exact software ID/source U. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; exact source/module U. | Same missing source/scene/ID/membership evidence as Boids; FPS U. |
 | `dx_twist` / M | H September 23 rendering report; exact software ID/source U. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; exact source/module U. | Same missing source/scene/ID/membership evidence as Boids; FPS U. |
 | `dx_flip3dtl` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, textured cube. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; later P10 Node GL reports 33k draws/zero fallback. | Recover paired images and browser source/module; sample interaction/FPS U. Original membership remains unproved. |
