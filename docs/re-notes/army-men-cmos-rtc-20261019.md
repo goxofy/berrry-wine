@@ -303,3 +303,41 @@ Use the authentic installed shortcut target, cwd and empty arguments. Observe
 the first screen, then only visible ordinary menu / Boot Camp controls if reached.
 Stop at the first failure; no automatic retry or game-specific patch. No guest
 was executed during this staging step and no gameplay claim is made.
+
+## Additional dated branch findings
+
+These historical observations supplement the current facts above; they do not establish a new current-main runtime result.
+
+## Directory construction and watch findings (2026-10-19)
+
+The later original trace reached `CreateFileA("BootCamp.cpn", GENERIC_READ,
+share=3, OPEN_EXISTING)` and returned `INVALID_HANDLE_VALUE`. The preceding
+SetCurrentDirectoryA buffer began `00 3a 2f` before the retained Campaigns
+path: it was an empty C string, not proof of a campaign-parser failure.
+
+Game `0x43c600` passes the cached directory CString to native `_chdir`;
+`0x43c760` builds it using `_makepath` (IAT `0x66db8c`), `_fullpath`
+(`0x66db90`, call `0x43c7c9`) and normalization `0x43c8c0`. At the
+post-normalization boundary `0x43c7ee`, `EBP-0x234` is the separate stack
+fullpath output and `*[EBX]` is the CString buffer. Bounded observation:
+
+```sh
+--trace-at=0x43c7ee --trace-at-limit=8 --trace-at-mem=ebp-0x234:64,*ebx:64,ebx:4
+```
+
+Three observed boundaries showed clean leading `43` bytes for base, Audio
+and Campaigns. That rules out leading-NUL construction at those particular
+boundaries; the bad write is later. A same-run dynamic watch identified the
+actual object `0xe43da0`, buffer `0xe43cc8`, and clean AVI path before a
+C-to-NUL transition. A watch reports a block boundary, not an exact store;
+allocation addresses must be rediscovered in each run. Interactive `w ADDR`
+must activate the selected width and establish the baseline immediately.
+
+The later directory-validation trace supplies the more useful API-level
+discriminator: GetFullPathNameA input ended `Campaigns/`, returning length56,
+but FindFirstFileA received `campaigns*.*`; Maps similarly became `maps*.*`.
+The game copies the returned directory and appends its wildcard. Canonical
+VFS path resolution had removed the trailing separator. This finding is
+followed by the separator and slash-classification work in
+[army-men-fullpath-separator-20261019.md](army-men-fullpath-separator-20261019.md);
+the earlier campaign parser and fixed-allocation hypotheses are not established.

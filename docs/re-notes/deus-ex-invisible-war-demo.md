@@ -462,3 +462,154 @@ successful scalar/nested replies remain covered. Evidence:
 `scratch/runs/20261011T1216Z-process-send-failures`. Full retained-source build,
 broker tests and 26 cross-thread checks pass. Independent cyclic ownership is
 still a correctness hold, and there is no new browser gameplay result.
+
+## Additional dated branch findings
+
+These historical observations supplement the current facts above; they do not establish a new current-main runtime result.
+
+### 600-second original route: level execution samples
+
+Run `20261011T1222Z-iw-level-samples` used the retained source plus the held
+failure-propagation candidate. It repeats the successful launcher handoff,
+then still shows LOADING at 600 seconds; browser cleanup exits zero and the
+harness reports no errors. No gameplay, ordinary movement, FPS or audio claim.
+
+Eleven 30-second-spaced samples from the spawned DX2 level process have eleven
+different main EIPs, all yield zero. The secondary thread consistently waits
+at 0x41fb2f, yield one. The earlier single sample at 0x7e15b2 does not establish
+a stuck pointer scan: original disassembly increments its array cursor, and
+the new samples reach other code. Late samples at 0x4b5309/0x4b537e and
+0x4ebcb6 surround indirect calls through the object at 0x9e1210, with slots
+0xfc/0xf4 and texture-stage-shaped arguments. Final main EIP is 0x4db80d.
+This narrows the next probe toward rendering/state submission, without proving
+that loading completed or that a frame is presented.
+
+Next: bounded API/render-call census after level launch, recording Present,
+draw submission and loading-state transitions; avoid another uninstrumented
+long wait. The sampler's additional DevTools connection used its default
+viewport, so intermediate frames show an 800px shell before the final 1000px
+capture. Treat this as diagnostic evidence, not a controlled timing benchmark.
+The missing stdole2.tlb HTTP404 remains recorded, with no demonstrated causal
+connection to the loading screen. Source hashes, samples and disassembly are
+preserved in the run folder.
+
+### Rendering census: persistent shader-link failure behind loading image
+
+Run `20261011T1239Z-iw-render-census` on bx_p3756882 adds per-process counts
+around the existing host graphics bridge. The initial detached attempt did
+not start a browser: fork snapshots omitted node_modules and the build.
+After `npm ci` with browser download disabled and a successful full rebuild,
+the actual original-route capture started at 12:44:35Z. No guest patch or
+approval response was supplied by the capture.
+
+At 300 seconds, the spawned level process had 2284 draw and 571 Present calls.
+At 400 seconds it had 210741 draw and 994 Present calls, but 208350 draws,
+2120 clears and 423 Presents returned the bridge's error value -1. Values
+below -1 are asynchronous request tokens, not the same error category.
+The actual device queue reports:
+
+`FRAGMENT varying d3d_color0 does not match any VERTEX varying`
+
+There is one visible window, HWND 196609, owned by the level process 1002.
+Its GPU layer stays at writeSeq 571. A direct capture of that layer shows
+the loading image itself: this is not an old parent window covering a newly
+presented scene. The game continues issuing work against the failed queue.
+The harness's empty page-error array does not imply a healthy rendering queue.
+
+Three subsequent draw shader IR/source pairs were captured after failure.
+They are context, **not an identification of the first failing pair**.
+Next: capture the vertex/fragment sources and native IR at the first link
+failure, reproduce it with an isolated WebGL link test, and compare intended
+D3D shader linkage before changing missing outputs. Do not paper over the
+error by inventing a color value or clearing the failed queue. The latest
+run still does not qualify gameplay, input response, FPS or audio.
+
+### First failing pair: colorless stencil pass
+
+Run `20261011T1305Z-iw-first-shader-pair` captures the actual first failed
+`createProgram` call, then rethrows the original error and closes the browser.
+The VS1.1 program writes position only. The fixed-function pixel program
+selects texture-factor RGB but retains `d3d_color0.a` as its output alpha.
+There is no vertex color output to link against.
+
+The recorded draw has `colorWriteMask=0`, alpha test disabled, stencil enabled
+(z-fail operation 4), depth testing enabled and depth writes disabled. This is
+a colorless stencil pass, not a request to display an invented diffuse color.
+An isolated WebGL test reproduces the exact link error; replacing only the
+fragment source with a constant output links successfully. That control does
+not yet verify stencil results or constitute an emulator fix.
+
+Next: specialize safe colorless fixed-function passes without removing any
+discard, depth or stencil effects; test stencil behavior and repeat the game
+route. Sources, 2336-byte native vertex IR, render state, diagnostic served
+backend, screenshots and cleanup are preserved in the run folder. Browser
+closed at 13:10:34Z, exit 0; the isolated browser also closed. No gameplay claim.
+
+### Colorless-pass candidate: isolated success, game still blocked
+
+Candidate `7b89c446c` is on `codex/iw-colorless-stencil-20261011`, separate
+from the held transport branch. After normal fixed-function validation it
+removes the pixel color dependency only for colorWriteMask=0 draws without
+alpha test, color key, fog, outlines or a programmed pixel shader.
+WebGL1/2 regressions preserve stencil fail/zfail/pass operations and unchanged
+color; visible draws still reject missing color. Alpha-test/key exclusion
+guards pass. The unfixed negative control fails the original link error.
+
+The original 600-second game rerun `20261011T1320Z-iw-stencil-game` nevertheless
+ends at LOADING with the same error text and writeSeq571. Its recorded backend
+hash matches the candidate. This is **not** a gameplay fix or main-ready result.
+The follow-up first-failure capture includes fog state and primitive identity
+to distinguish a different pair from a specialization exclusion.
+
+`20261011T1329Z-iw-next-shader-pair` resolves that ambiguity: the first
+failure **after** the candidate is a different program, writing position and
+tex0/tex1/tex2. Its fixed pixel stage computes texture times factor RGB but
+retains diffuse alpha. This draw has colorWriteMask=7 (RGB only), no alpha
+test/fog/stencil, and blending enabled with SRC=9 (DESTCOLOR), DST=3
+(SRCCOLOR). Thus the stencil specialization did remove the earlier failure;
+the next failure happens before another completed Present.
+
+Next investigate dead output-alpha elimination when alpha writes are masked
+and neither blend factors nor discard use source alpha. Do not substitute a
+default diffuse color globally: RGB operations or source-alpha blending can
+make that value observable. Both first-pair artifacts are retained for controls.
+
+### Level rendering restored with independent RGB-stage alpha elimination
+
+`1d5243e23` extends the separate rendering branch. It recognizes one active
+fixed stage selecting texture/factor/constant RGB independently, with alpha
+operation disabled and output alpha masked. It removes the initial diffuse
+read only when no source-alpha blend factor, alpha test, fog, outline or
+post-specular operation can make that value observable. Ordinary GLSL
+dead-code elimination alone did not remove the link dependency in WebGL.
+
+Full retained-source build and the expanded WebGL1/2 regression pass: RGB
+values, destination alpha preservation, the game's DESTCOLOR/SRCCOLOR blend,
+source-alpha exclusions, live diffuse/current RGB exclusions, and keyed
+fragment discard preserving stencil. The prior stencil-only commit fails
+the new RGB test with the original link error.
+
+Run `20261011T1345Z-iw-rgb-game` reaches the actual corridor and HUD, with no
+render queue errors in the sampled state. A stationary five-second diagnostic
+sample observed 9 published GPU frames, about 1.80 fps, on Chrome/SwiftShader;
+this is not a controlled performance benchmark. The first W input targeted
+HWND0 after launcher exit and did not visibly move the scene, so this run
+qualifies the scene only, not player control. Audio remains unverified.
+The focused-input follow-up uses an ordinary click on the new level window
+before W; shipped user.ini confirms W is MoveForwardBackward 1.000000.
+
+Run `20261011T1357Z-iw-focused-input` confirms ordinary player input: click
+the level window, hold W, dismiss the game's "Using the Datavault" help with
+Escape, then hold W for six seconds. Reviewed frames change from the corridor
+to a close-up of the nearby grating/barrier, with the HUD retained. The first
+hold also brings up the tutorial. Mouse events name HWND0x30001; key logs
+still say HWND0, so that log field alone does **not** establish a broken
+keyboard route (the game polls DirectInput). The earlier short input run was
+unqualified, not proof of a focus-routing defect.
+
+This establishes a gameplay scene and visible response to ordinary movement
+on the held combined runtime. It does not establish acceptable performance,
+audio, combat, candidate registration or production readiness. Render commits
+7b89c446c/1d5243e23 are independent review candidates; process-send cycle
+ownership remains a separate main-integration hold. Both captures ended
+cleanly and their artifacts are copied locally.
