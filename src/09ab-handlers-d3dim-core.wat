@@ -1594,6 +1594,18 @@
       (local.get $x) (local.get $y)
       (i32.add (local.get $x) (local.get $w)) (i32.add (local.get $y) (local.get $h))))
 
+  ;; GPU acceptance is synchronous even when submission/readback is deferred.
+  ;; Publish conservative clipped coverage while Execute still owns its status;
+  ;; do not announce a CPU DIB write (the GPU fence owns that later).
+  (func (export "d3dim_gpu_extent") (param $rt i32)
+    (param $left i32) (param $top i32) (param $right i32) (param $bottom i32)
+    (if (i32.eqz (global.get $d3dim_exec_extent_guest)) (then (return)))
+    (if (i32.ne (local.get $rt) (global.get $d3dim_exec_extent_rt)) (then (return)))
+    (if (i32.le_s (local.get $right) (local.get $left)) (then (return)))
+    (if (i32.le_s (local.get $bottom) (local.get $top)) (then (return)))
+    (call $d3dim_extent_add (global.get $d3dim_exec_extent_guest)
+      (local.get $left) (local.get $top) (local.get $right) (local.get $bottom)))
+
   (func $d3dim_execbuf_cache_clear (param $this i32)
     (local $entry i32) (local $slot i32) (local $tbl i32) (local $cache_g i32)
     (local.set $entry (call $dx_from_this (local.get $this)))

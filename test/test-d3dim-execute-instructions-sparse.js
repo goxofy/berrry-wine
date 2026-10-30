@@ -11,6 +11,7 @@ const extraWat = String.raw`
    (i32.store offset=16 (call $dx_from_this (local.get $p)) (local.get $s))
    (local.get $p))
  (func (export "state") (param $p i32) (result i32) (call $d3ddev_state (local.get $p)))
+ (func (export "extent_rt") (result i32) (global.get $d3dim_exec_extent_rt))
  (func (export "extent_scope") (result i32) (global.get $d3dim_exec_extent_guest))
  (func (export "set_extent_scope") (param $rect i32) (param $dev i32)
    (global.set $d3dim_exec_extent_guest (local.get $rect))
@@ -337,6 +338,25 @@ const extraWat = String.raw`
   }
   console.log(`PASS Execute clip status: ${clipCases} public stream/status/branch cases`);
   const outerRect = e.guest_alloc(16);
+  // GPU callback updates the current Execute owner only. Inactive, wrong-RT,
+  // and empty rectangles cannot mutate status or a later caller's rectangle.
+  [2048, 2048, 0, 0].forEach((v, i) => e.guest_write32(outerRect + i * 4, v));
+  const gpuRect = () => Array.from({length: 4}, (_, i) => e.guest_read32(outerRect + i * 4) | 0);
+  e.d3dim_gpu_extent(0, 1, 2, 8, 9);
+  assert.deepStrictEqual(gpuRect(), [2048, 2048, 0, 0]);
+  e.set_extent_scope(outerRect, dev);
+  const gpuRT = e.extent_rt();
+  assert(gpuRT, 'real render target owns GPU coverage');
+  e.d3dim_gpu_extent(gpuRT + 32, 1, 2, 8, 9);
+  e.d3dim_gpu_extent(gpuRT, 1, 2, 1, 9);
+  assert.deepStrictEqual(gpuRect(), [2048, 2048, 0, 0]);
+  e.d3dim_gpu_extent(gpuRT, 3, 4, 8, 9);
+  e.d3dim_gpu_extent(gpuRT, 2, 6, 10, 7);
+  assert.deepStrictEqual(gpuRect(), [2, 4, 10, 9]);
+  e.set_extent_scope(0, dev);
+  e.d3dim_gpu_extent(gpuRT, 0, 0, 32, 32);
+  assert.deepStrictEqual(gpuRect(), [2, 4, 10, 9]);
+  console.log('PASS GPU Execute extent scope: active owner, union, wrong target, empty and inactive guards');
   let extentCases = 0;
   for (const buf of [regular, base + 4090, base + 4030]) for (const mode of [0, 1, 2])
     for (const update of [0, 8]) for (const count of [0, 2]) {

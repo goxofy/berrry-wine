@@ -1,5 +1,31 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: Twist WebGL animation repaired
+
+The original `dx_twist` browser run `20261030T2320Z-dx-twist-gpu-extents`
+now visibly deforms and rotates its textured sphere. Three captured frames
+were personally inspected. The bounded copy trace contains 101 distinct
+scene-region hashes on both the primary surface and render target; changing
+copy rectangles cover the sphere. Before the fix, run
+`20261030T2316Z-dx-twist-copy-trace` copied only the FPS text rectangle after
+the initial frame, leaving the primary scene unchanged despite target updates.
+
+The GPU executor omitted ExecuteBuffer status extents that D3DRM consumes to
+choose its windowed copy rectangle. Accepted draws now report conservative,
+clipped coverage while Execute still owns that status, independently of later
+batch submission or readback. Wrong-target, inactive and empty reports are
+ignored. Triangles, lines, points, clipping and deferred submission have focused
+coverage, including the actual compiled WASM export.
+
+The locked canonical build and five focused D3DIM tests pass. The original
+Chrome 151/ANGLE SwiftShader run loaded retained module
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`;
+served-response integrity and browser/port/profile cleanup are recorded in
+its `result.json`. No Boat was used. This establishes visible animation for
+this sample; pixel parity, complete scene correctness, performance and the
+historical 27-app corpus goal remain unqualified. Earlier stationary-frame
+findings below describe the previous build.
+
 ## October 30: Twist motion boundary narrowed; no repair yet
 
 Two original WebGL diagnostic runs, `20261030T2305Z-dx-twist-motion-probe`
