@@ -687,3 +687,48 @@ unqualified. One room and one traversal cycle were tested; combat, level
 completion, FPS, and audio were not qualified. See
 [the software handoff](../../ops/handoffs/quake2-software-ordinary-20261008.md)
 for exact identity, timings, backend proof, resource grant, and cleanup.
+
+## 2026-10-30: native browser movement, firing, death and autosave reload
+
+Run `scratch/runs/20261030T2210Z-quake2-browser/result.json` records a fresh
+local Chrome 151 profile using the registered `quake2_demo` selector and
+Launch button, unchanged `+set vid_ref gl +menu_main`, and ordinary trusted
+browser input. Game → Easy enters Outer Base (`demo1`). W approaches the
+diagonal support until it occludes the room; S restores the wall emblem and
+wider view. Mouse-one under pointer lock produces visible blaster bolts,
+impact sparks and dynamic lighting. Held guest `in_attack` has key 200 and
+state 5; after release key is 0, state 4 (held bit clear), and the host mouse
+mask is 0.
+
+Native W/arrow-key navigation reaches the lower room. An enemy attacks:
+inspected captures show health 100 → 73 → 61 → 0 and the rolled death camera.
+Enter opens the ordinary Load Game menu with `ENTERING Outer Base` selected;
+a second Enter loads that autosave. The starting view and health 100 return.
+Further W/S movement and a new mouse-one burst work after reload, including
+visible projectile/impact captures and cleared attack state after release.
+No console command, guest-memory write, asset modification, or forced input
+handler was used. No runtime blocker reproduced and no repair was made.
+
+This run uses game **`ref_gl`**, emulator **WebGL 1**, and Chrome ANGLE
+**SwiftShader**. SwiftShader is the browser's software GPU implementation;
+this is neither game `ref_soft` nor the emulator's WAT software GL backend.
+The live layer owns a `WebGLRenderingContext`; guest threads and render
+workers were disabled. The retained, actually downloaded module is
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`.
+Launch HEAD was `24af711e78857d8d22adfba794d235447017de90`; the shared tree
+had another worker's uncommitted GL changes, so the compiled source commit
+is **unknown**, not certified as a pristine build of that HEAD. Served file
+hashes and the launch diff are retained. The 67 registered file hashes
+include 65 original extracted assets and the two host control/source files;
+all remained unchanged. The original installer was absent, so no new full
+installer/extraction comparison is claimed. `pak0.pak` matches the documented
+SHA-256 above.
+
+The screenshots and input timestamps were reviewed directly. Coverage is
+one death/autosave cycle, movement and blaster firing before and after it;
+enemy defeat, level completion, hardware GPU behavior, audio quality, FPS,
+networking and WAT software rendering remain untested here. Own browser and
+both local server/controller ports were closed and checked; no Boat was used.
+The static harness also logged HTTP 404 responses; their URLs were not captured,
+and they are not evidence of successful network or service integration. No
+page exception, guest trap or `FreeLibrary failed` message was recorded.
