@@ -279,3 +279,61 @@ No Boat was created or touched, no public deployment, no Telegram. The bounded
 Town/camera/backend route passes; audio, FPS, save/reload, child ownership,
 combat, locomotion and full-game correctness remain untested. Recovery recipe
 and portable investigation `result.json` are in the run directory.
+
+## Native locomotion and Town exit, October 30
+
+Run `scratch/runs/20261030T2110Z-darkstone-locomotion/` replays the archived
+`ba96fc3ad…` runtime directly from `pinned-runtime.tar.gz` in a private
+localhost server's memory. All 1,292 served files match the preceding run;
+both Chrome HTTP module hashes are `6085eff5…`, with the original installed
+EXE `b43db5e1…` and all 15 fixture paths unchanged. This is a retained-build
+run, not a test of later main. No installer, guard, runtime source, guest
+memory or game export was modified. Chrome 151, isolated Workers, 640×480
+game canvas and 1280×900 page reproduce the CODEX warrior/party/Town route.
+
+The installed readme's section IV assigns movement to the left mouse button;
+left/right arrows rotate the camera. No camera arrows were used here. After
+personally reviewing Town before/idle, an ordinary unmodified left click on
+the visible road at normalized `(.45,.36)` in WebGL produced a turning/running
+pose, the **Land of Ardyl** loader, then the Land of Ardyl world/HUD. The
+software arm's nearby road click `(.43,.44)` independently crossed the same
+exit. Thus these road points are near the Town boundary, not suitable for a
+small within-Town displacement control. Do not mistake the loader for a
+settled world or reuse these points as camera-only evidence.
+
+Ardyl initially has substantial terrain occlusion in both arms. In software,
+ground click `(.65,.35)` moved out from behind that terrain into a clearing:
+the subsequent captures show CODEX running, then standing beside a birch.
+A second reviewed bare-ground click `(.78,.60)` shows him running across the
+clearing, with the following camera translating fixed tree landmarks. In
+`software/ardyl-move-idle.png`, the birch base is about 90 page pixels right of
+the character's feet; in `software/clearing-settled.png` it is about 160 pixels
+left. The birch remains at the latter location in `clearing-idle.png` while a
+skeleton approaches CODEX. These are approximate image-space observations,
+not decoded guest world coordinates. Actual movement and scene transition
+are established; combat correctness, audio, FPS and save/reload are not.
+
+Input evidence retains trusted DOM left-button presses, measured canvas
+geometry, renderer routing and the host's actual consumed `WM_LBUTTONDOWN`
+(`0x201`, wParam 1) / `WM_LBUTTONUP` (`0x202`, wParam 0) for guest hwnd
+`0x10001`. The observational `onInputTrace` callback changes no routing.
+Owning main legacy endpoint 1 advances throughout: software native completed
+draws at Town before/idle are 460775/507742, after the exit 594423/639937,
+and across the final clearing early/settled/idle 842430/879323/912682.
+Software fallbacks remain zero. WebGL actual submissions at Town before/idle
+are 22930/23778 and at Ardyl arrival/idle 41919/43014; consumed draw calls
+advance 287249/294337 → 457109/467261, with zero observed errors/fallbacks
+and zero direct/fallback software completions. `declinedClears=1` remains
+explicit. Child rendering is unsampled; no general rendering-parity claim.
+
+Software acknowledged quit, logged PAGE CLOSED and exited **0**. WebGL's
+outer probe exited **143** before acknowledging the queued quit (cause
+unknown); its exact remaining private Chrome PID was identified by the
+unique profile and terminated. Postflight verifies both owned profiles have
+no running Chrome, the private server is stopped and port 18164 is closed.
+No Boat was created or touched, so no box lifecycle handoff applies. Evidence,
+commands, exact hashes, input logs, renderer samples and an archive-backed
+recovery recipe are retained in the run. No runtime defect blocked control
+and no code repair was needed. Next useful work is terrain/foreground
+occlusion diagnosis using captured draw inputs, rather than changing input
+or repeating camera qualification.
