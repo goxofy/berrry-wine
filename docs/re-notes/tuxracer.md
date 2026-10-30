@@ -1,5 +1,58 @@
 # Tux Racer original Win32 progression
 
+The original **Frozen River Practice race now finishes in the real browser /
+WebGL path**. Evidence is in
+`scratch/runs/20261030T2145Z-tuxracer-browser/`. Personally inspected baseline
+race/result frames show **02:06.45, Herring 16, Score 0** and native Enter
+returns to the matching Frozen River best result. That invocation also exposed
+a real rendering defect: the trees were opaque grey/black rectangles, sometimes
+covering most of the view. WebGL1 reported an invalid mipmap operation.
+
+The original tree texture is **256x255 RGBA**. `gluBuild2DMipmaps` previously
+uploaded that image unchanged before calling WebGL's mipmap generator. GLU
+requires an initial resize to the nearest power of two; the incomplete WebGL1
+texture lost its transparent tree silhouette. The unsigned-byte frontend now
+uses the existing GLU area-filter convention with periodic edges, rounds ties
+up, respects the backend maximum size, and restores guest unpack alignment
+after the tightly packed internal upload, including on failure. Existing
+power-of-two uploads retain their path. See the
+[GLU specification](https://registry.khronos.org/OpenGL/specs/gl/glu1.3.pdf).
+
+The repaired invocation again uses ordinary browser input to select Practice
+and Frozen River. Personally inspected frames show textured trees with clear
+edges, Tux descending, changing HUD time/fish and a **Race Over result of
+01:29.76, Herring 8, Score 623**. Native Up release changes the verified,
+relocated SDL key array from 1 to 0. Native Enter returns to Frozen River's
+selection with the matching best time, herring and score 000623. Early menu
+input entered the event selector; ordinary Escape returned to the main menu
+before the verified Practice selection. No guest-state or result write was used.
+
+Both browser runs loaded the preserved module
+`69bd55de38f5d19f9e05f73cb301b6897717c544a5ed3f9c49734aecf42f3924`
+from runtime main `27d8413c67a7226765662115b4cb9463da17b322`. Requests record
+the actual module and script hashes. The repaired race's loaded frontend is
+`723adb01ddab78680c867d2e23ca19e584adbe1953126673959ba21651de96d8`,
+also retrieved from Chrome's debugger as `after/loaded-gl-compat.js`.
+Final source adds invalid-dimension rejection and GLU return-status forwarding;
+its `d529d7e8d66dcb7f39fa53bc0fa907b03290ad562ce0e87aab7638e65e808866`
+hash is independently checked by final-source WebGL1/2 alpha/readback tests.
+The valid-image resizing body is identical. Focused fixed-function, unpack,
+command-stream and multitexture suites pass, as do native material/display-list
+tests and the locked full build. The new regression rejects the old frontend.
+An additional `test-glu-scale-image.js` run stops at its stale API-table hash
+assertion on both the unchanged control and repaired source; it does not reach
+its scale tests. No API-table file was changed by this repair.
+
+Environment: local Chrome 151.0.7922.108, headless Chromium WebGL1 through
+ANGLE/SwiftShader, cooperative guest execution, isolated localhost server and
+trusted browser keyboard events. All 158 original asset hashes match the
+canonical inventory; the browser mounts 157 data files. Both owned browser and
+controller processes exited and private ports 39103/35673 are closed. Temporary
+profiles were removed. No Boat was created or assigned, and no public service
+was deployed. These are displayed game results, without a competitive timing,
+hardware-GPU, audio or FPS claim. Remaining work is optional timing/audio and
+hardware/browser coverage, rather than a reproduced race-completion blocker.
+
 The 2026-10-30 full-course run in
 `scratch/runs/20261030T2133Z-tuxracer-finish/` finished **Frozen River** using
 ordinary Enter, P, Enter and held Up input. Personally inspected gameplay
