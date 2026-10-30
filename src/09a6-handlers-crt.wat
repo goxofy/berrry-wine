@@ -1515,7 +1515,7 @@
   ;; "Invalid cursor file" in the browser and only there.
   (func $crt_file_read (param $file i32) (param $buf i32) (param $len i32) (result i32)
     (local $rec i32) (local $flags i32) (local $handle i32) (local $read i32)
-    (local $bytes_ga i32) (local $bytes_wa i32) (local $err i32)
+    (local $bytes_ga i32) (local $bytes_wa i32) (local $err i32) (local $pending i32)
     (local.set $rec (call $crt_stream_lookup (local.get $file)))
     (if (i32.eqz (local.get $rec)) (then (return (i32.const -1))))
     (local.set $flags (call $crt_file_flags (local.get $file)))
@@ -1529,22 +1529,32 @@
         (return (i32.const 0))))
     (local.set $flags (i32.or (local.get $flags) (i32.const 0x01)))
     (call $crt_file_set_flags (local.get $file) (local.get $flags))
-    (call $crt_file_reset_buffer (local.get $file))
     (if (i32.eqz (local.get $len)) (then (return (i32.const 0))))
+    ;; ungetc uses the real FILE buffer, also visible to an inline getc.
+    ;; Keep it pending until host I/O succeeds: a parked fread retries whole.
+    (if (i32.gt_s (call $gl32 (i32.add (local.get $file) (i32.const 4))) (i32.const 0))
+      (then
+        (local.set $pending (i32.const 1))
+        (i32.store8 (call $g2w (local.get $buf))
+          (i32.load8_u (call $g2w (call $gl32 (local.get $file)))))
+        (if (i32.eq (local.get $len) (i32.const 1))
+          (then (call $crt_file_reset_buffer (local.get $file)) (return (i32.const 1))))))
     (local.set $handle (call $crt_stream_handle (local.get $rec)))
     (local.set $bytes_ga (i32.sub (i32.load offset=16 (global.get $reg_base)) (i32.const 4)))
     (local.set $bytes_wa (call $g2w (local.get $bytes_ga)))
     (i32.store (local.get $bytes_wa) (i32.const 0))
     (local.set $err (if (result i32) (local.get $handle)
       (then (call $host_fs_read_file_result
-        (local.get $handle) (local.get $buf) (local.get $len) (local.get $bytes_ga)))
+        (local.get $handle) (i32.add (local.get $buf) (local.get $pending))
+        (i32.sub (local.get $len) (local.get $pending)) (local.get $bytes_ga)))
       (else (i32.const 6)))) ;; ERROR_INVALID_HANDLE
     (if (i32.eq (local.get $err) (i32.const 997)) (then (return (global.get $CRT_READ_PARKED))))
+    (call $crt_file_reset_buffer (local.get $file))
     (if (local.get $err)
       (then
         (call $crt_file_set_flags (local.get $file) (i32.or (local.get $flags) (i32.const 0x20)))
-        (return (i32.const 0))))
-    (local.set $read (i32.load (local.get $bytes_wa)))
+        (return (local.get $pending))))
+    (local.set $read (i32.add (i32.load (local.get $bytes_wa)) (local.get $pending)))
     (if (i32.lt_u (local.get $read) (local.get $len))
       (then (call $crt_file_set_flags (local.get $file) (i32.or (local.get $flags) (i32.const 0x10)))))
     (local.get $read))
@@ -1692,44 +1702,54 @@
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4)))
   )
 
-  ;; setbuf supports NULL (unbuffered) for our canonical open FILEs only.
-  ;; A copied FILE does not copy the private ownership record/handle. Reject
-  ;; that state, buffered state, and custom buffers before changing any byte.
-  ;; All supported streams already perform I/O immediately; no flush is owed.
+  ;; setbuf(FILE*, buf) is setvbuf(file, buf, buf ? _IOFBF : _IONBF,
+  ;; BUFSIZ), with MSVCRT BUFSIZ = 512. Share setvbuf's immediate-I/O
+  ;; policy: never advertise a guest buffer that our stdio does not fill or
+  ;; drain. No output bytes are pending; input pushback is preserved and the
+  ;; caller buffer is not retained.
+  ;; Invalid/closed streams leave memory alone and report EINVAL via errno.
   (func $handle_setbuf (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
-    (local $rec i32) (local $rw i32) (local $flags i32) (local $expected_fd i32)
-    (local $base i32) (local $ptr i32)
-    (block $unsupported
-      (br_if $unsupported (local.get $arg1))
+    (local $saved_eax i32) (local $rec i32) (local $rw i32)
+    (local $flags i32) (local $expected_fd i32) (local $base i32)
+    (local.set $saved_eax (i32.load (global.get $reg_base)))
+    (block $invalid
       (local.set $rec (call $crt_stream_lookup (local.get $arg0)))
-      (br_if $unsupported (i32.eqz (local.get $rec)))
+      (br_if $invalid (i32.eqz (local.get $rec)))
       (local.set $rw (call $g2w (local.get $rec)))
       (local.set $flags (call $crt_file_flags (local.get $arg0)))
-      (br_if $unsupported (i32.eqz (i32.and (local.get $flags) (i32.const 0x83))))
-      ;; _IOMYBUF, _IOSTRG, _IOYOURBUF are not implemented here.
-      (br_if $unsupported (i32.and (local.get $flags) (i32.const 0x148)))
-      (br_if $unsupported (call $gl32 (i32.add (local.get $arg0) (i32.const 4))))
+      (br_if $invalid (i32.eqz (i32.and (local.get $flags) (i32.const 0x83))))
+      (br_if $invalid (i32.and (local.get $flags) (i32.const 0x148)))
+      ;; A copied FILE does not transfer the private descriptor or buffer.
       (local.set $expected_fd (i32.load offset=4 (local.get $rw)))
       (if (i32.eqz (local.get $expected_fd))
         (then
-          (br_if $unsupported (i32.eqz (i32.and (i32.load offset=12 (local.get $rw)) (i32.const 2))))
+          (br_if $invalid (i32.eqz (i32.and (i32.load offset=12 (local.get $rw)) (i32.const 2))))
           (local.set $expected_fd (i32.shr_u
             (i32.sub (local.get $arg0) (i32.atomic.load offset=12 (global.get $CRT_STREAM_STATE)))
             (i32.const 5)))))
-      (br_if $unsupported (i32.ne (call $gl32 (i32.add (local.get $arg0) (i32.const 16))) (local.get $expected_fd)))
+      (br_if $invalid (i32.ne (call $gl32 (i32.add (local.get $arg0) (i32.const 16))) (local.get $expected_fd)))
       (local.set $base (call $gl32 (i32.add (local.get $arg0) (i32.const 8))))
-      (local.set $ptr (call $gl32 (local.get $arg0)))
-      (br_if $unsupported (i32.ne (local.get $ptr) (local.get $base)))
       (if (local.get $base)
-        (then (br_if $unsupported (i32.ne (local.get $base) (i32.add (local.get $arg0) (i32.const 20))))))
-      (call $gs32 (local.get $arg0) (i32.add (local.get $arg0) (i32.const 20)))
-      (call $gs32 (i32.add (local.get $arg0) (i32.const 8)) (i32.add (local.get $arg0) (i32.const 20)))
-      (call $gs32 (i32.add (local.get $arg0) (i32.const 24)) (i32.const 2))
+        (then (br_if $invalid (i32.ne (local.get $base) (i32.add (local.get $arg0) (i32.const 20)))))
+        (else
+          (br_if $invalid (call $gl32 (local.get $arg0)))
+          (br_if $invalid (call $gl32 (i32.add (local.get $arg0) (i32.const 4))))))
+      (call $handle_setvbuf (local.get $arg0) (local.get $arg1)
+        (select (i32.const 0) (i32.const 4) (local.get $arg1))
+        (i32.const 512) (i32.const 0) (local.get $name_ptr))
+      ;; _iob starts without a buffer. Preserve main's canonical inline FILE
+      ;; layout while leaving an existing ungetc byte and pointer untouched.
+      (if (i32.eqz (local.get $base))
+        (then
+          (call $gs32 (local.get $arg0) (i32.add (local.get $arg0) (i32.const 20)))
+          (call $gs32 (i32.add (local.get $arg0) (i32.const 8)) (i32.add (local.get $arg0) (i32.const 20)))
+          (call $gs32 (i32.add (local.get $arg0) (i32.const 24)) (i32.const 2))))
       (call $crt_file_set_flags (local.get $arg0) (i32.or (local.get $flags) (i32.const 4)))
-      ;; void, cdecl: preserve EAX and pop only the return address.
-      (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4)))
+      ;; setvbuf already consumed the return address. setbuf returns void.
+      (i32.store (global.get $reg_base) (local.get $saved_eax))
       (return))
-    (call $crash_unimplemented (local.get $name_ptr)))
+    (drop (call $crt_fdopen_error (i32.const 22)))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4))))
 
   ;; setvbuf(FILE*, buf, mode, size) -> 0, or -1 (cdecl). msvcrt refuses a
   ;; stream it does not know, a mode other than _IOFBF 0 / _IOLBF 0x40 /
@@ -1767,6 +1787,7 @@
   ;; end-of-file or an error comes before any byte was stored.
   (func $handle_fgets (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
     (local $count i32) (local $ch i32) (local $got i32) (local $result i32)
+    (local $pending i32) (local $pushed i32)
     (local.set $result (local.get $arg0))
     (if (i32.or
           (i32.or (i32.eqz (local.get $arg0)) (i32.le_s (local.get $arg1) (i32.const 0)))
@@ -1775,13 +1796,23 @@
         (i32.store offset=0 (global.get $reg_base) (i32.const 0))
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4)))
         (return)))
+    (if (i32.gt_s (call $gl32 (i32.add (local.get $arg2) (i32.const 4))) (i32.const 0))
+      (then
+        (local.set $pending (i32.const 1))
+        (local.set $pushed (call $gl8 (call $gl32 (local.get $arg2))))))
     (block $done (loop $read
       (br_if $done (i32.ge_u (local.get $count) (i32.sub (local.get $arg1) (i32.const 1))))
       (local.set $got (call $crt_file_read (local.get $arg2)
         (i32.add (local.get $arg0) (local.get $count)) (i32.const 1)))
       (if (i32.eq (local.get $got) (global.get $CRT_READ_PARKED))
         (then
-          (call $crt_file_unread (local.get $arg2) (local.get $count))
+          (call $crt_file_unread (local.get $arg2)
+            (i32.sub (local.get $count) (local.get $pending)))
+          (if (local.get $pending)
+            (then
+              (call $crt_file_reset_buffer (local.get $arg2))
+              (call $gs8 (call $gl32 (local.get $arg2)) (local.get $pushed))
+              (call $gs32 (i32.add (local.get $arg2) (i32.const 4)) (i32.const 1))))
           (call $crt_park)
           (return)))
       (if (i32.ne (local.get $got) (i32.const 1))
@@ -2079,6 +2110,27 @@
         (i32.eq (local.get $read) (i32.const 1))))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4)))
   )
+
+  ;; One byte of pushback in the existing unbuffered FILE's _charbuf.
+  ;; EOF and rejected streams leave both flags and buffered input untouched.
+  (func $handle_ungetc (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (local $flags i32) (local $result i32)
+    (local.set $result (i32.const -1))
+    (block $done
+      (br_if $done (i32.eq (local.get $arg0) (i32.const -1)))
+      (br_if $done (i32.eqz (call $crt_stream_lookup (local.get $arg1))))
+      (local.set $flags (call $crt_file_flags (local.get $arg1)))
+      (br_if $done (i32.eqz (i32.and (local.get $flags) (i32.const 0x81))))
+      (br_if $done (i32.and (local.get $flags) (i32.const 0x42)))
+      (br_if $done (call $gl32 (i32.add (local.get $arg1) (i32.const 4))))
+      (local.set $result (i32.and (local.get $arg0) (i32.const 255)))
+      (call $crt_file_reset_buffer (local.get $arg1))
+      (call $gs8 (call $gl32 (local.get $arg1)) (local.get $result))
+      (call $gs32 (i32.add (local.get $arg1) (i32.const 4)) (i32.const 1))
+      (call $crt_file_set_flags (local.get $arg1)
+        (i32.and (i32.or (local.get $flags) (i32.const 1)) (i32.const -17))))
+    (i32.store (global.get $reg_base) (local.get $result))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4))))
 
   ;; fgetc(FILE*) — msvcrt's getc is this function, not a macro over it.
   (func $handle_fgetc (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)

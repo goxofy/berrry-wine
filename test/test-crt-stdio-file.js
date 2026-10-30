@@ -22,13 +22,17 @@ const call = (name, params) => {
   (func (export "t_${name}") ${params.map(p => `(param $${p} i32)`).join(' ')} (result i32)
     (i32.store offset=16 (global.get $reg_base) (i32.const ${STACK}))
     (i32.store offset=0 (global.get $reg_base) (i32.const 0x7e7e7e7e))
-    (call $handle_${name} ${args.join(' ')} (i32.const 0))
+    ${name === 'ungetc' ? '(call $dispatch_api_table (call $lookup_api_id "ungetc")' : `(call $handle_${name}`} ${args.join(' ')} (i32.const 0))
     (if (i32.ne (i32.load offset=16 (global.get $reg_base)) (i32.const ${STACK + 4}))
       (then (unreachable)))
     (i32.load offset=0 (global.get $reg_base)))`;
 };
 
 const extraWat = String.raw`
+  (func (export "t_errno") (result i32)
+    (if (result i32) (global.get $msvcrt_errno_ptr)
+      (then (call $gl32 (global.get $msvcrt_errno_ptr)))
+      (else (i32.const 0))))
   (func (export "t_init")
     (global.set $image_base (i32.const 0))
     (global.set $thunk_guest_base (i32.sub (global.get $THUNK_BASE) (global.get $GUEST_BASE))))
@@ -53,6 +57,8 @@ const extraWat = String.raw`
   ${call('ferror', ['f'])}
   ${call('clearerr', ['f'])}
   ${call('setbuf', ['f', 'buf'])}
+  ${call('ungetc', ['c', 'f'])}
+  ${call('getc', ['f'])}
   ${call('fseek', ['f', 'off', 'whence'])}
   ${call('ftell', ['f'])}
   ${call('fflush', ['f'])}
@@ -93,27 +99,27 @@ const _IOREAD = 0x1, _IOWRT = 0x2, _IONBF = 0x4, _IOEOF = 0x10, _IOERR = 0x20, _
   assert.strictEqual(e.t_setbuf(f, 0), 0x7e7e7e7e, 'setbuf is void and preserves EAX');
   assert.strictEqual(flag(f), _IOREAD | _IONBF);
   const snapshot = file => Array.from({length:8}, (_,i)=>u32(file+i*4));
-  const rejectsSetbuf = (file, buf, label) => {
+  const configuresSetbuf = (file, buf, label) => {
     const before = file ? snapshot(file) : null;
-    assert.throws(()=>e.t_setbuf(file,buf),WebAssembly.RuntimeError,label);
+    assert.strictEqual(e.t_setbuf(file,buf),0x7e7e7e7e,label+' preserves void EAX');
     if (file) assert.deepStrictEqual(snapshot(file),before,label+' leaves FILE unchanged');
   };
-  rejectsSetbuf(f, BUF, 'custom buffer is explicitly unsupported');
-  rejectsSetbuf(0, 0, 'NULL FILE is rejected');
-  rejectsSetbuf(BUF, 0, 'unowned FILE is rejected');
-  for (const [offset,value,label] of [
-    [4,1,'pending count'],
-    [12,flag(f)|0x08,'CRT allocated buffering flag'],
-    [12,flag(f)|0x100,'caller buffering flag'],
-    [16,handle+1,'descriptor mismatch'],
-    [0,f+21,'pointer mismatch'],
-    [8,f+21,'base mismatch'],
-  ]) {
-    const saved=u32(f+offset);
-    e.guest_write32(f+offset,value);
-    rejectsSetbuf(f,0,label);
-    e.guest_write32(f+offset,saved);
-  }
+  const rejectsSetbuf = (file, buf, label) => {
+    configuresSetbuf(file, buf, label);
+    assert.strictEqual(e.t_errno(), 22, label+' reports EINVAL');
+  };
+  configuresSetbuf(f, BUF, 'custom buffer follows immediate-I/O setvbuf policy');
+  rejectsSetbuf(0, 0, 'NULL FILE reports invalid stream without trapping');
+  rejectsSetbuf(BUF, 0, 'unowned FILE reports invalid stream without trapping');
+  // Resolve the new API by its production name hash and generated dispatcher,
+  // then consume its real FILE buffer through getc over the ordinary VFS.
+  assert.strictEqual(e.t_ungetc(0xff, f), 0xff, 'ungetc dispatch returns unsigned byte');
+  assert.strictEqual(u32(f+4), 1, 'pushback is visible to inline getc');
+  assert.strictEqual(e.guest_read8(u32(f)), 0xff, 'FILE pointer addresses pushed byte');
+  configuresSetbuf(f, BUF, 'setbuf preserves pending input');
+  assert.strictEqual(e.t_getc(f), 0xff, 'getc consumes pushback first');
+  assert.strictEqual(u32(f+4), 0);
+  assert.strictEqual(vfs.handles.get(handle).pos, 0, 'pushback does not advance the VFS');
   e.guest_write32(f+12,flag(f)|_IOEOF|_IOERR);
   e.t_setbuf(f,0);
   assert.strictEqual(flag(f),_IOREAD|_IONBF|_IOEOF|_IOERR,'setbuf preserves EOF/error indicators');
@@ -238,12 +244,12 @@ const _IOREAD = 0x1, _IOWRT = 0x2, _IONBF = 0x4, _IOEOF = 0x10, _IOERR = 0x20, _
   assert.strictEqual(e.t_fputs(TEXT, stdout), 0);
   assert.strictEqual(e.t_fclose(stdout), 0);
   assert.strictEqual(flag(stdout), 0, 'a closed standard stream stays in _iob, not in use');
-  rejectsSetbuf(stdout,0,'closed standard FILE is rejected');
+  rejectsSetbuf(stdout,0,'closed standard FILE is rejected without mutation');
   // SDL's fallback memcpy(FILE) does not transfer our hidden ownership.
   ascii(PATH,'c:\\donor.txt');
   const donor=e.t_fopen(PATH,MODE)>>>0;
   for(let i=0;i<32;i+=4)e.guest_write32(stdout+i,u32(donor+i));
-  rejectsSetbuf(stdout,0,'copied FILE with foreign backing pointer/handle is rejected');
+  rejectsSetbuf(stdout,0,'copied FILE with foreign backing pointer/handle is rejected without mutation');
   assert.strictEqual(e.t_fclose(donor),0);
   const outPath = [...vfs.files.keys()].find(k => /out\.txt$/i.test(k));
   assert.strictEqual(Buffer.from(vfs.files.get(outPath).data).toString(), 'to stdout');
