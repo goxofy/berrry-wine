@@ -1,5 +1,41 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: six screensavers, consolidated paired browser captures
+
+Run `20261030T2340Z-screensaver-browser-batch` completes inspected scene
+captures for the six siblings of Architecture on both browser routes:
+
+| App | Personally inspected result |
+| --- | --- |
+| Falling Leaves | Leaves and shadows change over the textured leaf background on both routes. |
+| Geometry | Gold polyhedra change arrangement over the blue radial background on both routes. |
+| Jazz | White musical-note clusters change on black on both routes. |
+| OrganicArt | Software changes from a patterned tunnel to rings; WebGL rings change orientation. A white lower-right rectangle remains unexplained. |
+| Rock & Roll | Guitars and picks change orientation on both routes. |
+| Sci-Fi | Birdlike objects render over the textured alien landscape on both routes; motion was inspected only on software. |
+
+These are original registered executables and scene assets, launched normally
+with `/s`, guest threads off, Chrome 151 and ANGLE SwiftShader. Every launch
+served retained canonical module SHA-256
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`
+(source fix `de2e338c4`). Per-frame owning-host GPU state matches the selected
+route. The six registrations contain 114 executable/scene input entries,
+all hash-pinned. Of 2,270 served responses across the batch and retries, 2,263
+were reverified against current bytes or retained matching HEAD bytes. Seven
+intermediate `lib/host-audio.js` responses cannot be reverified after concurrent
+worker edits; their exact recorded hashes remain in the route verification
+records. This is an explicit provenance limitation, not a full immutable
+source replay.
+
+Initial WebGL Jazz captures caught startup; a longer fresh run produced the
+inspected notes. The software browser target closed after OrganicArt, with no
+established cause; a fresh bounded run captured only Rock & Roll and Sci-Fi.
+All four browsers are absent, static ports closed and private profiles removed;
+no Boat was used. `investigation.json` records exact inspected images,
+verification counts and limitations. This establishes visible scenes, with
+motion where stated, not same-frame parity, FPS, physical GPU performance,
+complete scene correctness, complete saver cycles or the full 27-app goal.
+
 ## October 30: Architecture browser scene on both routes
 
 Runs `20261030T2338Z-architecture-webgl` and
