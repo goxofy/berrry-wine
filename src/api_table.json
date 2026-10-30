@@ -36213,8 +36213,7 @@
     "name": "glColor4dv",
     "nargs": 1,
     "convention": "stdcall",
-    "hash": 3405348805,
-    "handler": "gl_unimplemented"
+    "hash": 3405348805
   },
   {
     "id": 4236,

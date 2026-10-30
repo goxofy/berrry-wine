@@ -162,7 +162,7 @@ if(process.argv.includes('--expect-unimplemented')) {
   process.exit(0);
 }
 acceptance(h);
-const unsupported=['glTexCoord2d','glColor3dv','glMultMatrixd','glGetBooleanv','glRectf','glColor4dv'];
+const unsupported=['glTexCoord2d','glColor3dv','glMultMatrixd','glGetBooleanv','glRectf'];
 for(const name of unsupported) {
   const row=api.find(a=>a.name===name);assert.strictEqual(row.handler,'gl_unimplemented');
   assert.strictEqual(h.e.available(row.id),0,name+' remains unavailable');
