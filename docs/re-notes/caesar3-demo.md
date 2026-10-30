@@ -184,3 +184,57 @@ Per-site census, fold off:
 
 The fold's slot 427 is now `$th_retired_fold`. `--no-fold=rect-run` and
 `--no-rect-run` no longer exist.
+
+## Original browser city gameplay (2026-10-30)
+
+Run `scratch/runs/20261030T2200Z-caesar3-city/retry/` used the retained
+installer-produced payload in local Chrome 151, served only on localhost.
+The loaded JavaScript and launch-time source hashes match main commit
+`d4fb06b46`; the frozen gameplay module SHA-256 is
+`1dbddeafbeff685596095d18a4fd9240820b00b0fa293d21ac03393f9f652fb1`.
+`launch-source-commit.json`, `source-assets.json`, and `retry/requests.json`
+retain source, installed-file inventory, and observed HTTP response hashes.
+The app reported 112 mounted data files. HTTP evidence contains 80 installed
+payload responses, including the EXE and real SMACKW32 DLL; it is not a
+claim that every mounted file has a separate captured HTTP response.
+
+Puppeteer dispatched ordinary browser mouse/key events: dismiss title,
+Start new game, type Codex, Continue, To the city, select road/housing tools,
+place roads and housing, then select and place a well and prefecture. Page
+capture listeners recorded trusted events; no guest-memory edits or injected
+game-state changes drove construction. Read-only export samples recorded
+presentation counters. An observer briefly changed the viewport through
+Puppeteer's default viewport behavior; it was restored to 1100x850 before
+continuing, and the affected commands/captures remain in the evidence.
+
+Personally inspected captures show actual progression:
+
+- `city-initial.png`: January 500 BC, population 0, treasury 2000.
+- `roads-and-houses.png`: April, population 15, new road branch, tents and
+  arriving settlers. The road button's tooltip says **Build roads**.
+- `city-growing.png`: June, population 36, more tents and plots.
+- `city-later.png`: the original **First fire** tutorial; population falls
+  as houses burn. This is game simulation, not an execution trap.
+- `water-placed.png`: July, population 45, a built well beside housing.
+- `prefecture-near-road.png`: the prefecture is built for 20 denarii.
+- `occupied-tent.png`: September, population 41; the guest's own **Large
+  tent** information panel reports **7 occupants**.
+- `city-september.png`: inhabited settlement, well, prefecture, walkers,
+  and ruins left by the earlier fire.
+
+All names above are under `retry/`. Each PNG is identified by SHA-256 in the
+run's artifact manifest. Presentation samples increased from 1220 to 4134
+and beyond; the logical-frame address/count remain zero. Those are separate
+samples, not atomic screenshot/frame-counter pairs or an FPS measurement.
+The first attempt lost its browser connection after housing placement;
+its evidence is retained without an inhabited-city claim. A detached retry
+completed gameplay and closed its browser and private server normally.
+
+`node test/test-caesar3-gameplay.js` passed. A detached
+`flock /tmp/wine-build.lock bash tools/build.sh` also passed; that later build
+includes concurrent GL work and produced module `d69d1158f7707c8f...`, distinct
+from the frozen gameplay module above. No Caesar execution blocker requiring
+a runtime repair was reproduced. This records city construction and
+inhabitation, not completion of the assignment's population-150 objective.
+No Boat, public deployment, or asset replacement was used. Next useful
+gameplay work is sustaining services and reaching that assignment objective.
