@@ -323,7 +323,7 @@
     {
       "file": "lib/host-audio.js",
       "name": "host-file",
-      "sha256": "954e76b678502d6147475ea737af85b96e2408a488a2bd19c643dd2cf7969438",
+      "sha256": "dfe99e5850c7789a0e6dcf2a7dc699ac180d9a90912127fd710821f0783aa60b",
       "kind": "host-entry",
       "reason": "Conservative lexical host boundary match; entire file retained for alias, exception and restoration review. MIDI lifecycle/timing review 20261020: immutable registration retains callback, instance, exports and routing owner; function queue guards reentrancy and retries busy/throw, browser pump guards await and removes only the same head. Window backpressure retains head; changed owner is rejected; event DONE rejects mutex encoding. Completion removes pending ownership before notification; drain detaches old queue and close retires handle before notification. Fractional timing remainder and running/queued division restrictions reviewed; no invocation token or nonlocal coverage claimed.",
       "ownership": "pending"
