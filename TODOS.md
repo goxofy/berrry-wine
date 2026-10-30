@@ -1185,9 +1185,10 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 
 - [ ] GL/Direct3D corpus: every 3D app works on software and WebGL
   id: GLD3D-CORPUS-27-20261006
+  Latest observed gameplay (2026-10-30 22:08 UTC): Darkstone original software manual combat defeated a skeleton, LIFE17/35 and read-only EXP0→79; inspected victory-inventory.png, Telegram1656 delivered, notes be70e8f86 on main. Run20261030T2206Z-darkstone-software-combat uses retained module4649ee5f, not current concurrent HEAD. Enemy numeric HP/audio/save remain open; acknowledged quit closed page but outer143 cause is unknown.
   status: active (remaining texture source audit; both-backend gameplay incomplete)
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  worker: darkstone-software-manual-combat-main-oct30; gltron-trail-shadow-rendering-main-oct30; quake2-original-browser-gameplay-next-main-oct30 (fresh browser gameplay lane) (original gameplay lanes; all64 stranded chains disposed)
+  worker: caesar3-population150-services-main-oct30; gltron-trail-shadow-rendering-main-oct30; quake2-original-browser-gameplay-next-main-oct30 (original gameplay lanes; all64 stranded chains disposed)
   prev-owner: claude:1863d2b5-bc58-4c0b-9c15-00fc951f0256 (fleet stopped)
   created: 2026-10-06T02:09:48.337Z
   accepted-by: claude:80aa9e95-435b-4acb-aeea-8ae3d860613c
