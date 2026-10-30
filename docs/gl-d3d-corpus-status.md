@@ -1,5 +1,20 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30 Pawn move and extended Jazz scene
+
+Run `20261030T2238Z-pawn-software-move` exercised the original Pawn executable
+on software D3D9: e2–e4 input followed by the engine's e7–e5 reply. Root
+inspected the composited desktop, including both moved pawns and yellow engine
+move outlines. Exit 0, 20,000 batches; all six original input files hashed.
+Module `7e8d3194` is pinned; its compiled source revision is not independently
+established. This adds bounded CLI software gameplay, not browser parity.
+
+The later `20261030T2236Z-jazz-scene` run resolves the sparse Jazz observation
+below: after 180,000 batches the inspected primary surface shows five large
+lit musical notes and many smaller notes radiating against black. Exit 0;
+seven original inputs verified, retained module `1dbddeaf` / source `d4fb06b46`.
+Neither observation reconstructs the missing historical 27-ID membership list.
+
 ## October 30 four further original screensaver observations
 
 Run `20261030T2226Z-d3drm-four-scenes` retains five bounded software D3DIM
@@ -10,7 +25,8 @@ OrganicArt's extended-run green/red looping forms against orange. The initial
 OrganicArt run ended with an offscreen texture selected; the extended run's
 final capture selected the primary surface. Jazz showed small white fragments
 against black, so its full scene remains unqualified. Loading frames and
-offscreen textures are not evidence of a failed scene renderer.
+offscreen textures are not evidence of a failed scene renderer. The later
+extended Jazz observation above supersedes this run's sparse-scene limitation.
 
 The exact retained module/source is `1dbddeaf` / `d4fb06b46`, as below, preceding
 the later GLTron repairs. Commands, durations, surface diagnostics, captures,

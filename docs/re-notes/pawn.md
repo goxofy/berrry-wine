@@ -10,9 +10,23 @@ node test/run.js --app=pawn --no-build --headless-gl --screen=1024x768 \
   --max-batches=9000 --max-seconds=90 --quiet-api --no-close --png=/tmp/pawn.png
 ```
 
-`--headless-gl` is not optional: plain headless has no GPU window, so
+For the GPU backend, `--headless-gl` supplies the GL provider: plain headless has no GPU window, so
 `CreateDevice` fails with "D3D9 requires a GPU window" and the guest traps
 shortly afterwards at `0x0041c100`.
+The software backend instead uses `--d3d9-renderer=software` and needs no GL
+provider. Always use `--png-canvas` to inspect the composited window.
+
+## October 30 original software move
+
+Run `20261030T2238Z-pawn-software-move` loaded module
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`
+(compiled source revision not independently established). All six original
+Pawn input files were hashed. The registered original executable accepted the
+scripted e2–e4 drag and replied e7–e5; the inspected composited desktop shows
+both moved pawns and the engine's yellow origin/destination outlines.
+The software D3D9 run exited 0 after 20,000 batches, 55,363 API calls and
+1.880 seconds. This is bounded CLI software gameplay evidence, not a new
+browser/WebGL run or a complete chess-game test.
 
 The window is 350,100 and the board is its 352x352 client area, so a square is
 44px and the centre of (file, rank) is screen `(350 + 44*file + 22, 123 +
