@@ -278,6 +278,7 @@ const extra = [
   { name: 'setvbuf', nargs: 4, convention: 'cdecl' },
   { name: 'getc', nargs: 1, convention: 'cdecl' },
   { name: 'ungetc', nargs: 2, convention: 'cdecl' },
+  { name: 'abs', nargs: 1, convention: 'cdecl' },
   { name: '__p___mb_cur_max', nargs: 0, convention: 'cdecl' },
   { name: '__p__pctype', nargs: 0, convention: 'cdecl' },
   { name: 'fgetc', nargs: 1, convention: 'cdecl' },

@@ -1,0 +1,94 @@
+# Original GLTron 0.70 on recovered main — 2026-10-30
+
+Evidence: `scratch/runs/20261030T2141Z-gltron-main-gameplay/` (ignored).
+Use the existing `APPS.gltron` registration; no registration reintegration.
+
+The previously retained extracted tree was missing its executables and DLLs.
+The original installer remains at
+`scratch/usage-watch/gltron-original-win32-recovery-oct28/payload/gltron-0.70-win32.exe`
+(SHA-256 `8956abae4e4fe6ebc45b97d58c9254789e0a1457d11c58e4dbb90aead45a3eb3`).
+Extract a fresh task-owned directory with installed `innoextract --extract`,
+then use `node tools/stage-gltron-original.js SOURCE/app "$PWD/test/binaries/gltron-0.70"`
+with an absent destination. Current owner instructions require the shared main
+checkout. All 92 installed files (4,968,893 bytes) passed the original pinned
+registry hashes; original `gltron.exe` SHA-256 is
+`85fb5184262490f0b5967c2b12ee27c77da058364e594b0fc86be7b5814e40ec`.
+Do not substitute adversarial recovery-test fixtures for original media.
+
+## Reproduced causes and repairs
+
+* `strtod` parsed the number but wrote the original pointer to `endptr`.
+  Lua rejected the first number as malformed and reached unimplemented
+  `longjmp` at EIP `00418c85`, return `00418c9f`, arguments `074ffcd4,1`.
+  Return the consumed position, including incomplete-exponent rollback.
+  Keep exponent scaling bounded. `longjmp` remains unimplemented.
+* MSVCR70 exports `_iob` as FILE data. Binding it to a thunk let GLTron's
+  stdout redirection overwrite adjacent import metadata. The `abs` import at
+  IAT `004241b0` pointed at `07500720`, whose metadata became
+  `70000001,0,2,0` (FILE fields), causing a misleading null/ordinal API-0 trap.
+  Bind exactly MSVCR70's data symbol to the existing process FILE array.
+  Preserve other vendors' handling and real PE export precedence.
+* Integer `abs` was absent from the API table; append its real cdecl handler.
+* Mounted original DLL assets were not automatically loaded as PE modules.
+  Original zlib ordinal 16 trapped at `0040fbe0`. Seed the bundled zlib,
+  libpng and SDL_sound through the existing registry DLL graph.
+* Native Enter opens GAME, and Enter on START GAME reproduced `glTexCoord2i`
+  at `00407a8c`. Convert signed integers to canonical f32 coordinates; retain
+  display-list capture and stdcall cleanup.
+* The next START GAME attempt reached `glVertex3d`. Read all three doubles
+  from the guest stack, demote at the canonical vertex boundary, and retain
+  list capture and 28-byte stack cleanup.
+* The following arena draw reached `glColor3d`; reuse the checked double RGB
+  path with implicit alpha 1 and 28-byte scalar cleanup. The first inspected
+  gameplay frame then showed the yellow light cycle, blue grid and minimap.
+  A later draw trapped at `glVertex2d`; adapt its two stack doubles to the
+  canonical 2D vertex opcode with implicit z=0 and 20-byte cleanup.
+
+Production-handler tests cover numeric end pointers and cdecl behavior,
+MSVCR70 static data binding and stdout redirection without thunk corruption,
+texture-coordinate dispatch/list replay, and double vertex stack reads across
+non-affine mappings. The older CRT numeric regression now expects the consumed
+end pointer. Original setbuf/ungetc regression coverage is retained.
+
+## Inspected checkpoints
+
+The original menu and GAME submenu were personally inspected in
+`seed-startup.png`, `game-menu.png`, and `menu.png`. Software GL rendering
+shows the original logo, light cycles and GAME/VIDEO/AUDIO/QUIT entries.
+Native Return keydown/up through the renderer opens GAME and selects START
+GAME. Early captures and failures retain their own pinned module hashes in
+the run directory; they are not evidence for later builds. Final execution
+status and exact module identity are recorded in `investigation.json`.
+Player one turns with A and S in the original `scripts/config.lua`; the arrow
+keys belong to player three. Do not mistake arrow input for player-one steering.
+
+Final pinned run began 2026-10-30 21:57:21 UTC from base main
+`28298b354a8db2aaeef5d7d0c087e1d01ef364b1` plus the retained
+`worktree-play.patch`. Module SHA-256:
+`1dbddeafbeff685596095d18a4fd9240820b00b0fa293d21ac03393f9f652fb1`.
+The final locked full build passed (`build-final2.log`). Launch with
+`node test/run.js --app=gltron --no-build --gl-renderer=software --real-ticks`
+and the retained module via `--wasm=PATH/runtime-play.wasm`; the full bounded
+command is in `investigation.json`.
+
+Personally inspected final menu/submenu, yellow cycle and arena in
+`play-menu.png`, `play-submenu.png`, and `play-left.png`. Native Return and
+A/S keydown/up are logged against focused HWND `10001`. `play-right.png`
+shows PLAYER 1 CRASHED, debris and bent minimap trails; `play-left2.png`
+shows the round winner. Native Escape returns the actual main menu in
+`play-escape.png`. Later A/S captures (`round2-left.png`, `round2-right.png`)
+show changed arena orientation and trails, but old crash/winner overlays
+persist; do not identify the later camera as a surviving player-one view.
+The final run reached its configured 180-second guard at batch 2529 without
+a guest trap (180.039 seconds, tool process exit 143). Its control port and
+runtime process were verified gone. Duplicate extraction and installer copy
+were removed after rechecking all 92 staged hashes and the retained installer.
+
+Focused numeric, FILE/import, GL dispatch/list/mutation, WGL availability and
+original registration checks passed. White/black trail and shadow artifacts
+remain visible in software rendering; investigating their blend/texture path
+is the next useful rendering task. This run establishes original gameplay and
+native input, without a complete visual-parity or performance claim.
+
+No Boat boxes were created, assigned, resumed, stopped or deleted. Only this
+worker's local CLI processes were used; no browser/audio/parity claim.

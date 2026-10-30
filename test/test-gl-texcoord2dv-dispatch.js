@@ -34,8 +34,13 @@ for(const s of sources) {
 const api=JSON.parse(read('src/api_table.json'));
 const id=4415;assert.strictEqual(api[id].name,'glTexCoord2dv');
 const scalarId=4414;assert.strictEqual(api[scalarId].name,'glTexCoord2d');
+const integerId=api.find(a=>a.name==='glTexCoord2i').id;
+const vertexDoubleId=api.find(a=>a.name==='glVertex3d').id;
+const vertex2DoubleId=api.find(a=>a.name==='glVertex2d').id;
+const colorDoubleId=api.find(a=>a.name==='glColor3d').id;
 const page='$dispatch_api_table_page_'+Math.floor(id/256);
-const roots=['$dispatch_api_table',page,'$wgl_api_available','$handle_glTexCoord2dv','$handle_glTexCoord2d',
+const roots=['$dispatch_api_table',page,'$wgl_api_available','$handle_glTexCoord2dv','$handle_glTexCoord2d','$handle_glTexCoord2i','$handle_glVertex3d',
+  '$dispatch_api_table_page_'+Math.floor(colorDoubleId/256),'$handle_glColor3d','$handle_glVertex2d',
   '$gl_wat_encode_call','$gl_append_vertex','$gl_append_vertex4'];
 // No matrix/raster/backend work is needed for a texture or list setter. These
 // observers are inert fixture endpoints. All other excluded paths trap.
@@ -96,6 +101,8 @@ function boot(mutation='',failAlloc=false,failPage=-1) {
   const definedGlobals=new Map([...globals].filter(([n])=>needed.has(n)));
   for(const n of ['$reg_base','$image_base','$GUEST_BASE','$NULL_SENTINEL','$fault_sync_epoch'])definedGlobals.delete(n);
   const src=`(memory 64) (export "memory" (memory 0))
+    (region.declare-fixed $GL_SW_SCRATCH (base 0x003ff000) (size 0x800) (align 0x1000))
+    (region.declare-fixed $GL_SW_STATE (base 0x003fe000) (size 0x800) (align 0x1000))
     (import "fixture" "g2w" (func $g2w (param i32) (result i32)))
     (import "fixture" "alloc" (func $heap_alloc (param i32) (result i32)))
     (import "fixture" "free" (func $heap_free (param i32)))
@@ -112,6 +119,18 @@ function boot(mutation='',failAlloc=false,failPage=-1) {
       (call $dispatch_api_table (i32.const ${id}) (local.get $p) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
     (func (export "scalar")
       (call $dispatch_api_table (i32.const ${scalarId}) (i32.const 123) (i32.const 456)
+        (i32.const 789) (i32.const 101112) (i32.const 0) (i32.const 0)))
+    (func (export "integer") (param $s i32) (param $t i32)
+      (call $dispatch_api_table (i32.const ${integerId}) (local.get $s) (local.get $t)
+        (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0)))
+    (func (export "vertexDouble")
+      (call $dispatch_api_table (i32.const ${vertexDoubleId}) (i32.const 123) (i32.const 456)
+        (i32.const 789) (i32.const 101112) (i32.const 0) (i32.const 0)))
+    (func (export "colorDouble")
+      (call $dispatch_api_table (i32.const ${colorDoubleId}) (i32.const 123) (i32.const 456)
+        (i32.const 789) (i32.const 101112) (i32.const 0) (i32.const 0)))
+    (func (export "vertex2Double")
+      (call $dispatch_api_table (i32.const ${vertex2DoubleId}) (i32.const 123) (i32.const 456)
         (i32.const 789) (i32.const 101112) (i32.const 0) (i32.const 0)))
     (func (export "current")
       (f32.store (i32.const 1024) (global.get $gl_tex_s))
@@ -158,6 +177,41 @@ function acceptance(h) {
     e.mode(4);const n=e.count();e.vertex();
     return Array.from(new Float32Array(e.memory.buffer,e.vertices()+n*4,19));
   }
+  for(const stack of [0x402800,0x50000ff4]) {
+    e.mode(-1);v.setUint32(272,stack,true);
+    doubles(h,stack+4,[1.25,-.5,Math.PI]);e.colorDouble();
+    assert.strictEqual(v.getUint32(272,true),stack+28,'color double stdcall cleanup');
+    assert.strictEqual(e.available(colorDoubleId),1);
+    assert.deepStrictEqual(attributes().slice(3,7),[1.25,-.5,Math.fround(Math.PI),1],
+      'ordered double color and implicit alpha');
+    e.mode(4);v.setUint32(272,stack,true);
+    doubles(h,stack+4,[-1.25,Math.PI,7.75]);
+    const n=e.count();e.vertexDouble();
+    assert.strictEqual(e.available(vertexDoubleId),1);
+    assert.strictEqual(v.getUint32(272,true),stack+28,'three doubles stdcall cleanup');
+    assert.deepStrictEqual(Array.from(new Float32Array(e.memory.buffer,e.vertices()+n*4,3)),
+      [-1.25,Math.fround(Math.PI),7.75],'three ordered doubles including non-affine stack');
+    v.setUint32(272,stack,true);
+    const n2=e.count();e.vertex2Double();
+    assert.strictEqual(v.getUint32(272,true),stack+20,'two doubles stdcall cleanup');
+    assert.strictEqual(e.available(vertex2DoubleId),1);
+    assert.deepStrictEqual(Array.from(new Float32Array(e.memory.buffer,e.vertices()+n2*4,3)),
+      [-1.25,Math.fround(Math.PI),0],'two ordered doubles with implicit z=0');
+  }
+  for(const a of [[-3,7],[0,1],[-2147483648,2147483647]]) {
+    e.attributes();e.mode(-1);v.setUint32(272,0x402800,true);
+    e.integer(...a);
+    assert.strictEqual(v.getUint32(272,true),0x40280c,'integer stdcall cleanup');
+    assert.strictEqual(e.available(integerId),1,'integer setter exposed');
+    const out=attributes();
+    assert.deepStrictEqual(out.slice(7,9),a.map(Math.fround),'signed numeric conversion');
+    assert.deepStrictEqual(out.slice(15),[0,1,-2,3],'integer setter resets r/q, preserves unit one');
+  }
+  e.mode(-1);e.context();
+  const integerList=call(124,[1]);
+  call(125,[integerList,0x1300]);e.integer(-4,9);call(126);
+  call(28,[1,1].map(f));call(127,[integerList]);
+  assert.deepStrictEqual(attributes().slice(7,9),[-4,9],'integer coordinates captured in display list');
   const cases=[[0x402803,[-1.25,2.75]],[0x50000ff8,[Math.PI,-123.125]],
     [0x50002ff4,[1.0000000000000002,-0]],[0x50004ffb,[1e30,-1e-30]],
     [0x50006ff1,[-Math.PI,1.0000000596046448]],
@@ -215,7 +269,7 @@ for(const esp of [0xffffffec,0xfffffffc,0xffffffff]) {
   assert.strictEqual(h.v.getUint32(272,true),esp,'wrapping scalar stack rejected');
 }
 for(const p of [0xfffffff1,0xffffffff])assert.throws(()=>h.e.invoke(p),WebAssembly.RuntimeError,'vector wrap rejected');
-for(const name of ['glColor3d','glGetBooleanv']) {
+for(const name of ['glColor3s','glGetBooleanv']) {
   const row=api.find(a=>a.name===name);assert.strictEqual(row.handler,'gl_unimplemented');
   assert.strictEqual(h.e.available(row.id),0);assert.throws(()=>h.e.other(row.id),WebAssembly.RuntimeError);
 }

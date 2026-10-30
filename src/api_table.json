@@ -36103,7 +36103,7 @@
     "nargs": 6,
     "convention": "stdcall",
     "hash": 3724937846,
-    "handler": "gl_unimplemented"
+    "handler": "glColor3d"
   },
   {
     "id": 4222,
@@ -37647,7 +37647,7 @@
     "nargs": 2,
     "convention": "stdcall",
     "hash": 1885060717,
-    "handler": "gl_unimplemented"
+    "handler": "glTexCoord2i"
   },
   {
     "id": 4417,
@@ -37894,7 +37894,7 @@
     "nargs": 4,
     "convention": "stdcall",
     "hash": 4052569066,
-    "handler": "gl_unimplemented"
+    "handler": "glVertex2d"
   },
   {
     "id": 4448,
@@ -37933,7 +37933,7 @@
     "nargs": 6,
     "convention": "stdcall",
     "hash": 261077435,
-    "handler": "gl_unimplemented"
+    "handler": "glVertex3d"
   },
   {
     "id": 4453,
@@ -39062,5 +39062,12 @@
     "nargs": 2,
     "convention": "cdecl",
     "hash": 2518170959
+  },
+  {
+    "id": 4596,
+    "name": "abs",
+    "nargs": 1,
+    "convention": "cdecl",
+    "hash": 709362235
   }
 ]

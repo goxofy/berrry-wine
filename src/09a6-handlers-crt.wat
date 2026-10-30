@@ -736,11 +736,13 @@
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4)))
   )
 
-  (func $crt_strtod_simple (param $nptr i32) (result f64)
+  (func $crt_strtod_simple (param $nptr i32) (param $endptr i32) (result f64)
     (local $s i32) (local $ch i32) (local $val i32)
     (local $neg i32) (local $digits i32) (local $exp_neg i32) (local $exp i32)
     (local $fval f64) (local $frac f64)
+    (local $start i32) (local $exp_start i32) (local $exp_digits i32)
     (local.set $s (call $g2w (local.get $nptr)))
+    (local.set $start (local.get $s))
     (block $space_done (loop $skip_space
       (local.set $ch (i32.load8_u (local.get $s)))
       (br_if $space_done (i32.eqz (call $crt_is_space (local.get $ch))))
@@ -778,6 +780,7 @@
         (local.set $ch (i32.load8_u (local.get $s)))
         (if (i32.or (i32.eq (local.get $ch) (i32.const 0x65)) (i32.eq (local.get $ch) (i32.const 0x45)))
           (then
+            (local.set $exp_start (local.get $s))
             (local.set $s (i32.add (local.get $s) (i32.const 1)))
             (local.set $ch (i32.load8_u (local.get $s)))
             (if (i32.or (i32.eq (local.get $ch) (i32.const 0x2D)) (i32.eq (local.get $ch) (i32.const 0x2B)))
@@ -787,9 +790,15 @@
             (block $ex_done (loop $ex
               (local.set $val (call $crt_digit_value (i32.load8_u (local.get $s))))
               (br_if $ex_done (i32.or (i32.lt_s (local.get $val) (i32.const 0)) (i32.gt_u (local.get $val) (i32.const 9))))
+              ;; Saturate to keep arbitrarily long exponents bounded.
               (local.set $exp (i32.add (i32.mul (local.get $exp) (i32.const 10)) (local.get $val)))
+              (if (i32.gt_u (local.get $exp) (i32.const 4096))
+                (then (local.set $exp (i32.const 4096))))
+              (local.set $exp_digits (i32.add (local.get $exp_digits) (i32.const 1)))
               (local.set $s (i32.add (local.get $s) (i32.const 1)))
               (br $ex)))
+            (if (i32.eqz (local.get $exp_digits))
+              (then (local.set $s (local.get $exp_start))))
             (block $scale_done (loop $scale
               (br_if $scale_done (i32.eqz (local.get $exp)))
               (if (local.get $exp_neg)
@@ -797,18 +806,29 @@
                 (else (local.set $fval (f64.mul (local.get $fval) (f64.const 10)))))
               (local.set $exp (i32.sub (local.get $exp) (i32.const 1)))
               (br $scale)))))))
+    (if (local.get $endptr)
+      (then (call $gs32 (local.get $endptr)
+        (if (result i32) (local.get $digits)
+          (then (i32.add (local.get $nptr) (i32.sub (local.get $s) (local.get $start))))
+          (else (local.get $nptr))))))
     (if (local.get $neg) (then (return (f64.neg (local.get $fval)))))
     (local.get $fval))
 
+  ;; abs(int) — cdecl. Two's-complement INT_MIN remains INT_MIN, as on x86.
+  (func $handle_abs (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (i32.store offset=0 (global.get $reg_base)
+      (if (result i32) (i32.lt_s (local.get $arg0) (i32.const 0))
+        (then (i32.sub (i32.const 0) (local.get $arg0)))
+        (else (local.get $arg0))))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4))))
+
   (func $handle_atof (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
-    (call $fpu_push (call $crt_strtod_simple (local.get $arg0)))
+    (call $fpu_push (call $crt_strtod_simple (local.get $arg0) (i32.const 0)))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4)))
   )
 
   (func $handle_strtod (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
-    (call $fpu_push (call $crt_strtod_simple (local.get $arg0)))
-    (if (local.get $arg1)
-      (then (call $gs32 (local.get $arg1) (local.get $arg0))))
+    (call $fpu_push (call $crt_strtod_simple (local.get $arg0) (local.get $arg1)))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4)))
   )
 
@@ -1393,15 +1413,25 @@
         (return (local.get $winner))))
     (local.get $iob))
 
-  ;; CRTDLL's _iob is an exported FILE array, not a callable accessor. Restrict
-  ;; this import rule to that module/symbol pair: another vendor's _iob must
-  ;; still resolve normally. Both loader paths pass linear-memory string ptrs.
+  ;; CRTDLL and MSVCR70 export _iob as a FILE array, not a callable accessor.
+  ;; Other vendors must still resolve normally. Both loader paths pass linear
+  ;; string pointers. Binding this data to a thunk lets freopen overwrite
+  ;; adjacent thunk metadata (GLTron's redirected stdout corrupted abs).
   ;; The shared publisher above owns allocation, initialization and list links;
   ;; no loader-private table or per-thread replica may be introduced here.
   (func $resolve_crtdll_iob_import (param $dll_wa i32) (param $name_wa i32) (result i32)
     (local $iob i32)
     (if (i32.eqz (call $str_eq (local.get $name_wa) "_iob"))
       (then (return (i32.const 0))))
+    (if (i32.and
+          (i32.eq (i32.or (i32.load (local.get $dll_wa)) (i32.const 0x20202020)) (i32.const 0x6376736d))
+          (i32.and
+            (i32.eq (i32.or (i32.load offset=4 (local.get $dll_wa)) (i32.const 0x20202020)) (i32.const 0x2e303772))
+            (i32.eq (i32.or (i32.load offset=8 (local.get $dll_wa)) (i32.const 0x00202020)) (i32.const 0x006c6c64))))
+      (then
+        (local.set $iob (call $crt_iob_ensure))
+        (if (i32.eqz (local.get $iob)) (then (unreachable)))
+        (return (local.get $iob))))
     (if (i32.ne (i32.or (i32.load (local.get $dll_wa)) (i32.const 0x20202020))
                  (i32.const 0x64747263)) ;; crtd
       (then (return (i32.const 0))))

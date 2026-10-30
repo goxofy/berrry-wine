@@ -281,6 +281,21 @@
     (i32.store offset=0 (global.get $reg_base) (i32.const 0))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
 
+  ;; glTexCoord2i uses signed numeric conversion, without normalization.
+  ;; Encode the canonical f32 setter so lists and both renderers agree.
+  (func $handle_glTexCoord2i (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (local $guest i32) (local $stack i32)
+    (local.set $guest (call $gl_alloc_affine (i32.const 12)))
+    (if (i32.eqz (local.get $guest)) (then (unreachable)))
+    (local.set $stack (call $g2w (local.get $guest)))
+    (i32.store (local.get $stack) (i32.const 0))
+    (f32.store offset=4 (local.get $stack) (f32.convert_i32_s (local.get $arg0)))
+    (f32.store offset=8 (local.get $stack) (f32.convert_i32_s (local.get $arg1)))
+    (drop (call $gl_wat_encode_call (i32.const 28) (local.get $stack) (i32.const 0)))
+    (call $heap_free (local.get $guest))
+    (i32.store offset=0 (global.get $reg_base) (i32.const 0))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 12))))
+
   ;; glTexCoord2d(GLdouble s, GLdouble t): the scalar arguments occupy four
   ;; x86 stack words. Reuse the vector's checked guest-double loads and encoder
   ;; path from ESP+4, never the dispatcher's individual i32 argument values.
@@ -327,6 +342,15 @@
     (call $gl_color_dv (local.get $arg0) (i32.const 4))
     (i32.store offset=0 (global.get $reg_base) (i32.const 0))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
+
+  ;; glColor3d uses the same checked three-double path as glColor3dv.
+  (func $handle_glColor3d (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (local $esp i32)
+    (local.set $esp (i32.load offset=16 (global.get $reg_base)))
+    (if (i32.gt_u (local.get $esp) (i32.const 0xffffffe4)) (then (unreachable)))
+    (call $gl_color_dv (i32.add (local.get $esp) (i32.const 4)) (i32.const 3))
+    (i32.store offset=0 (global.get $reg_base) (i32.const 0))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 28))))
 
   ;; Double-vector colors. Snapshot all guest components before
   ;; entering the encoder. Canonical scalar opcode 25 owns current color,
@@ -375,6 +399,51 @@
       (f32.const 0))
     (i32.store offset=0 (global.get $reg_base) (i32.const 0))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
+
+  ;; glVertex2d: four physical argument words, canonical 2D vertex opcode.
+  (func $handle_glVertex2d (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (local $esp i32) (local $guest i32) (local $stack i32)
+    (local $x f32) (local $y f32)
+    (local.set $esp (i32.load offset=16 (global.get $reg_base)))
+    (if (i32.gt_u (local.get $esp) (i32.const 0xffffffec)) (then (unreachable)))
+    (if (i32.eq (call $g2w (i32.add (local.get $esp) (i32.const 4))) (global.get $NULL_SENTINEL)) (then (unreachable)))
+    (if (i32.eq (call $g2w (i32.add (local.get $esp) (i32.const 19))) (global.get $NULL_SENTINEL)) (then (unreachable)))
+    (local.set $x (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $esp) (i32.const 4))))))
+    (local.set $y (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $esp) (i32.const 12))))))
+    (local.set $guest (call $gl_alloc_affine (i32.const 12)))
+    (if (i32.eqz (local.get $guest)) (then (unreachable)))
+    (local.set $stack (call $g2w (local.get $guest)))
+    (i32.store (local.get $stack) (i32.const 0))
+    (f32.store offset=4 (local.get $stack) (local.get $x))
+    (f32.store offset=8 (local.get $stack) (local.get $y))
+    (drop (call $gl_wat_encode_call (i32.const 29) (local.get $stack) (i32.const 0)))
+    (call $heap_free (local.get $guest))
+    (i32.store offset=0 (global.get $reg_base) (i32.const 0))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20))))
+
+  ;; glVertex3d carries three doubles in six stack words. Snapshot and demote
+  ;; before entering the canonical vertex opcode (including display lists).
+  (func $handle_glVertex3d (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (local $esp i32) (local $guest i32) (local $stack i32)
+    (local $x f32) (local $y f32) (local $z f32)
+    (local.set $esp (i32.load offset=16 (global.get $reg_base)))
+    (if (i32.gt_u (local.get $esp) (i32.const 0xffffffe4)) (then (unreachable)))
+    (if (i32.eq (call $g2w (i32.add (local.get $esp) (i32.const 4))) (global.get $NULL_SENTINEL)) (then (unreachable)))
+    (if (i32.eq (call $g2w (i32.add (local.get $esp) (i32.const 27))) (global.get $NULL_SENTINEL)) (then (unreachable)))
+    (local.set $x (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $esp) (i32.const 4))))))
+    (local.set $y (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $esp) (i32.const 12))))))
+    (local.set $z (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $esp) (i32.const 20))))))
+    (local.set $guest (call $gl_alloc_affine (i32.const 16)))
+    (if (i32.eqz (local.get $guest)) (then (unreachable)))
+    (local.set $stack (call $g2w (local.get $guest)))
+    (i32.store (local.get $stack) (i32.const 0))
+    (f32.store offset=4 (local.get $stack) (local.get $x))
+    (f32.store offset=8 (local.get $stack) (local.get $y))
+    (f32.store offset=12 (local.get $stack) (local.get $z))
+    (drop (call $gl_wat_encode_call (i32.const 30) (local.get $stack) (i32.const 0)))
+    (call $heap_free (local.get $guest))
+    (i32.store offset=0 (global.get $reg_base) (i32.const 0))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 28))))
 
   ;; The OpenGL 1.1 surface outside the measured set. Unreal-engine OpenGlDrv
   ;; resolves its whole GL table through GetProcAddress and refuses to bind if

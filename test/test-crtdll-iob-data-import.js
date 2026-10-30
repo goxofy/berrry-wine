@@ -115,6 +115,12 @@ const extraWat = String.raw`
  assert.equal(e.t_resolve(0x401280,0x4012a0),0,'symbol suffix not captured');
  put(0x4012a0,'_iob');
  assert.equal(e.t_resolve(0x401280,0x4012a0)>>>0,iob,'case-insensitive DLL and exact symbol');
+ put(0x401280,'MsVcR70.DlL');
+ assert.equal(e.t_resolve(0x401280,0x4012a0)>>>0,iob,'MSVCR70 exports the same FILE data ABI');
+ for(const name of ['msvcr70.dll.extra','msvcrt.dll','vendor.dll']){
+   put(0x401280,name);
+   assert.equal(e.t_resolve(0x401280,0x4012a0),0,'unrecognized _iob ABI: '+name);
+ }
 
  // Imported stderr is accepted by stdio, unlike the old thunk+64 pointer.
  put(0x401280,'c:\\iob-stderr.txt');put(0x4012a0,'w');put(0x4012b0,'stderr data');
@@ -130,14 +136,30 @@ const extraWat = String.raw`
  // Equal virtual addresses are legal; mutations must not cross that boundary.
  const other=await bootRenderHarness({extraWat,fonts:'none'}),o=other.exports;
  assert.notEqual(other.memory,h.memory);
- new Uint8Array(other.memory.buffer).set(pe,o.get_staging());
- o.load_pe(pe.length);
+ const msvcr70Pe=makePe('MsVcR70.DlL');
+ new Uint8Array(other.memory.buffer).set(msvcr70Pe,o.get_staging());
+ o.load_pe(msvcr70Pe.length);
  const otherIob=o.guest_read32(0x401140)>>>0;
+ assert.equal(otherIob,o.t_iob()>>>0,'MSVCR70 static import resolves to FILE storage');
+ assert(otherIob < (o.get_thunk_base()>>>0) || otherIob >= (o.get_thunk_end()>>>0),
+   'MSVCR70 FILE data cannot overlap callable thunk metadata');
+ const thunkWords=()=>{
+   const values=[];
+   for(let p=o.get_thunk_base()>>>0;p<(o.get_thunk_end()>>>0);p+=4) values.push(o.guest_read32(p));
+   return values;
+ };
+ const beforeRedirect=thunkWords();
+ for(const [p,text] of [[0x401280,'c:\\stdout.txt'],[0x4012a0,'w']]){
+   for(let i=0;i<=text.length;i++)o.guest_write8(p+i,i===text.length?0:text.charCodeAt(i));
+ }
+ assert.equal(o.t_freopen(0x401280,0x4012a0,otherIob+32)>>>0,otherIob+32);
+ assert.deepEqual(thunkWords(),beforeRedirect,'redirecting MSVCR70 stdout preserves every import thunk');
  assert(o.t_lookup(otherIob+64));
  const oldFlags=e.guest_read32(iob+64+12);
  o.guest_write32(otherIob+64+12,0x12345678);
  assert.equal(e.guest_read32(iob+64+12),oldFlags,'separate process FILE state is isolated');
- assert.equal(other.hostCtx.vfs.files.size,0,'stderr file belongs only to first process VFS');
+ assert(![...other.hostCtx.vfs.files.keys()].some(name=>/iob-stderr\.txt$/i.test(name)),
+   'stderr file belongs only to first process VFS');
 
  // Map an actual PE DLL with a named data export, then a caller importing it.
  // The native export must win over the builtin CRT table.

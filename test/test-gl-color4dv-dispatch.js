@@ -101,6 +101,8 @@ function boot(mutation='',failAlloc=false,failPage=-1,colorId=id) {
   const definedGlobals=new Map([...globals].filter(([n])=>needed.has(n)));
   for(const n of ['$reg_base','$image_base','$GUEST_BASE','$NULL_SENTINEL','$fault_sync_epoch'])definedGlobals.delete(n);
   const src=`(memory 64) (export "memory" (memory 0))
+    (region.declare-fixed $GL_SW_SCRATCH (base 0x003ff000) (size 0x800) (align 0x1000))
+    (region.declare-fixed $GL_SW_STATE (base 0x003fe000) (size 0x800) (align 0x1000))
     (import "fixture" "g2w" (func $g2w (param i32) (result i32)))
     (import "fixture" "alloc" (func $heap_alloc (param i32) (result i32)))
     (import "fixture" "free" (func $heap_free (param i32)))
@@ -233,7 +235,7 @@ function combined(h) {
     assert.deepStrictEqual(Array.from(a.slice(3,7)),rgba,'production color setter feeds production vertex route');
   }
   const n=e.count();e.mode(-1);e.invokeVertex(cases[0][0]);assert.strictEqual(e.count(),n);
-  for(const name of ['glColor3d','glGetBooleanv']) {
+  for(const name of ['glColor3s','glGetBooleanv']) {
     const row=api.find(a=>a.name===name);assert.strictEqual(row.handler,'gl_unimplemented');
     assert.throws(()=>e.other(row.id),WebAssembly.RuntimeError,name+' stays fail-fast');
   }
