@@ -182,3 +182,24 @@ The focused coverage is in `test/test-d3dim-indexed-texture.js` and
 screenshots from the investigation were
 `/private/tmp/mcm-fixed-coop2-final-wait-45000.png` and
 `/private/tmp/mcm-fixed-worker-final-wait-60000.png`.
+
+### Original browser practice driving (2026-10-30)
+
+Run `scratch/runs/20261030T2356Z-mcm-browser-race/investigation.json`
+reached T-rific practice through the original profile and event menus with
+trusted browser input. Inspected captures show the rider and textured terrain,
+then motorcycle/camera movement under ArrowUp and a direction change after
+ArrowUp+ArrowRight. The player score remained zero; scored stunts and event
+completion were not tested. No guest code or original asset was patched.
+
+The loaded retained canonical module was SHA-256
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`
+(source fix `de2e338c4`, not a build of current HEAD). The browser used D3DIM
+WebGL with guest threads disabled, Chrome 151 and ANGLE SwiftShader launch
+flags; the actual vendor string was not queried. GPU counters reported zero
+errors and fallbacks. All 311 registered inputs remained unchanged, and
+served-response hashes were verified in `verification.json`. A resource 404
+was logged without an identified request, but did not prevent this checkpoint.
+The browser and both local servers were verified closed and its private profile
+removed. This adds a current short-driving observation, not full gameplay or
+software/WebGL parity acceptance.
