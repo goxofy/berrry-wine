@@ -1,5 +1,16 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30 Falling Leaves and SciFi software observations
+
+Run `20261030T2222Z-d3drm-scenes` retains original `scr_fallingl` and
+`scr_scifi` software D3DIM executions, each reaching 120,000 batches and exiting
+0. Root inspected the final images: gold/green leaf forms over a leaf backdrop,
+and flying gold forms above terrain under a red sky. Commands, logs and asset
+hashes are retained. These scene observations use the same retained `1dbddeaf`
+module/source `d4fb06b46` as Geometry below, before the subsequent GLTron repair.
+They establish rendered scenes in bounded runs, not visual correctness,
+browser parity, current-main validation, FPS or completion of all 27 apps.
+
 ## October 30 Geometry software scene observation
 
 Run `20261030T2217Z-geometry-render` retains two original `scr_geometry /s`
