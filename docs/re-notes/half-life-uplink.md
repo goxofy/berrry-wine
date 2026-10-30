@@ -1516,3 +1516,56 @@ assets, input, backend and cleanup checks. Browser PID 1047280 and ports
 free. No Boat box was used (ID/state/expiry: N/A). Next useful work is native
 interaction with the starting-room guard/controls to find the exit and reach
 the first objective or combat encounter.
+
+## First elevator transition with native E (2026-10-30)
+
+Run `20261030T2242Z-uplink-objective` reaches the first elevator load and
+arrival beyond the initial guard/control room in one bounded local Chrome
+attempt. New Game → Easy, the approach to the guard and scientist, and the
+scientist leaving the conversation position for the console were personally
+inspected. After allowing the original sequence to finish, the red-lit elevator
+opened and the player entered it. An aimed, trusted **E** press at its small
+interior button produced an amber button and **LOADING…**. Subsequent captures
+show a different red-lit arrival room with wooden crates, followed by movement
+through the elevator doorway. Health stays 100. Combat and completion of the
+satellite objective remain unverified.
+
+The live Configuration → Controls screen shows **Use item (buttons,
+scientists, …) = E**. This corrects the earlier assumption that the loose
+`default.cfg` binding of Tab established the active gameplay binding. Tab
+attempts at the elevator button produced no visible progress; E produced the
+load. Controls were inspected without changing a binding. Native key timing
+and aim remain relevant; no input-emulator defect was reproduced.
+
+Read-only extraction of the original PAK's `hldemo1.bsp` entity lump records
+the `startdometalk_mm` conversation, scientist console/unlock sequence, and
+`startele1` doors. Their `eledoordelaymm` target invokes
+`changetohldemo2`, whose destination is `hldemo2`. The loading and changed
+arrival scene verify the first transition visually; the destination name is
+identified from that original trigger chain, rather than an independent runtime
+map-name query. No console commands, guest memory writes, asset edits or
+script/trigger changes supplied progress. The next gap is proceeding from this
+arrival room toward the satellite objective and a verified combat encounter.
+
+The exact loaded WASM remains
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`.
+The run retains the prior module and compile delta with the same base/delta
+provenance described above; this is not a fresh current-main build claim.
+`source-identity.json` records launch source hashes, and `served.jsonl` records
+actual HTTP response hashes. The backend is `hw.dll` generation 1 through
+`WebGLBackend` WebGL 1, ANGLE/Mesa Intel UHD 620, with `gl_sw_enabled=0`,
+zero software triangles and GL error zero. All 65 installed-file hashes remain
+unchanged and fetched original files match their pins. The installer remains
+absent. This is cooperative gameplay, without a cross-backend or audio-quality
+claim.
+
+Key inspected evidence includes `guard-use.png`, `scientist-use.png`,
+`red-door-tab.png`, `elevator-enter.png`, `cab-control-e.png` (LOADING),
+`controls-scrolled.png` (active E binding), `destination-view.png`,
+`next-map-exit.png` and `arrival-overview.png`. `result.json` indexes the
+captures, `actions.jsonl` records the native route, and `verification.json`
+checks module, assets, paired trusted input and cleanup. The installed-payload
+menu test passes. No emulator code changed or full build was required.
+Browser PID 1061424 and ports 18702/18703/34249 are gone, the owned profile
+is removed, and over 9 GB remained free. No Boat box was used
+(ID/state/expiry: N/A); there is no assigned runtime to shut down or hand back.
