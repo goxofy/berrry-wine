@@ -1465,3 +1465,54 @@ captioned-window exclusion and both ordering cases.
 background, resume plus movement, another pause, Configuration/Video and an
 eight-second settled Video screen. No previous menu background remains over
 the resumed world. The WASM stays `3d4b51591ebb`; this final fix is compositor-only.
+
+## Original native-input exploration (2026-10-30)
+
+Run `20261030T2234Z-uplink-progression` makes a bounded local Chrome attempt
+through the registered original app, New Game → Easy. Personally inspected
+captures show the opening corridor, a security guard beside blue panels,
+the green-lit passage under the stairs, climbing the stairs, and the upper
+control room and balcony overlooking the red-lit door. This extends inspected
+movement beyond the opening corridor within the starting area. Combat,
+objective completion and a map transition were **not verified**. Health remains
+100; the passage door did not visibly open after native Tab/Use. Navigation and
+route finding remain the boundary, without a reproduced emulator fault.
+
+The actual backend is `hw.dll` generation 1 through `WebGLBackend` WebGL 1;
+`sw.dll` is absent, `gl_sw_enabled=0`, software triangles remain zero, and
+GPU frame sequence advances 13305 → 21035 with GL error zero. Chrome reports
+ANGLE/Mesa Intel UHD 620 despite the controller's inherited SwiftShader launch
+flags; the observed renderer identity is recorded in the capture JSON. This is
+cooperative gameplay, not Worker, software-renderer or cross-backend parity
+qualification. Captures retain the actual 320×240 GPU drawable.
+
+The exact loaded module is
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`,
+retained from `20261030T2230Z-gltron-browser`. Its prior compile evidence in
+`20261030T2210Z-gltron-render-after` identifies base commit `e83de2a04141`
+plus source delta SHA-256
+`0885b41b740ea9626601f5ca3f060623b460c5cfc0ba11d22f368473be9d6a8c`.
+This run preserves that delta and the launch source hashes; it does not prove
+a fresh current-main compilation. The older Uplink controller directories
+named above are absent from this checkout, so a retained local browser
+controller was adapted instead.
+
+`assets.json` hashes all 65 distinct registered installed files before play;
+all remain unchanged afterward. The 22 originals fetched over HTTP match those
+hashes; the other 43 were not observed fetched. EXE and PAK match the established
+pins above. The original installer is absent, so no new installer comparison
+is claimed. The existing registry defaults and default.cfg→autoexec.cfg manifest
+mapping were used unchanged. No asset edits, guest state writes or console
+commands supplied progress. `actions.jsonl` plus capture/final-runtime JSON
+record trusted browser clicks and 49 paired native key presses, including
+W/S/A/D, arrows, Tab and final Escape to a complete pause menu.
+
+The first launch exited with code 0 after Escape during the intro; restarting
+and allowing the intro to finish reached the normal menu. This alone is not
+classified as an emulator defect. No repair or code change was required.
+`result.json` indexes inspected captures and `verification.json` records module,
+assets, input, backend and cleanup checks. Browser PID 1047280 and ports
+18694/18695/41397 are gone, the owned profile was removed, and over 9 GB remained
+free. No Boat box was used (ID/state/expiry: N/A). Next useful work is native
+interaction with the starting-room guard/controls to find the exit and reach
+the first objective or combat encounter.
