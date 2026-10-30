@@ -14,8 +14,18 @@ The loaded module was `7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c
 its compiled source revision is unknown. All 39 input hashes and served SDK
 asset hashes were verified. Repeated readback-shadow performance warnings
 remain in the console log. This establishes animated output, not complete
-scene correctness, paired software parity, FPS, or historical corpus membership.
+scene correctness, pixel parity, FPS, or historical corpus membership.
 The browser and servers were closed and its temporary profile removed.
+
+The paired `20261030T2258Z-dx-boids-software` run uses the same retained
+module and SDK inputs. Its initial/final captures were also inspected: colored
+flock triangles and cyan boundaries move on the software path. The host reports
+`software`, no `D3DIMGpu`, and the UI identifies the DX2–7 WAT software rasterizer.
+All 39 input and 38 served SDK response hashes pass. The OpenGL
+`gl_sw_enabled()` value of zero does not describe the D3DIM backend.
+The captures are from different animation times, so this establishes output
+on both routes without pixel parity or FPS claims. This browser and its servers
+were also closed, and its profile removed.
 
 `--app=dx_globe`, `--app=dx_viewer`, `--app=dx_flip3dtl`. The binaries are the
 DirectX 5 SDK samples in `binaries/dx-sdk/bin/`, and their assets (`sphere3.x`,

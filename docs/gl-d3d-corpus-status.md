@@ -9,8 +9,17 @@ cyan boundaries in two inspected browser captures. Run
 (compiled source revision unknown), 39 inputs, served asset hashes, WebGL
 host selection and a `D3DIMGpu` instance. Chrome used ANGLE SwiftShader and
 guest threads. Readback-shadow performance warnings remain; this is animated
-render evidence, not complete correctness, paired software parity, FPS, or
+render evidence, not complete correctness, pixel parity, FPS, or
 recovery of the original 27-member list. Browser and servers were closed.
+
+The paired `20261030T2258Z-dx-boids-software/` run now adds two inspected
+software captures with moving colored triangles and cyan boundaries. It uses
+the identical retained module and SDK inputs; all 39 input and 38 served SDK
+response hashes pass. Host backend `software`, no `D3DIMGpu`, and the UI's
+DX2–7 WAT rasterizer message identify the route. Both routes produce animated
+output; different animation times preclude pixel parity claims. No FPS or
+complete-scene correctness measurement. Its browser, servers and profile were
+cleaned up.
 
 ## October 30 Pawn browser move
 
