@@ -1,5 +1,23 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 30: Viewer original-mesh startup failure
+
+`20261030T2308Z-dx-viewer-browser/investigation.json` records a fresh
+original `viewer.exe` browser attempt with WebGL selected. The normal registry
+replaces `camera.x`, `mslogo.x`, and `sphere2.x` with tetra/cube test fixtures.
+For this run only, the launch manifest instead used the original SDK files
+from `dx_globe`, retaining the original Viewer executable. No fixture mesh was
+fetched; 39 input hashes and 38 served SDK responses passed verification.
+
+The inspected startup dialog says **Failed to load camera.x —
+D3DRMERR_NOTFOUND**. A trusted click on OK left no Viewer windows or running
+app. This does not establish a rendered original scene; prior fixture-based
+Open/menu checks do not close this gap. Original `camera.x` uses binary
+`xof 0303bin` ProgressiveMesh/InlineData representation; the failure's cause
+remains unknown. Chrome 151/ANGLE SwiftShader loaded retained module
+`7e8d3194…`, compiled source revision unknown. The browser, three listening
+ports, and private profile were cleaned up; no Boat was used.
+
 ## October 30: paired original Globe browser renders
 
 Runs `20261030T2302Z-dx-globe-browser` and
