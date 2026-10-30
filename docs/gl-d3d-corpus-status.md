@@ -1,5 +1,22 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: Twist motion boundary narrowed; no repair yet
+
+Two original WebGL diagnostic runs, `20261030T2305Z-dx-twist-motion-probe`
+and `20261030T2307Z-dx-twist-frame-boundary`, used the same verified canonical
+module `7e8d3194…` from source `8cfa97b0d`. Runtime-only wrappers sampled
+120 distinct submitted vertex hashes and 120 distinct full readback/DIB hashes.
+That establishes progressing geometry submission and readback, not visible
+animation: whole-frame hashes can change with the guest FPS overlay.
+
+Four later samples excluded the overlay and measured the same scene-region
+hash, `3605449039`, while draw count advanced from 14,092 to 14,125. Three
+closely spaced screenshots were personally inspected and show the same sphere
+orientation. This narrows the unresolved animation gap without identifying its
+cause or establishing scene correctness. No production source was changed.
+Each run retains its diagnostic logs and `investigation.json`; both browsers
+exited, all six ports closed, private profiles were removed, and no Boat was used.
+
 ## October 30: paired original Twist renders; motion differs
 
 Runs `20261030T2304Z-dx-twist-browser` and
