@@ -1425,6 +1425,70 @@ No source edit, focused code regression, or full-build correctness claim is
 made. The next task is still the original failure reproduction with object
 memory retained, followed by native practice/player scoring.
 
+## 2026-10-30: practice attempt stops at a different JGL virtual call
+
+Run `scratch/runs/20261030T2303Z-simgolf-practice/` prioritizes native gameplay
+without a watchpoint or guest patch. I inspected `green-built.png` (Hole 1,
+100 yards, Par 3), `opened-closed.png` (flagged green and tee), `players.png`
+(moving people and Gary's employee tutorial), and `person-selected.png`
+(guest window gone). Christmas Pines initially appeared black because the
+view was outside the course; zooming out and scrolling brought the original
+terrain into view. Construction required held mouse input; quick placement
+clicks sometimes left only a preview. H opened the hole and people arrived,
+but no player practice, swing, ball flight or completed score was verified.
+The people tabs and moving-person selection attempts did not establish a
+Gary player panel. Do not use those missed selections as proof of a defect.
+
+The concrete execution blocker is a **different** virtual call. At
+`2026-10-30T23:06:57.011Z`, the release-time diagnostic captured EIP 0,
+last block `00a9aa35`, preceding block `00a9aa13`, EBX=ECX=`0156299c`,
+and EDX=`80008000`. The word read at ECX in that same snapshot was also
+`80008000`. JGL loaded at `00a83000` from original base `10000000`, so the
+last block is original `10017a35`:
+
+```asm
+10017a35: mov edx,[ebx]
+10017a37: mov ecx,ebx
+10017a39: call [edx+0x18]
+```
+
+`terminal-lifecycle.json`, `terminal-runtime.json`,
+`jgl-terminal-disassembly.txt`, and `failure-analysis.json` retain the
+observations and address conversion. The observed object word agrees with
+EDX; this occurrence supplies no evidence of a mismatched load result.
+Its allocation history and the source of that word remain unknown. The
+snapshot was taken at guest-memory release, not at an instruction breakpoint;
+the full failing object, stack and target slot were not retained before
+release. The later query for those fields failed after `wine.instance` was
+cleared. No speculative repair was made.
+
+The earlier `0044fce1`/`0044fcec` palette failure was not reproduced. At this
+new stop the original palette remained at `01617064`, with valid first word
+`00adf938`. The stop precedes the later `paused2` and `person-selected`
+input attempts; those screenshots show an already-ended guest, not a pause
+or successful selection. Next: reproduce JGL `10017a35`/`10017a39` with the
+failing object's allocation/write history and target slot retained, prove the
+cause, then return to native practice/scoring.
+
+This run served a retained copy of the provenance-verified module from
+`scratch/runs/20261030T2315Z-dx-current-build/`: SHA-256
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`,
+1,892,586 bytes. The actual HTTP response matches it. That build records
+source commit `8cfa97b0dfbfc8d5e84e8430ed317fa860d9eb3e`, an empty tracked
+source patch, a passing locked canonical build and 1,148 unchanged source
+hashes across compilation; copies of that evidence are retained here.
+No source changes or new code-build claim accompany this documentation update.
+The local Chrome 151 route used `WINE_THREADS=false`, fixed 1024x768 viewport,
+800x600 guest drawable and requested WebGL. The sampled `gl_sw_enabled()` was
+0; the actual browser backend was not independently observed in this run.
+`verify.py` checks original/served asset hashes, module identity, trusted
+paired input, the terminal signature and cleanup; `verification.json`
+contains counts. The asset baseline is copied from the preceding original
+fixture audit, with a fresh post-run hash census. Browser PID 1091572 exited,
+dynamic static/control/CDP ports 43691/34525/44343 closed, and the private
+profile was removed. No Boat or assigned box was used (ID/state/expiry N/A);
+/home retained over 1.5 GB free. Evidence remains local and gitignored.
+
 So the next SimGolf lever is `adc r32,m32` taking the carry from a 16-bit
 `add` in the uop compiler. In this window it is the only `adc` in any
 declined scan (4 heads).
