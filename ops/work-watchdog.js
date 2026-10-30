@@ -73,6 +73,22 @@ function message(tasks,config) {
   // whose hidden contents cannot be checked by the exact-draft delivery guard.
   return `Resume assigned work (${names}). Read TODOS.md, messageboard.txt and ops/work-watchdog.json first; reconcile merged work and collect worker results. Respect pauses and laptop-owned Heroes II. Continue the two-game lane; serialize runtime tests. Do not deploy publicly or answer approvals. If blocked, update tasks. Intentional pause: scratch/work-watchdog/control.json paused=true.`;
 }
+// Codex goal keeper: a coordinator that marks its own goal blocked stops taking
+// turns until someone types /goal resume (it sat idle 3-23h at a time, Oct 27-30).
+// Resume any watched Codex terminal stalled for goalStallMs, at most once per
+// goalResumeCooldownMs, with no attempt cap: being stalled is never the goal.
+function goalStallDecision(terminal,config,previous={},now=Date.now()) {
+  const record={stalledSince:null,lastResumeAt:previous.lastResumeAt??null,resumes:previous.resumes||0};
+  const skip=reason=>({send:false,record:{...record,reason}});
+  if(!config.enabled||config.paused||(config.pausedTerminals||[]).includes(terminal.id))return skip('paused');
+  if(terminal.provider!=='codex'||!terminal.stalled)return skip('not stalled');
+  if(terminal.promptOpen)return skip('prompt open');
+  record.stalledSince=previous.stalledSince??now;
+  if(now-record.stalledSince<(config.goalStallMs??300000))return skip('observing stalled goal');
+  if(record.lastResumeAt!=null&&now-record.lastResumeAt<(config.goalResumeCooldownMs??600000))return skip('goal resume cooldown');
+  return {send:true,record:{...record,reason:'goal stalled'}};
+}
+
 // Telegram inbox fallback: the bot never types; this nudges a consumer that has
 // left inbox entries unread past its cursor with one fixed line (see telegram-inbox.js).
 // A consumer names its terminal by agentId (full id or first UUID group), resolved
@@ -152,6 +168,15 @@ async function run({root=path.resolve(__dirname,'..'),base=process.env.OPS_URL||
         fs.appendFileSync(path.join(dir,'events.jsonl'),JSON.stringify({at:new Date().toISOString(),terminalId:target.id,dispatch:true,...dd.record})+'\n');
       }
       await inboxNudges({root,config,terminals,state,save,request,dir});
+      state.goalKeeper??={};
+      for(const terminal of watched){
+        const g=goalStallDecision(terminal,config,state.goalKeeper[terminal.id]);state.goalKeeper[terminal.id]=g.record;
+        if(!g.send)continue;
+        g.record.lastResumeAt=Date.now();g.record.resumes++;save();
+        try{await request('/api/work-nudge',{terminalId:terminal.id,screenHash:terminal.screenHash,kind:'goal-resume',message:'/goal resume'});g.record.reason='goal resume delivered';}
+        catch(e){g.record.reason='goal resume not confirmed: '+e.message;}
+        fs.appendFileSync(path.join(dir,'events.jsonl'),JSON.stringify({at:new Date().toISOString(),terminalId:terminal.id,goalKeeper:true,...g.record})+'\n');
+      }
       state.error=null;
     }catch(e){state.error=e.message;console.error(e.message);}
     state.checkedAt=new Date().toISOString();state.pid=process.pid;save();
@@ -160,4 +185,4 @@ async function run({root=path.resolve(__dirname,'..'),base=process.env.OPS_URL||
   }}finally{fs.rmSync(lock,{recursive:true,force:true});}
 }
 if(require.main===module)run().catch(e=>{console.error(e);process.exitCode=1;});
-module.exports={eligible,decide,message,unassigned,dispatch,dispatchMessage,inboxNudges,queueCodexInbox};
+module.exports={eligible,decide,message,unassigned,dispatch,dispatchMessage,inboxNudges,queueCodexInbox,goalStallDecision};
