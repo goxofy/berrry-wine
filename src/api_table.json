@@ -37632,7 +37632,7 @@
     "nargs": 4,
     "convention": "stdcall",
     "hash": 1666951670,
-    "handler": "gl_unimplemented"
+    "handler": "glTexCoord2d"
   },
   {
     "id": 4415,

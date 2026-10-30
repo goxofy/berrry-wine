@@ -235,24 +235,39 @@
     (i32.store offset=0 (global.get $reg_base) (i32.const 0))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 16))))
 
+  ;; glTexCoord2d(GLdouble s, GLdouble t): the scalar arguments occupy four
+  ;; x86 stack words. Reuse the vector's checked guest-double loads and encoder
+  ;; path from ESP+4, never the dispatcher's individual i32 argument values.
+  (func $handle_glTexCoord2d (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (local $esp i32)
+    (local.set $esp (i32.load offset=16 (global.get $reg_base)))
+    (if (i32.gt_u (local.get $esp) (i32.const 0xffffffeb)) (then (unreachable)))
+    (call $handle_glTexCoord2dv (i32.add (local.get $esp) (i32.const 4))
+      (i32.const 0) (i32.const 0) (i32.const 0) (i32.const 0) (local.get $name_ptr))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (local.get $esp) (i32.const 20))))
+
   ;; glTexCoord2dv(const GLdouble *v): unit zero's current (s,t,0,1).
   ;; Validate both ends of this at-most-two-page vector: gl64 itself permits
   ;; the null sentinel on a missing translation. A miss must not install zero
   ;; coordinates. Load both doubles before changing any current attribute.
   ;; Demotion is the existing packed-f32 encoder boundary, as for glTexCoord2f.
   (func $handle_glTexCoord2dv (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
-    (local $s f32) (local $t f32)
-    (if (i32.eqz (call $gl_wat_init)) (then (unreachable)))
+    (local $s f32) (local $t f32) (local $guest i32) (local $stack i32)
     (if (i32.gt_u (local.get $arg0) (i32.const 0xfffffff0)) (then (unreachable)))
     (if (i32.eq (call $g2w (local.get $arg0)) (global.get $NULL_SENTINEL)) (then (unreachable)))
     (if (i32.eq (call $g2w (i32.add (local.get $arg0) (i32.const 15))) (global.get $NULL_SENTINEL)) (then (unreachable)))
     (local.set $s (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (local.get $arg0)))))
     (local.set $t (f32.demote_f64 (f64.reinterpret_i64 (call $gl64 (i32.add (local.get $arg0) (i32.const 8))))))
-    (global.set $gl_tex_s (local.get $s))
-    (global.set $gl_tex_t (local.get $t))
-    (global.set $gl_tex_r (f32.const 0))
-    (global.set $gl_tex_q (f32.const 1))
-    (global.set $gl_wat_stat_calls (i64.add (global.get $gl_wat_stat_calls) (i64.const 1)))
+    ;; Canonical glTexCoord2f opcode owns list capture/replay as well as current
+    ;; state. Snapshot by value on an invocation-owned stack, as glColor4dv does.
+    (local.set $guest (call $gl_alloc_affine (i32.const 12)))
+    (if (i32.eqz (local.get $guest)) (then (unreachable)))
+    (local.set $stack (call $g2w (local.get $guest)))
+    (i32.store (local.get $stack) (i32.const 0))
+    (f32.store offset=4 (local.get $stack) (local.get $s))
+    (f32.store offset=8 (local.get $stack) (local.get $t))
+    (drop (call $gl_wat_encode_call (i32.const 28) (local.get $stack) (i32.const 0)))
+    (call $heap_free (local.get $guest))
     (i32.store offset=0 (global.get $reg_base) (i32.const 0))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
 
