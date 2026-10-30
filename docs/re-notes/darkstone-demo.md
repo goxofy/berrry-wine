@@ -337,3 +337,85 @@ recovery recipe are retained in the run. No runtime defect blocked control
 and no code repair was needed. Next useful work is terrain/foreground
 occlusion diagnosis using captured draw inputs, rather than changing input
 or repeating camera qualification.
+
+### 2026-10-30 owning foreground alpha diagnosis and repair
+
+Evidence: `scratch/runs/20261030T2124Z-darkstone-occlusion/`. Retained
+baseline is still module `6085eff5…`, source `ba96fc3a…`, original installed
+15-file fixture. `baseline-equivalence.json` verifies all 1292 frozen served
+paths against the retained browser archive. This is deliberately distinct
+from the repaired main runtime below.
+
+The apparent terrain wedge is foreground geometry, but its **opacity has a
+renderer defect**. In `ardyl-default-draws.json`, the submitted tree atlases
+`d3dim17913`/`d3dim17920` cover native pixel `(320,300)`. Road depth is
+`0.027448246`; foreground draws 3311/3348/3350 have depths about
+`0.009261`/`0.008689`. All have positive RHW, enabled LEQUAL depth testing,
+no depth write, SRCALPHA/INVSRCALPHA blending, and diffuse alpha **64**.
+The tree atlas and the game’s F10 overhead view identify legitimate canopy;
+removing it analytically reveals road. Neither depth ordering nor the atlas
+alone justifies its former full opacity. The GPU descriptor selects opaque
+texture alpha (255), discarding the vertex fade. A bounded owning software
+trace independently records the original surface as RGB565 (format1,
+16bpp, type2) with legacy render state21 modes2/4. Full raw input bytes,
+texture copies, screen-point analysis and inspected frames are retained.
+The earlier `ardyl-draws.json` filename actually refers to a Town building;
+use `ardyl-default-draws.json` for the Ardyl causal sample.
+
+Legacy D3DTBLEND_MODULATE selects diffuse alpha for a texture without alpha;
+MODULATEALPHA multiplies texture and diffuse alpha. This agrees with
+[Wine’s legacy device implementation](https://github.com/wine-mirror/wine/blob/master/dlls/ddraw/device.c)
+(`fixup_texture_alpha_op` and `TEXTUREMAPBLEND` translation). Merely decoding
+RGB565 to RGBA does not give the original texture an alpha channel.
+Main repair `328b6631a42bbb50267478f391a4e6b7f3ebcd11` tracks the active
+legacy blend mode separately from raw TSS queries, resolves original format
+at draw time, and shares lowering between native software and GPU descriptor
+paths. An explicit stage-zero combiner setting overrides legacy mode;
+other-stage/filter changes preserve it. Other legacy blend modes and unknown
+format behavior retain their existing fallback.
+
+Focused native combiner/descriptor controls pass for RGB565/XRGB1555/XRGB8888,
+alpha-bearing formats, MODULATEALPHA, raw Device3/7 queries and explicit
+TSS overrides. Disabling the lowering rejects the observed no-alpha case
+(`2 !== 3`). Existing software/GPU wrapping checks and the required locked
+full build pass. Evidence logs retain exact commands and outcomes.
+
+The repaired original-game retest uses committed-main source `328b6631a…`,
+compiled at **21:43:26Z** to module
+`4649ee5fcf5a10a0212e690d826940bf0ba6445bea678bcac3978c0464bd67c6`
+(1,891,324 bytes). The dedicated compile reads committed source, excluding
+another worker’s concurrent CRT WIP. `repaired/pinned-runtime.tar.gz` and
+its source/dependency manifest freeze the runtime; actual HTTP module hashes
+match in both Chrome151 arms. No input or asset repair was applied.
+
+Personally inspected `repaired/town-live.png` shows the original palisade
+fading and exposes CODEX/road, where baseline `town-idle.png` was opaque.
+`repaired/ardyl-live.png` and `ardyl-fixed-draw-capture.png` similarly reveal
+CODEX through the original canopy. The owning GPU capture includes **58**
+alpha64 submissions using alphaOp4, replacing opaque alpha selection.
+A separate bounded observational replay tap in the repaired software owner
+records **100** alpha64 commands with original RGB565/16bpp and
+RS21=4/active legacy=4 (`repaired-software/alpha-original-format.json`).
+This tap skips non-TL records and records its exclusions; it changes no render
+result and is not a complete frame trace. The standard repaired format trace
+stopped on an unsupported legacy call with zero rows; that limitation is
+retained, rather than represented as successful raw capture.
+
+Both arms repeat native original movement from Town into Ardyl, then a
+reviewed bare-ground click `(.65,.35)` moves CODEX across the clearing.
+Inspected before/running/final frames show translating tree landmarks and
+standing beside the birch (WebGL **21:48:32Z**, software **21:50:47Z**).
+`move-idle.png` in WebGL still depicts running; use `move-final.png` for
+standing. The loader screenshot is not counted as the settled world.
+Software `town-idle.png`, `ardyl-before-move.png` and `move-final.png`
+independently show the repaired fade and displacement. This is the requested
+post-repair gameplay check; prior movement remains established.
+
+Main endpoint1 renderer counters advance with zero observed fallbacks;
+WebGL samples have zero errors and zero direct/fallback software completions,
+while software native completed draws advance. Child rendering is unsampled.
+No native Windows reference, all-scene rendering parity, audio, performance,
+combat or save/reload qualification is implied. WebGL acknowledged quit and
+PAGE CLOSED+281.7s, but the outer harness returned143 (cause unknown).
+Exact counters, times, limitations, cleanup and software exit are recorded in
+the run’s result/README. No Boat or parent lifecycle was touched.
