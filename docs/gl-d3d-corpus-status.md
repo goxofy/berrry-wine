@@ -1,5 +1,21 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30 Geometry software scene observation
+
+Run `20261030T2217Z-geometry-render` retains two original `scr_geometry /s`
+CLI executions on software D3DIM with the real guest `d3drm.dll`, one per
+cooperative/threaded scheduler. Both exited 0 after 20 seconds without a reported
+guest crash. Root inspected the cooperative intermediate/final and threaded
+final images: gold 3D geometry renders against a blue background. Logs, images
+and five original asset hashes are retained in the run directory.
+
+The tested module is `1dbddeafbeff685596095d18a4fd9240820b00b0fa293d21ac03393f9f652fb1`,
+retained from the original GLTron run on source `d4fb06b46`; this does **not**
+validate subsequent main edits. Browser WebGL, backend parity, FPS and other
+scenes remain unverified. Loader warnings for absent shell32/ole32 DLL files
+remain in the logs. This observation advances one known member's software
+evidence; it does not resolve historical membership or qualify all 27 apps.
+
 ## October 20 historical membership and receipt matrix
 
 This is the evidence-table deliverable for **GLD3D-CORPUS-27-20261006**, on
