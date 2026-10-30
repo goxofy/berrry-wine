@@ -54,6 +54,23 @@ without a completed move or reply. This is an environment-blocked GL attempt,
 not GL rendering acceptance. A fresh browser WebGL run remains needed; the
 successful software move does not fill that gap.
 
+## October 30 browser move and reply
+
+Run `20261030T2250Z-pawn-browser-move` bypassed the missing CLI provider with
+Chrome 151 and ANGLE SwiftShader, selecting WebGL in the ordinary browser UI.
+A trusted native mouse drag accepted e2–e4; the inspected `final.png` shows
+black's e7–e5 reply and yellow origin/destination outlines in the composited
+window. The child GPU frame sequence advanced from 2 to 25. All six original
+Pawn files remained hash-identical; the actually served Pawn payloads were
+checked too. The loaded module was the same `7e8d3194…` as above; compiled
+source revision remains unknown. Runtime inspection reported threads enabled,
+despite the driver's attempted disabled preference. The exact backend object
+and software-enable export were not captured, so this is not a hardware-GPU
+claim or full-game acceptance. The owned browser, servers and profile were
+closed/removed. A startup port collision and an accidental read-only capture
+request to SimGolf's control port were recorded on the board; the successful
+Pawn attempt used dynamically assigned ports.
+
 ## "This program requires DirectX 9 or later!"
 
 This message is a lie, and it cost a session to work that out. It is not the

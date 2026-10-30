@@ -1,5 +1,15 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30 Pawn browser move
+
+Run `20261030T2250Z-pawn-browser-move` adds inspected original Pawn browser
+gameplay: native e2–e4 and engine e7–e5 reply in the composited window, WebGL
+selected in Chrome/ANGLE SwiftShader, child GPU frame sequence 2→25. Six
+original inputs and fetched Pawn payloads were hash-checked; loaded module
+`7e8d3194…`, compiled source unknown. Threads were actually enabled. Exact
+backend implementation/export state was not captured; no hardware-GPU or
+complete chess-game claim. This does not establish all 27 historical members.
+
 ## October 30 Tile World census lead replay
 
 Run `20261030T2242Z-tworld-input` replayed the registered original Tile World
