@@ -533,9 +533,18 @@ test('retry history survives cached prefixes but isolates ranges and file identi
 let ioFrameModule;
 async function scopedIoContext(vfs, threadId) {
   const { fixture, args } = require('./test-thread-send-frame-ownership');
-  const { context } = require('../tools/repro-thread-send-wait-retirement');
+  const { ThreadManager } = require('../lib/thread-manager');
+  const { GuestThreadHost } = require('../lib/guest-thread-host');
   ioFrameModule ||= fixture();
-  const c = await context('local', await ioFrameModule);
+  const module = await ioFrameModule;
+  const memory = new WebAssembly.Memory({ initial: 8192, maximum: 8192, shared: true });
+  const instance = await WebAssembly.instantiate(module);
+  // Supply the current constructor options explicitly; the older repro helper
+  // predates that interface and never reached either test's I/O assertions.
+  const manager = new ThreadManager(module, memory, instance, null, {});
+  const host = new GuestThreadHost({ localMainExports: () => instance.exports });
+  manager.workerBackend = host;
+  const c = { manager, link: host._localLink, close: () => host.stop() };
   c.manager._getVfs = () => vfs;
   if (threadId !== 1) {
     // The local endpoint represents a registered receiving thread here. The
