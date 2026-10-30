@@ -253,6 +253,34 @@
     (call $gl_append_vertex (local.get $x1) (local.get $y2) (f32.const 0))
     (drop (call $gl_finish_immediate)))
 
+  ;; glMultMatrixd: snapshot sixteen guest doubles in column-major order at
+  ;; the existing float-matrix encoder boundary. Opcode 109 owns matrix mode,
+  ;; postmultiplication, Begin validation, stream copies and list value capture.
+  ;; The 128-byte source crosses at most two pages; validate before allocating
+  ;; or changing GL state. gl64 reads each double across non-affine pages.
+  (func $handle_glMultMatrixd (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (local $guest i32) (local $stack i32) (local $i i32)
+    (if (i32.gt_u (local.get $arg0) (i32.const 0xffffff80)) (then (unreachable)))
+    (if (i32.eq (call $g2w (local.get $arg0)) (global.get $NULL_SENTINEL)) (then (unreachable)))
+    (if (i32.eq (call $g2w (i32.add (local.get $arg0) (i32.const 127))) (global.get $NULL_SENTINEL)) (then (unreachable)))
+    ;; Eight stack bytes and 64 pointed bytes in one invocation-owned affine
+    ;; allocation. Do not retain the caller's pointer after returning.
+    (local.set $guest (call $gl_alloc_affine (i32.const 72)))
+    (if (i32.eqz (local.get $guest)) (then (unreachable)))
+    (local.set $stack (call $g2w (local.get $guest)))
+    (i32.store (local.get $stack) (i32.const 0))
+    (i32.store offset=4 (local.get $stack) (i32.add (local.get $guest) (i32.const 8)))
+    (loop $copy
+      (f32.store (i32.add (local.get $stack) (i32.add (i32.const 8) (i32.shl (local.get $i) (i32.const 2))))
+        (f32.demote_f64 (f64.reinterpret_i64 (call $gl64
+          (i32.add (local.get $arg0) (i32.shl (local.get $i) (i32.const 3)))))))
+      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      (br_if $copy (i32.lt_u (local.get $i) (i32.const 16))))
+    (drop (call $gl_wat_encode_call (i32.const 109) (local.get $stack) (i32.const 0)))
+    (call $heap_free (local.get $guest))
+    (i32.store offset=0 (global.get $reg_base) (i32.const 0))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 8))))
+
   ;; glTexCoord2d(GLdouble s, GLdouble t): the scalar arguments occupy four
   ;; x86 stack words. Reuse the vector's checked guest-double loads and encoder
   ;; path from ESP+4, never the dispatcher's individual i32 argument values.

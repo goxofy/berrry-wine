@@ -82,3 +82,53 @@ delegation is fulfilled. Fork this retained snapshot with a finite TTL;
 `/home/user/tuxracer-render` retains the original assets/current runtime and
 `capture-glrectf-oct30` control/evidence. All 40 remote artifacts were copied
 using Boat exec and SHA-verified locally; no SSH/scp or public deployment.
+
+
+The longer loading investigation in
+`scratch/runs/20261030T2050Z-tuxracer-loading/` used one new finite-TTL fork
+`bx_xtwrnjbs` of the stopped `bx_msqscjw8` snapshot. Its initial invocation
+verified the same module `4e62aa15...`, runner `c82398cf...` and all 157 original
+files. Native Enter, P, Enter reproduced the personally inspected Frozen River
+selection and loading at 1 and 5 seconds after race Enter. The controller
+scheduled observations through 120 seconds, but the process trapped first:
+**glMultMatrixd (API 4343)** at EIP `0x0042aff7`, return `0x0042b002`,
+9.715 seconds after the acknowledged race Enter sequence (16.819 seconds
+from launch). This is a concrete API blocker, rather than evidence of a
+120-second loading stall.
+
+The real double-matrix handler snapshots sixteen checked guest doubles in
+column-major order, demotes once into a private float matrix and reuses
+canonical `glMultMatrixf` opcode 109. No command IDs or region layout changed.
+Matrix109 now captures its 64 pointed bytes inside the owned display-list node;
+direct, compile and replay calls inside Begin/End report GL_INVALID_OPERATION
+before changing the matrix. Generated dispatch and WGL availability name the
+real handler. Focused full-module matrix/ABI/mode/postmultiply/stream/list tests,
+non-affine double loads, nonfinite/rounding values, allocation/translation/wrap
+failures and three deliberately broken handler variants passed. Existing
+color/texture/rectangle, WGL, matrix-observer, list/stream/encoder suites and
+`flock /tmp/wine-build.lock bash tools/build.sh` passed.
+
+The sole repaired invocation used exact module
+`6085eff52c9be987f67d83563602a0ea89e0c4bac9c36f9cf11171bd3adada4e`
+and the unchanged runner. It again rendered the inspected Practice selection
+and loading frames at 1 and 5 seconds, then trapped at
+**glLockArraysEXT (API 4325)**, EIP `0x0041e46b`, return `0x0041e47b`,
+`first=454`, `count=6787`, 12.706 seconds after the acknowledged race Enter
+sequence (20.325 seconds from launch). Native disassembly shows the indirect
+lock call through guest `0x00575ca0` at `0x0041e475`, followed by indexed
+triangle drawing and an optional unlock through `0x00575ca4`.
+Race gameplay and steering remain unverified. The next useful gate is real
+compiled-vertex-array handling, or investigation of why the guest obtained the
+unsupported extension pointer; do not replace the trap with a silent success.
+
+Both complete remote evidence bundles were copied through Boat exec and
+SHA-verified (39 initial artifacts, 37 repaired-run artifacts). Recovery is
+`boat --json fork bx_xtwrnjbs --ttl 1800 --wait`, then supported Boat exec/file
+operations in `/home/user/tuxracer-render`. The snapshot retains original
+assets, repaired module and `capture-matrixd-oct30/supervisor.py`; use a fresh
+capture directory for a new invocation. The exact original module remains in
+the local predecessor archive. The new fork's snapshot was verified at
+2026-10-30T20:53:48.775Z and STOPPED was verified at 20:53:50.160Z, before its
+original 21:17:17.472Z expiry. Parent snapshot/state were reread unchanged;
+other Boats were untouched. Explicit shutdown delegation is fulfilled and
+recovery ownership returns to the coordinator.

@@ -110,9 +110,11 @@
     (if (i32.eqz (local.get $ctx))
       (then (return (i32.and (i32.ge_u (local.get $op) (i32.const 124))
         (i32.le_u (local.get $op) (i32.const 140))))))
-    ;; Rect is illegal between Begin/End, including while compiling a list.
+    ;; Rect and matrix multiplication are illegal between Begin/End, including
+    ;; while compiling a list.
     ;; Replay keeps it atomic so the caller's vertices and Begin survive.
-    (if (i32.and (i32.eq (local.get $op) (i32.const 142))
+    (if (i32.and (i32.or (i32.eq (local.get $op) (i32.const 142))
+        (i32.eq (local.get $op) (i32.const 109)))
         (i32.or (i32.ge_s (global.get $gl_immediate_mode) (i32.const 0))
           (i32.ne (i32.load offset=36 (local.get $ctx)) (i32.const 0)))) (then
       (call $gl_list_error (local.get $ctx) (i32.const 0x502))
@@ -223,7 +225,8 @@
           (else (local.set $prev (local.get $b))))
         (local.set $b (local.get $next)) (br $blocks)))
       (return (i32.const 1))))
-    ;; Only commands explicitly safe to own as scalar stack records compile.
+    ;; Only commands with explicit value capture compile. Matrix109 owns its
+    ;; 64-byte pointed float payload in the same 88-byte list node.
     (if (i32.and (i32.ne (i32.load offset=12 (local.get $ctx)) (i32.const 0))
         (i32.eqz (i32.load offset=28 (local.get $ctx)))) (then
       (if (i32.eq (local.get $op) (i32.const 131)) (then
@@ -240,13 +243,18 @@
         (if (i32.eqz (i32.load offset=36 (local.get $ctx))) (then
           (call $gl_list_error (local.get $ctx) (i32.const 0x502)) (return (i32.const 1))))
         (i32.store offset=36 (local.get $ctx) (i32.const 0))))
-      (if (call $gl_list_scalar_command (local.get $op)) (then
+      (if (i32.or (call $gl_list_scalar_command (local.get $op))
+          (i32.eq (local.get $op) (i32.const 109))) (then
         (local.set $p (call $gl_list_alloc (i32.const 88)))
         (if (i32.eqz (local.get $p)) (then
           (call $gl_list_error (local.get $ctx) (i32.const 0x505)) (return (i32.const 1))))
         (i32.store offset=4 (local.get $p) (local.get $op))
         (memory.copy (i32.add (local.get $p) (i32.const 8)) (local.get $stack)
           (i32.shl (i32.add (call $gl_arg_words (local.get $op)) (i32.const 1)) (i32.const 2)))
+        (if (i32.eq (local.get $op) (i32.const 109)) (then
+          (call $gl_copy_from_guest (i32.add (local.get $p) (i32.const 16))
+            (i32.load offset=4 (local.get $stack)) (i32.const 64))
+          (i32.store offset=12 (local.get $p) (call $w2g (i32.add (local.get $p) (i32.const 16))))))
         (local.set $b (i32.load offset=20 (local.get $ctx)))
         (if (local.get $b) (then (i32.store (local.get $b) (local.get $p)))
           (else (i32.store offset=16 (local.get $ctx) (local.get $p))))

@@ -37070,7 +37070,7 @@
     "nargs": 1,
     "convention": "stdcall",
     "hash": 1152402571,
-    "handler": "gl_unimplemented"
+    "handler": "glMultMatrixd"
   },
   {
     "id": 4344,
