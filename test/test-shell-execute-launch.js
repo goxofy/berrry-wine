@@ -211,6 +211,108 @@ function makeShell(opts = {}) {
   console.log('ok: obsolete DirectX setup is already satisfied');
 }
 
+// Exercise the production browser process_spawn callback with the real shell
+// skip policy and loopback transport. Only guest attachment/boot is substituted.
+{
+  const vm = require('vm');
+  const VlanWire = require('../lib/vlan-wire');
+  const { parseShellLaunchCommand, resolveShellLaunchPath } = require('../host');
+  const hostSource = fs.readFileSync(path.join(__dirname, '..', 'host.js'), 'utf8');
+  const start = hostSource.indexOf('    h.process_spawn =');
+  const end = hostSource.indexOf('    // E4:', start);
+  assert(start >= 0 && end > start, 'extract the production process_spawn callback');
+  function fixture(mode = 'skip', pipes = 1) {
+    const { shell, launched } = makeShell();
+    let options;
+    const parent = {
+      memory: new WebAssembly.Memory({ initial: 1 }),
+      readString: () => mode === 'skip' ? 'C:\\DXSETUP.EXE' : 'C:\\child.exe',
+      threadManager: {},
+    };
+    const h = {};
+    vm.runInNewContext(hostSource.slice(start, end), {
+      h, self: parent, WineAssembly: {}, DataView, Map,
+      parseShellLaunchCommand, resolveShellLaunchPath,
+      console: { log() {} },
+      window: { VlanWire, wineShell: { launchVfsExe(...args) {
+        options = args[4];
+        if (mode === 'decline') return false;
+        if (mode === 'throw') throw new Error('launch failed');
+        if (mode === 'skip') return shell.launchVfsExe(...args);
+        return true;
+      } } },
+    });
+    return { parent, launched, spawn: () => h.process_spawn(1, 0, 0x0a000002, 0, pipes, 1, 0),
+      options: () => options };
+  }
+  function assertRetired(f) {
+    const wire = f.options().lanLink.wire;
+    assert.deepStrictEqual(f.parent._childSegment.endpoints, [f.parent.vlanWire],
+      'only the caller remains attached');
+    assert.strictEqual(wire.pending, 0);
+    assert.strictEqual(wire.send(new Uint8Array(28)), false);
+    wire.deliver(new Uint8Array(28)); wire.peerGone(9); wire.close();
+    assert.strictEqual(wire.pending, 0, 'retired child rejects late traffic');
+    assert.strictEqual(f.parent.vlanWire.pending, 1, 'completion emits exactly one EOF');
+  }
+  const skipped = fixture();
+  const pid = skipped.spawn();
+  const rec = skipped.parent._children.get(pid);
+  assert.strictEqual(rec.object.exited, true);
+  assert.strictEqual(rec.object.pending, false);
+  assert.strictEqual(rec.object.wine, null);
+  assert.strictEqual(rec.exitCode, 0, 'tracked skipped installer completes successfully');
+  assert.strictEqual(skipped.launched.length, 0);
+  skipped.options().onExit(null, 'already-satisfied');
+  assertRetired(skipped);
+
+  const noPipes = fixture('skip', 0);
+  const noPipePid = noPipes.spawn();
+  assert.strictEqual(noPipes.parent._children.get(noPipePid).exitCode, 0,
+    'skipped tracked launch without redirected handles also completes successfully');
+  assert.strictEqual(noPipes.parent._childSegment, undefined);
+
+  const live = fixture('live');
+  const livePid = live.spawn();
+  const wire = live.options().lanLink.wire;
+  const sibling = live.parent._childSegment.attach();
+  live.parent.vlanWire.send(new Uint8Array(28));
+  assert.strictEqual(wire.pending, 1, 'endpoint remains live until consumer completes');
+  live.options().onExit({ _exitCode: 17 });
+  live.options().onExit(null);
+  assert.strictEqual(live.parent._children.get(livePid).exitCode, 17);
+  assert.strictEqual(sibling.pending, 1, 'sibling keeps its frame and endpoint');
+  sibling.close();
+  assertRetired(live);
+
+  const cancelled = fixture('live');
+  const cancelledPid = cancelled.spawn();
+  const cancelledObject = cancelled.parent._children.get(cancelledPid).object;
+  cancelledObject.exited = true;
+  cancelledObject.exitCode = 0xdeadbeef;
+  cancelledObject.complete(null, 'already-satisfied');
+  assert.strictEqual(cancelled.parent._children.get(cancelledPid).exitCode, 0xdeadbeef,
+    'completion preserves a prior authoritative termination status');
+  assertRetired(cancelled);
+
+  const bootFailed = fixture('live');
+  const failedPid = bootFailed.spawn();
+  bootFailed.options().onExit(null);
+  assert.strictEqual(bootFailed.parent._children.get(failedPid).exitCode, 1,
+    'null child without the skip outcome remains a boot failure');
+  assertRetired(bootFailed);
+
+  for (const mode of ['decline', 'throw']) {
+    const failed = fixture(mode);
+    if (mode === 'throw') assert.throws(failed.spawn, /launch failed/);
+    else assert.strictEqual(failed.spawn(), 0);
+    assert.strictEqual(failed.parent._children.size, 0, 'failed launch is unpublished');
+    failed.options().onExit(null);
+    assertRetired(failed);
+  }
+  console.log('ok: tracked skipped/normal/failed launches retire only their child endpoint once');
+}
+
 // War Wind asks to run that obsolete redistributable from its final setup
 // dialog. Once the no-op succeeds, continue into the game from the completed
 // installer VFS instead of leaving the Win16 bootstrap visible at 39%.

@@ -2406,9 +2406,12 @@ class WineAssembly {
         }
         console.log(`[process_spawn] ${file} at ${ipText}: std handles attached`);
       };
-      const onExit = (child) => {
+      // The launch owns this endpoint even before a child host exists.
+      const childWire = pipes ? self._childSegment.attach() : null;
+      const onExit = (child, outcome) => {
         if (rec.exited) return;
         rec.exited = true;
+        if (childWire) childWire.close();
         delete rec.object.complete;
         const childVfs = child && child._helpCtx && child._helpCtx.vfs;
         if (before && childVfs) {
@@ -2421,7 +2424,8 @@ class WineAssembly {
         }
         const object = rec.object;
         if (!object.exited) {
-          object.exitCode = (child && child._exitCode != null) ? (child._exitCode >>> 0) : (child ? 0 : 1);
+          object.exitCode = (child && child._exitCode != null) ? (child._exitCode >>> 0)
+            : (child || outcome === 'already-satisfied' ? 0 : 1);
           object.exited = true;
           object.wine = null;
         }
@@ -2431,11 +2435,18 @@ class WineAssembly {
         if (pipes && self.vlanWire && self.vlanWire.peerGone) self.vlanWire.peerGone(ip);
       };
       rec.object.complete = onExit;
-      const ok = shell.launchVfsExe(file, self, dir, parsed.params.trim(), {
-        ...(pipes ? { lanLink: { wire: self._childSegment.attach(), address: ipText, local: true } } : {}),
-        bypassSingleApp: true, hidden: pipes || showCmd === 0, showCmd, beforeRun, onExit,
-      });
-      if (!ok) { self._children.delete(pid); return 0; }
+      let ok;
+      try {
+        ok = shell.launchVfsExe(file, self, dir, parsed.params.trim(), {
+          ...(pipes ? { lanLink: { wire: childWire, address: ipText, local: true } } : {}),
+          bypassSingleApp: true, hidden: pipes || showCmd === 0, showCmd, beforeRun, onExit,
+        });
+      } catch (error) {
+        onExit(null);
+        self._children.delete(pid);
+        throw error;
+      }
+      if (!ok) { onExit(null); self._children.delete(pid); return 0; }
       console.log(`[process_spawn] CreateProcess "${cmd}" -> ${file} at ${ipText}, pid ${pid}`);
       return pid;
     };
