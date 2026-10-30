@@ -732,3 +732,42 @@ both local server/controller ports were closed and checked; no Boat was used.
 The static harness also logged HTTP 404 responses; their URLs were not captured,
 and they are not evidence of successful network or service integration. No
 page exception, guest trap or `FreeLibrary failed` message was recorded.
+
+## 2026-10-30: retained-module native gameplay on emulator software OpenGL
+
+Run `scratch/runs/20261030T2220Z-quake2-software/result.json` passes the
+registered selector/Launch → Game → Easy → Outer Base route with unchanged
+`+set vid_ref gl +menu_main`. The browser URL selects
+`gl-renderer=software`; the game still uses original **`ref_gl`**, never
+`ref_soft`. The static server routes the module request to the prior browser
+run's exact retained module, SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`.
+Its compiled source commit remains unknown; this does not certify current main.
+
+Actual loaded-module counters prove the emulator WAT raster path is active:
+`gl_sw_enabled()` is 1, triangles advance from 1,050,157 to 1,466,293,
+and software presents from 451 to 604. Both samples report 1,422 texture
+uploads and zero unsupported uploads. The window has no WebGL frame layer.
+Guest threads and the render Worker are disabled. The generic GPU dropdown
+still reads WebGL, the synthetic guest GL renderer string still says WebGL
+fixed function, and Chrome was launched with SwiftShader flags; none of those
+labels overrides the directly observed WAT software-raster counters.
+
+Personally inspected captures show native W moving toward the diagonal support
+until it occludes the room, and S restoring the wider view and wall emblem.
+Mouse-one under pointer lock produces blaster bolts/impact particles and
+dynamic yellow illumination. Five held-fire samples read guest attack key 200,
+state 5, host mouse mask 1; release reads key 0, state 4, mask 0. The saved
+timeline contains trusted browser events only. No console command, guest-memory
+write, forced handler, asset modification, or runtime repair was used.
+
+All 67 registered file hashes, including 65 original extracted assets, match
+the preceding run; the documented pak hash also matches. The installer remains
+absent, so this is not a fresh installer/extraction comparison. Served runtime
+hashes and the exact downloaded module are retained. Coverage is the starting
+room, movement and blaster firing/release; combat progression, death/reload,
+level completion, audio, FPS, networking and Worker rendering are untested in
+this software run. Static-harness HTTP 404 messages remain; no page exception,
+guest trap or `FreeLibrary failed` message was observed. Own browser and server
+ports were closed and checked, profile removed, no Boat used, and /home free
+space remained above 2 GB. No blocker reproduced and no code repair was needed.
