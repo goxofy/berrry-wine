@@ -5066,6 +5066,8 @@
     (param $tex i32) (param $diffuse i32) (param $colorop i32) (param $alphaop i32)
     (result i32)
     (local $mod i32) (local $rgb i32) (local $alpha i32) (local $arg1 i32) (local $arg2 i32)
+    (local $texture_alpha i32)
+    (local.set $texture_alpha (i32.shr_u (local.get $tex) (i32.const 24)))
     ;; Stage-zero CURRENT is incoming diffuse RGBA. Disable precedes operand
     ;; selection and disables alpha too, regardless of ALPHAOP/argument bits.
     (if (i32.eq (i32.and (local.get $colorop) (i32.const 255)) (i32.const 1))
@@ -5096,11 +5098,23 @@
       (then (local.set $rgb (i32.and (local.get $tex) (i32.const 0x00ffffff)))))
     (if (i32.eq (local.get $colorop) (i32.const 3))
       (then (local.set $rgb (i32.and (local.get $diffuse) (i32.const 0x00ffffff)))))
+    ;; BLENDTEXTUREALPHA: ARG1 * texture alpha + ARG2 * (1 - alpha).
+    ;; GL_DECAL uses this RGB operation with SELECTARG2 for primary alpha.
+    (if (i32.eq (local.get $colorop) (i32.const 13))
+      (then (local.set $rgb (call $d3dim_blend_rgb
+        (i32.or (i32.and (local.get $tex) (i32.const 0x00ffffff))
+          (i32.shl (local.get $texture_alpha) (i32.const 24)))
+        (local.get $diffuse) (i32.const 5) (i32.const 6)))))
     (local.set $alpha (i32.and (local.get $mod) (i32.const 0xff000000)))
     (if (i32.eq (local.get $alphaop) (i32.const 2))
       (then (local.set $alpha (i32.and (local.get $tex) (i32.const 0xff000000)))))
     (if (i32.eq (local.get $alphaop) (i32.const 3))
       (then (local.set $alpha (i32.and (local.get $diffuse) (i32.const 0xff000000)))))
+    (if (i32.eq (local.get $alphaop) (i32.const 13)) (then
+      (local.set $alpha (i32.shl (call $d3dim_blend_channel
+        (i32.shr_u (local.get $tex) (i32.const 24))
+        (i32.shr_u (local.get $diffuse) (i32.const 24))
+        (local.get $texture_alpha) (i32.const 5) (i32.const 6)) (i32.const 24)))))
     (i32.or (local.get $alpha) (local.get $rgb)))
 
   ;; One fixed-function framebuffer blend channel. D3DBLEND values used by

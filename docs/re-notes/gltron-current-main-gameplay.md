@@ -92,3 +92,57 @@ native input, without a complete visual-parity or performance claim.
 
 No Boat boxes were created, assigned, resumed, stopped or deleted. Only this
 worker's local CLI processes were used; no browser/audio/parity claim.
+
+## Trail and arena rendering repair — 2026-10-30
+
+Before evidence: `scratch/runs/20261030T2210Z-gltron-render-before/`.
+After evidence: `scratch/runs/20261030T2210Z-gltron-render-after/`.
+Both retain their exact Wasm binaries; the after directory's `investigation.json`
+records hashes, timestamps, commands, checks, input batches and inspected images.
+The original installed assets were retained and all 92 hashes rechecked unchanged.
+
+Three production renderer defects were reproduced and repaired:
+
+* Unit-zero `GL_DECAL` incorrectly selected texture RGBA. The original
+  `gltron_traildecal.png` has white RGB even in transparent texels, so this
+  replaced the cycle's trail color with white. Blend texture RGB by texture
+  alpha and retain primary alpha, using shared `BLENDTEXTUREALPHA` support.
+* The game enables `GL_LIGHT_MODEL_TWO_SIDE`. Reverse normals for back-facing
+  lit triangles before clipping and flat shading, respecting `glFrontFace`
+  and lighting attribute push/pop. Both sides currently share material values.
+* The software path clipped near/far planes but saturated distant projected
+  coordinates before rasterization. Large arena polygons were bent while their
+  texture attributes retained the original values, causing diagonal grid
+  distortion beside trails/shadows. Clip against all six homogeneous planes
+  before projection, interpolating all attributes and keeping bounded scratch
+  buffers separate from the default viewport.
+
+Personally inspected before `start.png` and `traced-start.png`: white trail
+faces and a large wedge of distorted floor grid. Personally inspected final
+`clean-left.png`, `clean-right.png`, `clean-trail.png` and `clean-escape.png`:
+colored yellow/red trails, continuous arena grid, actual collision debris and
+native Escape returning to the original menu. In `clean-left.png` player four
+has crashed; player one is still driving. `clean-trail.png` includes player
+one's subsequent crash. Later restarted captures in `final-moving.png` retain
+old crash/winner overlays; they are not used to claim surviving player-one play.
+Native Return/A/S/Escape keydown/up and PNG batches are in `clean-runtime.log`.
+
+The final locked full build passed. Pinned production Wasm SHA-256:
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`
+(1,892,586 bytes). Focused software raster, software lines, lighting display-list,
+attribute-stack, shared D3D texture-stage and original registration tests passed.
+Three scratch-only rejecting controls fail their intended assertions when DECAL,
+side clipping or two-sided lighting is reverted independently. No shared source
+was mutated to run those controls.
+
+Opaque black shadows are intentional with the untouched original
+`scripts/config.lua` setting `use_stencil = 0`: original `drawTrailShadow` uses
+black color and disables blending in that branch. Do not erase these shadows
+or alter assets to hide them. This was checked against the retained 0.70 source
+archive from `https://deb.debian.org/debian/pool/main/g/gltron/gltron_0.70final.orig.tar.gz`;
+the archive and hash are in the after evidence directory. Remaining limits:
+distant grid aliasing, integer screen-coordinate rounding, unimplemented GL
+polygon offset, separate back-face materials, and unit-one DECAL semantics.
+This is not complete visual parity, stencil-shadow, browser or audio validation.
+All own local gameplay processes and control ports were closed. No Boat was
+used; assigned box ID/state/expiry and lifecycle handoff are not applicable.

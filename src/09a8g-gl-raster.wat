@@ -198,7 +198,8 @@
   ;;       32 SCISSOR_TEST, 64 FOG, 128 LIGHTING, 0xFF00 LIGHT0..7,
   ;;       0x10000 COLOR_MATERIAL, 0x20000/0x40000 TEXTURE_GEN_S/_T,
   ;;       0x80000 TEXTURE_2D on unit 1, 0x100000 unit 1's env is REPLACE
-  ;;       (both kept here so glPushAttrib saves them with the rest)
+  ;;       0x200000 LIGHT_MODEL_TWO_SIDE
+  ;;       (kept here so glPushAttrib saves them with the rest)
   ;;   +4  source blend (D3DBLEND)        +8  destination blend (D3DBLEND)
   ;;   +12 alpha func (D3DCMP)            +16 alpha reference, 0..255
   ;;   +20 depth func (D3DCMP)            +24 depth mask, 0/1
@@ -324,7 +325,7 @@
     ;; GL_LIGHTING_BIT: the lighting, light and colour-material enables. The
     ;; light parameters themselves are the matrix mirror's (09a8f).
     (if (i32.and (local.get $mask) (i32.const 0x40))
-      (then (call $gl_sw_restore_caps (local.get $saved) (i32.const 0x1FF80))))
+      (then (call $gl_sw_restore_caps (local.get $saved) (i32.const 0x21FF80))))
     ;; GL_SCISSOR_BIT: the scissor enable and box.
     (if (i32.and (local.get $mask) (i32.const 0x80000))
       (then
@@ -834,9 +835,11 @@
 
   ;; ---- small helpers ------------------------------------------------------
   ;; Scratch: +0 the MVP, +64 one object-space vec4, +128 three screen
-  ;; records, +256 three clip records, +512 up to four near-clipped ones,
-  ;; +0x300 the default viewport $gl_sw_consume substitutes when none is
-  ;; set, +0x680 up to five far-clipped records (ends at 0x7AC, inside 0x800).
+  ;; records, +256 three clip records, +512 an eight-vertex clipping buffer,
+  ;; +1088 a nine-vertex buffer, +0x7C0 the default viewport. Even-numbered
+  ;; passes produce at most eight vertices, ending below the persistent
+  ;; normal matrix at +0x400. Other lighting/texgen temporaries overlap the
+  ;; second buffer and are finished before clipping. All fit inside 0x800.
   ;; Clip record, 60 bytes: +0 x, +4 y, +8 z, +12 w, +16 u, +20 v, then
   ;; r, g, b, a at +24..+36, unit 1's u, v at +40, +44, q0/q1 at +48/+52
   ;; and the eye-space fog distance at +56 -- all f32, so clipping lerps
@@ -850,13 +853,20 @@
   ;; Signed distance to GL's near clip plane, z >= -w.
   (func $gl_sw_near_d (param $c i32) (result f32)
     (f32.add (f32.load offset=8 (local.get $c)) (f32.load offset=12 (local.get $c))))
-  ;; Signed distance to the near plane, or with $far to the far one (z <= w).
-  ;; Without the far clip a sky dome past the far plane drew as z > 1 --
-  ;; Warcraft III's menu sky came out white where WebGL discards it.
-  (func $gl_sw_plane_d (param $c i32) (param $far i32) (result f32)
-    (if (result f32) (local.get $far)
-      (then (f32.sub (f32.load offset=12 (local.get $c)) (f32.load offset=8 (local.get $c))))
-      (else (call $gl_sw_near_d (local.get $c)))))
+  ;; Homogeneous clip distances: near, far, left, right, bottom, top.
+  ;; Side clipping must precede the bounded screen-coordinate conversion:
+  ;; saturating a far-offscreen vertex moves its geometry without moving UVs.
+  (func $gl_sw_plane_d (param $c i32) (param $plane i32) (result f32)
+    (if (i32.eqz (local.get $plane)) (then (return (call $gl_sw_near_d (local.get $c)))))
+    (if (i32.eq (local.get $plane) (i32.const 1)) (then (return
+      (f32.sub (f32.load offset=12 (local.get $c)) (f32.load offset=8 (local.get $c))))))
+    (if (i32.eq (local.get $plane) (i32.const 2)) (then (return
+      (f32.add (f32.load offset=12 (local.get $c)) (f32.load (local.get $c))))))
+    (if (i32.eq (local.get $plane) (i32.const 3)) (then (return
+      (f32.sub (f32.load offset=12 (local.get $c)) (f32.load (local.get $c))))))
+    (if (i32.eq (local.get $plane) (i32.const 4)) (then (return
+      (f32.add (f32.load offset=12 (local.get $c)) (f32.load offset=4 (local.get $c))))))
+    (f32.sub (f32.load offset=12 (local.get $c)) (f32.load offset=4 (local.get $c))))
   ;; $dst = $a + ($b - $a) * $t over a whole clip record. Clip space is
   ;; linear, so this is exact for position and perspective-correct for
   ;; everything else once the rasterizer divides by w.
@@ -1268,6 +1278,14 @@
     (if (i32.eq (local.get $op) (i32.const 55))
       (then (if (i32.eq (global.get $gl_sw_worker_ok) (i32.const 2))
         (then (global.set $gl_sw_worker_ok (i32.const 0))))))
+    ;; GL_LIGHT_MODEL_TWO_SIDE is a lighting parameter, not an enable cap.
+    (if (i32.eq (local.get $op) (i32.const 70)) (then
+      (if (i32.eq (i32.load offset=4 (local.get $stack)) (i32.const 0x0B52)) (then
+        (i32.store (local.get $s) (select
+          (i32.or (i32.load (local.get $s)) (i32.const 0x200000))
+          (i32.and (i32.load (local.get $s)) (i32.const 0xFFDFFFFF))
+          (i32.ne (i32.load offset=8 (local.get $stack)) (i32.const 0))))))
+      (return)))
     ;; 105 glActiveTextureARB(GL_TEXTURE0_ARB + unit)
     (if (i32.eq (local.get $op) (i32.const 105))
       (then (global.set $gl_sw_active_unit
@@ -1416,8 +1434,8 @@
           (i32.eq (i32.load offset=4 (local.get $stack)) (i32.const 0x901)))
         (return)))
     ;; 44 glTexEnvf / 82 glTexEnvi (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, mode).
-    ;; REPLACE and DECAL both take the texture's colour; DECAL's blend by
-    ;; texture alpha is not modelled. Any other target is GL_INVALID_ENUM and
+    ;; DECAL blends texture RGB by texture alpha, retaining primary alpha.
+    ;; Any other target is GL_INVALID_ENUM and
     ;; changes nothing: SimGolf passes GL_TEXTURE_2D 474 times asking for
     ;; REPLACE, and real GL keeps MODULATE, so its terrain stays lit.
     (if (i32.or (i32.eq (local.get $op) (i32.const 44)) (i32.eq (local.get $op) (i32.const 82)))
@@ -1430,9 +1448,10 @@
               (i32.load offset=12 (local.get $stack))
               (i32.eq (local.get $op) (i32.const 44))))
             (i32.store offset=36 (local.get $s)
-              (select (i32.const 2) (i32.const 4)
-                (i32.or (i32.eq (local.get $mask) (i32.const 0x1E01))
-                        (i32.eq (local.get $mask) (i32.const 0x2101)))))))
+              (if (result i32) (i32.eq (local.get $mask) (i32.const 0x2101))
+                (then (i32.const 13))
+                (else (select (i32.const 2) (i32.const 4)
+                  (i32.eq (local.get $mask) (i32.const 0x1E01))))))))
         (return)))
     ;; 42 glBindTexture(target, name), TEXTURE_2D only.
     (if (i32.eq (local.get $op) (i32.const 42))
@@ -1595,11 +1614,12 @@
   ;; ambient; without this every lit surface came out glColor white.
   ;;
   ;; Not modelled: spot cutoffs and distance attenuation (every positional
-  ;; light is unattenuated), two-sided lighting, a local viewer, and
-  ;; glColorMaterial's mode -- COLOR_MATERIAL always tracks AMBIENT_AND_DIFFUSE,
+  ;; light is unattenuated), a local viewer, distinct back-face materials,
+  ;; and glColorMaterial's mode -- COLOR_MATERIAL always tracks AMBIENT_AND_DIFFUSE,
   ;; GL's default. Normals are always renormalized.
   (global $gl_sw_lit (mut i32) (i32.const 0))
   (global $gl_sw_light_block (mut i32) (i32.const 0))
+  (global $gl_sw_reverse_normal (mut i32) (i32.const 0))
 
   (func $gl_sw_m3 (param $m i32) (param $r i32) (param $c i32) (result f32)
     (f32.load (i32.add (local.get $m)
@@ -1693,6 +1713,10 @@
       (local.set $k (i32.add (local.get $k) (i32.const 1)))
       (br_if $rows (i32.lt_u (local.get $k) (i32.const 3))))
     (call $gl_sw_normalize3 (local.get $t))
+    (if (global.get $gl_sw_reverse_normal) (then
+      (f32.store (local.get $t) (f32.neg (f32.load (local.get $t))))
+      (f32.store offset=4 (local.get $t) (f32.neg (f32.load offset=4 (local.get $t))))
+      (f32.store offset=8 (local.get $t) (f32.neg (f32.load offset=8 (local.get $t))))))
     ;; Material ambient and diffuse: the vertex colour under COLOR_MATERIAL.
     (local.set $amb (i32.add (local.get $b) (i32.const 8880)))
     (local.set $dif (i32.add (local.get $b) (i32.const 8896)))
@@ -1953,15 +1977,29 @@
     (local.get $bits))
 
   ;; ---- triangles ----------------------------------------------------------
-  ;; One triangle: three 60-byte GL vertices starting at $v0. Transformed to
-  ;; clip space, clipped against the near plane, and fanned out to $gl_sw_emit.
+  ;; Signed projected area without dividing by W. Clipping to positive W
+  ;; preserves this orientation even when an original vertex is behind eye.
+  (func $gl_sw_face_area (param $a i32) (param $b i32) (param $c i32) (result f32)
+    (f32.add (f32.sub
+      (f32.mul (f32.load (local.get $a)) (f32.sub
+        (f32.mul (f32.load offset=4 (local.get $b)) (f32.load offset=12 (local.get $c)))
+        (f32.mul (f32.load offset=12 (local.get $b)) (f32.load offset=4 (local.get $c)))))
+      (f32.mul (f32.load offset=4 (local.get $a)) (f32.sub
+        (f32.mul (f32.load (local.get $b)) (f32.load offset=12 (local.get $c)))
+        (f32.mul (f32.load offset=12 (local.get $b)) (f32.load (local.get $c))))))
+      (f32.mul (f32.load offset=12 (local.get $a)) (f32.sub
+        (f32.mul (f32.load (local.get $b)) (f32.load offset=4 (local.get $c)))
+        (f32.mul (f32.load offset=4 (local.get $b)) (f32.load (local.get $c)))))))
+  ;; One triangle: three 76-byte GL vertices starting at $v0. Transformed to
+  ;; clip space, clipped against all six planes, and fanned out to $gl_sw_emit.
   ;; Without the clip, a triangle with a vertex behind the eye had to be
   ;; dropped whole (dividing by a negative w mirrors it about the origin), and
   ;; Half-Life's corridor lost a wedge of floor at every step.
   (func $gl_sw_triangle (param $mvp i32) (param $vp i32) (param $v0 i32)
     (local $k i32) (local $bits i32)
     (local $inside i32) (local $n i32)
-    (local $far_in i32) (local $poly i32)
+    (local $far_in i32) (local $poly i32) (local $side_out i32)
+    (local $plane i32) (local $dst i32) (local $clip i32)
     (local.set $k (i32.const 0))
     (loop $lp
       (local.set $bits (call $gl_sw_xform_vertex (local.get $mvp)
@@ -1972,8 +2010,31 @@
       (if (i32.and (local.get $bits) (i32.const 2))
         (then (local.set $far_in (i32.or (local.get $far_in)
           (i32.shl (i32.const 1) (local.get $k))))))
+      (local.set $clip (call $gl_sw_clip_at (local.get $k)))
+      (if (i32.or
+          (f32.gt (f32.abs (f32.load (local.get $clip))) (f32.load offset=12 (local.get $clip)))
+          (f32.gt (f32.abs (f32.load offset=4 (local.get $clip))) (f32.load offset=12 (local.get $clip))))
+        (then (local.set $side_out (i32.const 1))))
       (local.set $k (i32.add (local.get $k) (i32.const 1)))
       (br_if $lp (i32.lt_u (local.get $k) (i32.const 3))))
+    ;; Two-sided lighting reverses normals on back-facing polygons. Decide
+    ;; before clipping and flat shading so invented vertices interpolate the
+    ;; correct lit colours and the provoking vertex still owns GL_FLAT.
+    (if (i32.and (global.get $gl_sw_lit)
+        (i32.ne (i32.and (i32.load (global.get $gl_sw_st)) (i32.const 0x200000)) (i32.const 0))) (then
+      (if (i32.ne (f32.gt (call $gl_sw_face_area
+            (call $gl_sw_clip_at (i32.const 0)) (call $gl_sw_clip_at (i32.const 1))
+            (call $gl_sw_clip_at (i32.const 2))) (f32.const 0))
+          (i32.load offset=32 (global.get $gl_sw_st))) (then
+        (global.set $gl_sw_reverse_normal (i32.const 1))
+        (local.set $k (i32.const 0))
+        (loop $back_lighting
+          (call $gl_sw_light_vertex
+            (i32.add (local.get $v0) (i32.mul (local.get $k) (i32.const 76)))
+            (i32.add (call $gl_sw_clip_at (local.get $k)) (i32.const 24)))
+          (local.set $k (i32.add (local.get $k) (i32.const 1)))
+          (br_if $back_lighting (i32.lt_u (local.get $k) (i32.const 3))))
+        (global.set $gl_sw_reverse_normal (i32.const 0))))))
     ;; GL_FLAT takes every colour from the provoking vertex, which for a GL
     ;; triangle is the LAST one -- decided before clipping invents vertices.
     (if (i32.eq (global.get $gl_shade_model) (i32.const 0x1D00))
@@ -1982,8 +2043,9 @@
           (i32.add (call $gl_sw_clip_at (i32.const 2)) (i32.const 24)) (i32.const 16))
         (call $memcpy (i32.add (call $gl_sw_clip_at (i32.const 1)) (i32.const 24))
           (i32.add (call $gl_sw_clip_at (i32.const 2)) (i32.const 24)) (i32.const 16))))
-    (if (i32.and (i32.eq (local.get $inside) (i32.const 7))
-                 (i32.eq (local.get $far_in) (i32.const 7)))
+    (if (i32.and (i32.eqz (local.get $side_out))
+          (i32.and (i32.eq (local.get $inside) (i32.const 7))
+                   (i32.eq (local.get $far_in) (i32.const 7))))
       (then
         (call $gl_sw_emit (local.get $vp) (call $gl_sw_clip_at (i32.const 0))
           (call $gl_sw_clip_at (i32.const 1)) (call $gl_sw_clip_at (i32.const 2)))
@@ -1992,20 +2054,22 @@
       (then
         (global.set $gl_sw_clipped (i32.add (global.get $gl_sw_clipped) (i32.const 1)))
         (return)))
-    ;; Sutherland-Hodgman against near, then far: a triangle becomes at most
-    ;; a pentagon, and every pass keeps the input winding.
+    ;; Six Sutherland-Hodgman passes preserve winding and all attributes.
+    ;; A triangle clipped by six planes has at most nine vertices.
     (local.set $poly (call $gl_sw_clip_at (i32.const 0)))
     (local.set $n (i32.const 3))
-    (if (i32.ne (local.get $inside) (i32.const 7))
-      (then
-        (local.set $n (call $gl_sw_clip_pass (local.get $poly) (local.get $n)
-          (call $gl_sw_poly_at (i32.const 0)) (i32.const 0)))
-        (local.set $poly (call $gl_sw_poly_at (i32.const 0)))))
-    (if (i32.ne (local.get $far_in) (i32.const 7))
-      (then
-        (local.set $n (call $gl_sw_clip_pass (local.get $poly) (local.get $n)
-          (i32.add (global.get $gl_sw_scratch) (i32.const 0x680)) (i32.const 1)))
-        (local.set $poly (i32.add (global.get $gl_sw_scratch) (i32.const 0x680)))))
+    (local.set $plane (i32.const 0))
+    (loop $planes
+      (local.set $dst (i32.add (global.get $gl_sw_scratch)
+        (select (i32.const 1088) (i32.const 512) (i32.and (local.get $plane) (i32.const 1)))))
+      (local.set $n (call $gl_sw_clip_pass (local.get $poly) (local.get $n)
+        (local.get $dst) (local.get $plane)))
+      (if (i32.lt_u (local.get $n) (i32.const 3)) (then
+        (global.set $gl_sw_clipped (i32.add (global.get $gl_sw_clipped) (i32.const 1)))
+        (return)))
+      (local.set $poly (local.get $dst))
+      (local.set $plane (i32.add (local.get $plane) (i32.const 1)))
+      (br_if $planes (i32.lt_u (local.get $plane) (i32.const 6))))
     (local.set $k (i32.const 1))
     (block $done (loop $fan
       (br_if $done (i32.ge_s (i32.add (local.get $k) (i32.const 1)) (local.get $n)))
@@ -2016,7 +2080,7 @@
       (br $fan))))
 
   ;; One Sutherland-Hodgman pass of the $n-gon at $src into $dst against the
-  ;; near plane (z >= -w) or, with $far, the far plane (z <= w). Returns the
+  ;; selected homogeneous plane. Returns the
   ;; output count, at most $n + 1.
   (func $gl_sw_clip_pass (param $src i32) (param $n i32) (param $dst i32) (param $far i32)
       (result i32)
@@ -2297,6 +2361,11 @@
     (select (i32.const 4) (i32.load offset=36 (global.get $gl_sw_st))
       (i32.eq (global.get $gl_sw_r_tex) (global.get $gl_sw_white))))
 
+  (func $gl_sw_r_alpha_env (result i32)
+    (local $env i32)
+    (local.set $env (call $gl_sw_r_env))
+    (select (i32.const 3) (local.get $env) (i32.eq (local.get $env) (i32.const 13))))
+
   ;; One span of a line or point on row $y: columns $xa up to but not
   ;; including $xb, attributes from screen records $pa and $pb at those two
   ;; ends. Same state, same sampler, same depth and fog as a triangle's span.
@@ -2312,7 +2381,7 @@
       (i32.load offset=4 (local.get $s)) (i32.load offset=8 (local.get $s))
       (call $gl_sw_r_address (i32.const 2)) (call $gl_sw_r_address (i32.const 4))
       (i32.and (global.get $gl_sw_r_flags) (i32.const 1))
-      (call $gl_sw_r_env) (call $gl_sw_r_env)
+      (call $gl_sw_r_env) (call $gl_sw_r_alpha_env)
       (i32.const 0) (global.get $gl_sw_r_alpha) (i32.const 0) (i32.const 0)
       (local.get $y)
       ;; The span interpolates u*rhw, v*rhw and rhw, and divides back.
@@ -2583,7 +2652,7 @@
       (i32.load offset=4 (local.get $s)) (i32.load offset=8 (local.get $s))
       (call $gl_sw_r_address (i32.const 2)) (call $gl_sw_r_address (i32.const 4))
       (i32.and (global.get $gl_sw_r_flags) (i32.const 1))
-      (call $gl_sw_r_env) (call $gl_sw_r_env)
+      (call $gl_sw_r_env) (call $gl_sw_r_alpha_env)
       (i32.const 0)                                  ;; no colour key in GL
       (global.get $gl_sw_r_alpha)
       (i32.const 0) (i32.const 0)                    ;; dither, antialias
@@ -2962,7 +3031,7 @@
     (if (i32.or (i32.le_s (i32.load offset=8 (local.get $vp)) (i32.const 0))
                 (i32.le_s (i32.load offset=12 (local.get $vp)) (i32.const 0)))
       (then
-        (local.set $vp (i32.add (global.get $gl_sw_scratch) (i32.const 0x300)))
+        (local.set $vp (i32.add (global.get $gl_sw_scratch) (i32.const 0x7C0)))
         (i32.store (local.get $vp) (i32.const 0))
         (i32.store offset=4 (local.get $vp) (i32.const 0))
         (i32.store offset=8 (local.get $vp) (global.get $gl_sw_default_w))
