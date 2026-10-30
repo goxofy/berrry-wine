@@ -234,3 +234,48 @@ this review.
 The original installed demo reached Town through ordinary character creation on both software and WebGL using a fresh normal build at source `fadaff08a` (module SHA256 `9b57583c1ca8887f7195a268c94312ca6352eb646f4071c740c5a75aff1eb69e`). Actual before/idle/held-ArrowRight PNGs establish camera control in both arms. Owning main endpoint 1 has advancing completed native software draw calls in software and advancing actual WebGL submissions in WebGL. Observed WebGL error/fallback counters are zero, but `declinedClears=1` remains explicit. Child renderer ownership, locomotion/combat/audio/FPS and original-27 membership are not qualified. See `docs/darkstone-backend-checkpoint-20261015.md` for exact landmark counters, independent cleanup and the full recovered archive SHA256 `25252b50372c11589f30439d0a13ab39b09576b5844c1855721c26a429c2aa8f`. Earlier c7e/04ede screenshot-only evidence remains backend-unknown.
 
 2026-10-15 locomotion follow-up: the no-rebuild WebGL capture on paired module 9b57583c showed two ordinary left-click road targets changing character position relative to Town gate/tree landmarks, with a following camera and stable intervening idle. No camera key was used. Main endpoint draws advanced with zero observed errors/fallback sites/direct or fallback software completions; declinedClears remained 1. The session later hit its input-queue deadline (exit 1), so the additional final-idle screenshot is absent; both independent cleanup/preservation checks passed. Full qualified result and archive SHA56acbc258d810f764e91edcc0644e45816d4ebd668f53b8f7174e1c6f2476087 are in `docs/darkstone-backend-checkpoint-20261015.md`. This is movement evidence, not an overall successful terminal run, FPS/audio/combat qualification, or original-27 membership.
+
+## Fresh registered Chrome Town/camera run, October 30
+
+Run `scratch/runs/20261030T2058Z-darkstone-browser/` uses the retained installed
+EXE `b43db5e1…` and the complete registered `darkstone_demo` manifest, without
+an installer or any change to the missing-Setup test guard. Pinned browser
+source is main `ba96fc3ad84edee6c899762c596e8b1bf2bb2195`; all tracked pinned
+sources match that commit (25 unrelated untracked tools are separately listed).
+An in-memory private localhost server holds source/module/assets fixed during
+both arms. HTTP response bodies identify module
+`6085eff52c9be987f67d83563602a0ea89e0c4bac9c36f9cf11171bd3adada4e`
+(1,883,551 bytes); WebGL's built-in compile identity independently matches it.
+No WAT fallback occurred. The exact runtime archive, source inventory and all
+15 fixture HTTP/local hashes are retained. Chrome 151.0.7922.108 runs headless,
+1280×900, isolated guest Workers, native game canvas 640×480.
+
+Personally inspected menu, creation, party, Town-before, idle and held-Right
+captures on software and WebGL show the original CODEX warrior, Town label,
+blue mana HUD and rotating gate/tree/road landmarks. The five-second idle
+control changes only 160 software / 110 WebGL world pixels above channel delta
+20; camera input changes 446,306 / 419,279 of 515,372 world pixels. This is
+camera response, not locomotion or combat. The initial foreground palisade
+obscures much of the view; no general rendering-correctness claim follows.
+
+At Town before/idle/after, owning legacy endpoint 1 reports software completed
+native draws 726155→831005→859360 (slice seq 31868→37906→40499), zero fallbacks.
+WebGL actual submissions (`draws`) advance 30638→41656→45232 and consumed
+calls (`drawCalls`) 395419→488046→517185 (seq 25448→33252→35657), zero errors,
+zero fallbacks, zero direct/fallback software completions. `declinedClears=1`
+remains explicit. Actual WebGL renderer reports ANGLE Intel/Mesa UHD620,
+despite the probe requesting SwiftShader flags; this does not qualify physical
+hardware. Child render ownership is not attested by the collector.
+
+Use inspected geometry, not old 800×600 coordinates: normalized visible-canvas
+New Game (.5,.455), One Player (.5,.54), Create (.18,.68), name (.55,.82),
+Create/OK (.53,.95), party slot (.66,.375). One Player needed a second ordinary
+click in each arm, after the first screenshot still showed the mode menu.
+Exact input commands and landmark timestamps are retained. Both explicit quit
+commands were acknowledged and logged PAGE CLOSED; both outer processes
+returned 143 during teardown, cause unknown. Do not describe that as a clean
+terminal exit. Postflight verifies no owned Chrome or private server remains.
+No Boat was created or touched, no public deployment, no Telegram. The bounded
+Town/camera/backend route passes; audio, FPS, save/reload, child ownership,
+combat, locomotion and full-game correctness remain untested. Recovery recipe
+and portable investigation `result.json` are in the run directory.
