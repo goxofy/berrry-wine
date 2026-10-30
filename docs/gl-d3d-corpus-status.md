@@ -1,5 +1,23 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30 four further original screensaver observations
+
+Run `20261030T2226Z-d3drm-four-scenes` retains five bounded software D3DIM
+executions of Architecture, Jazz, OrganicArt and RockRoll. All exited 0;
+117 original input identities were hash-checked. Root inspected Architecture's
+textured marble interior, RockRoll's intermediate guitars/picks scene, and
+OrganicArt's extended-run green/red looping forms against orange. The initial
+OrganicArt run ended with an offscreen texture selected; the extended run's
+final capture selected the primary surface. Jazz showed small white fragments
+against black, so its full scene remains unqualified. Loading frames and
+offscreen textures are not evidence of a failed scene renderer.
+
+The exact retained module/source is `1dbddeaf` / `d4fb06b46`, as below, preceding
+the later GLTron repairs. Commands, durations, surface diagnostics, captures,
+input hashes and inspection notes are in the run. These are bounded scene
+observations, not visual correctness, browser parity, current-main validation,
+performance measurements or completion of the historical 27-app goal.
+
 ## October 30 Falling Leaves and SciFi software observations
 
 Run `20261030T2222Z-d3drm-scenes` retains original `scr_fallingl` and

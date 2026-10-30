@@ -1185,10 +1185,10 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 
 - [ ] GL/Direct3D corpus: every 3D app works on software and WebGL
   id: GLD3D-CORPUS-27-20261006
-  Latest observed gameplay (2026-10-30 22:08 UTC): Darkstone original software manual combat defeated a skeleton, LIFE17/35 and read-only EXP0→79; inspected victory-inventory.png, Telegram1656 delivered, notes be70e8f86 on main. Run20261030T2206Z-darkstone-software-combat uses retained module4649ee5f, not current concurrent HEAD. Enemy numeric HP/audio/save remain open; acknowledged quit closed page but outer143 cause is unknown.
+  Latest observed gameplay (2026-10-30 22:28 UTC): GLTron original browser WebGL round reached crash/winner and native restart; root inspected full-outcome.png (run20261030T2230Z-gltron-browser, module7e8d3194, notes802fc9e66 on main). Stale round overlays remain under repair. QuakeII actual WAT software lower-room encounters, player death/autosave reload and resumed fire documented094c6de2b; enemy damage/defeat unverified and compiled-source identity unknown. Four further screensaver apps have bounded software observations in20261030T2226Z-d3drm-four-scenes: Architecture/RockRoll/OrganicArt recognizable scenes, Jazz partial; retained1dbddeaf predates current main, no browser/parity/full27 claim.
   status: active (remaining texture source audit; both-backend gameplay incomplete)
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  worker: caesar3-population150-services-main-oct30; gltron-trail-shadow-rendering-main-oct30; quake2-original-browser-gameplay-next-main-oct30 (original gameplay lanes; all64 stranded chains disposed)
+  worker: caesar3-population150-services-main-oct30; gltron-stale-round-overlay-repair-main-oct30; halflife-uplink-original-progression-main-oct30 (original gameplay lanes; all64 stranded chains disposed)
   prev-owner: claude:1863d2b5-bc58-4c0b-9c15-00fc951f0256 (fleet stopped)
   created: 2026-10-06T02:09:48.337Z
   accepted-by: claude:80aa9e95-435b-4acb-aeea-8ae3d860613c
