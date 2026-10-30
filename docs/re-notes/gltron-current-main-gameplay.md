@@ -146,3 +146,46 @@ polygon offset, separate back-face materials, and unit-one DECAL semantics.
 This is not complete visual parity, stencil-shadow, browser or audio validation.
 All own local gameplay processes and control ports were closed. No Boat was
 used; assigned box ID/state/expiry and lifecycle handoff are not applicable.
+
+## Original browser WebGL round — 2026-10-30
+
+Evidence: `scratch/runs/20261030T2230Z-gltron-browser/investigation.json`.
+Local Chrome 151.0.7922.108 loaded the retained repaired production Wasm
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`
+(1,892,586 bytes), confirmed from the browser response body. All 92 original
+assets were rehashed and their actual served bytes matched the retained pins.
+The browser selector omits GLTron despite its existing registry entry. The
+test added an option for that entry, then used the normal launcher. An initial
+unsuccessful selection launched Notepad; its window remained behind GLTron.
+This is a local registered-app test, not a public launchability claim.
+
+Personally inspected the original GAME submenu, paused arena, yellow cycle,
+continuous blue floor grid, trails and minimap in `game-submenu.png`,
+`round-start.png`, `turn-left.png` and `turn-right.png`. Chrome keyboard input
+produced ten paired trusted keydown/up events: Return to navigate/start/unpause
+and restart, A/S to turn, and Escape to return to the menu. No guest-memory
+gameplay writes or synthetic DOM gameplay events were used.
+`full-outcome.png` shows PLAYER 1 CRASHED and PLAYER 4 WINS. Return starts a
+new moving arena with rebuilt minimap trails; `restart-left.png` and
+`restart-right.png` show the yellow cycle, bent trails and changed orientation.
+Old crash/winner text persists on these restarted frames, matching the known
+CLI limitation; these overlays cannot identify a fresh player-one death.
+`restarted-outcome.png` shows the later winner view and `escape-menu.png`
+confirms native Escape returns to the original menu. Collision debris was
+not captured at its transient peak in this run.
+
+Runtime proof identifies an actual `WebGLBackend`, WebGL 1 context, GPU frame
+layer and increasing write sequence (1593 to 1859); `gl_sw_enabled()`, software
+triangle and line counters are all zero. The context reports ANGLE/Intel Mesa;
+Chrome was launched with SwiftShader flags, so the reported renderer string
+does not independently establish physical GPU use. Cooperative guest execution
+was selected, with the game's SDL audio helper thread observed. Audio fidelity,
+browser visual parity, stencil shadows and performance remain unqualified.
+No new blocking guest trap or rendering failure required a source repair.
+
+Focused evidence checks passed: loaded module hash, all 92 served asset hashes,
+trusted paired keys, WebGL backend/counters, advancing frames and saved captures.
+Only this documentation changed. The browser, local HTTP/control servers and
+own board watcher were closed; the temporary profile was removed. Disk remained
+above 2 GB free. No Boat boxes were used or assigned (ID/state/expiry: N/A).
+Next useful work is the stale restart overlay or a fresh collision-debris capture.
