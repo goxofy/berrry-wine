@@ -132,3 +132,65 @@ the local predecessor archive. The new fork's snapshot was verified at
 original 21:17:17.472Z expiry. Parent snapshot/state were reread unchanged;
 other Boats were untouched. Explicit shutdown delegation is fulfilled and
 recovery ownership returns to the coordinator.
+
+The compiled-array blocker is an advertisement bug in the dynamic system-API
+fallback. WGL already returns NULL for `glLockArraysEXT` and
+`glUnlockArraysEXT`, but SDL retries through `GetProcAddress` on the OpenGL
+library. Its original Windows lookup at SDL VA `0x10026f40` calls WGL at
+`0x10026f51`, tests EAX, then calls the imported `GetProcAddress` at
+`0x10026f60` on failure. Our fallback previously returned fail-fast thunks for
+both names merely because they occur in the global API table.
+
+The dispatch generator now derives an unsupported GL/WGL predicate from the
+same implementation sets as WGL availability. The synthetic system-library
+`GetProcAddress` fallback returns NULL with ERROR_PROC_NOT_FOUND before reserving
+a thunk for these APIs. Real loaded PE exports still resolve before that check;
+implemented GL APIs and unrelated compatibility names retain their existing
+lookup behavior. The compiled-array handlers remain fail-fast, and the extension
+string does not advertise compiled vertex arrays. No GL command, ABI, matrix
+repair or display-list behavior was changed.
+
+`test/test-wgl-proc-availability.js` checks both resolution paths, supported
+thunk identities, NULL/error/no-thunk rejection and guest stack/GPR preservation.
+It rejects three compiled broken variants: omitted availability check, rejection
+of every API, and missing stdcall cleanup on rejection. The existing sparse-name
+and loaded-PE GetProcAddress regression, native display-list suite and locked
+full build passed. Evidence belongs to
+`scratch/runs/20261030T2057Z-tuxracer-lockarrays/`.
+
+The original 157-file retest used module
+`55de8b7c7e4557cd22244e8ff27f71685ea1d1e5d4916a67d0cc83ba1e0ab299`
+and unchanged runner `c82398cf...`, software GL and cooperative threads.
+Native Enter, P, Enter reached Frozen River and then personally inspected
+**visible race gameplay** at 15, 30 and 60 seconds: Tux, terrain, trees, race
+HUD and changing fish count/position. Both extension slots `0x575ca0/0x575ca4`
+were NULL. The batch-clock invocation ran 74.330 seconds and trapped 67.002
+seconds after race Enter, rather than reaching its scheduled 90/120s captures.
+The HUD's large time jumps are not evidence of correct timing or frame rate.
+
+The exact next blocker is `glMaterialfv` (API 3246, command 68), indirect call
+through `0x437148` at `0x422cc9`, guest EIP `0x422c80`, return `0x422ccb`,
+face `0x408`, pname `0x1602`, vector `0x074ffce4`. The trapped Wasm offset
+`0xdd576` in `$gl_wat_encode_call` is the immediate-mode guard immediately
+before `$gl_pointer_length`. Investigate material changes during Begin/End;
+this is distinct from the repaired optional compiled-array lookup.
+
+A second invocation attempted native Up/Left/Right and captured held/released
+frames, but the arrow events were only queued, not dispatched before the same
+material trap (26.250 seconds from launch). Those frames are unchanged, so
+**steering remains unverified**. A third invocation used `--real-ticks` and
+planned longer holds through actual input dispatch; it hit the same encoder
+trap before that sequence. Do not equate controller acknowledgements with
+game input consumption. Full logs, inputs, three invocations and source/hash
+evidence are retained in the run directory above.
+
+Sole task fork `bx_uuyqqtcg` was snapshot-verified at
+2026-10-30T21:05:31.499Z and verified STOPPED at 21:05:31.539Z, before its
+original 21:26:57.388Z expiry. Its stopped parent `bx_xtwrnjbs` was reread
+unchanged. All three runtime process groups were reaped. Recovery is
+`boat --json fork bx_uuyqqtcg --ttl 1800 --wait`, then supported Boat API exec
+in `/home/user/tuxracer-render`; `LOCKARRAYS-RECOVERY.txt` and the three fresh
+capture directories preserve the recipe and original assets. The two local
+archives verify all 108 plus 37 remote files by SHA256. No public deployment
+or SSH/scp was used; explicit sole-fork shutdown delegation is fulfilled and
+recovery ownership returns to the coordinator.

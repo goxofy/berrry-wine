@@ -403,6 +403,14 @@
       (then (local.set $i (call $lookup_api_id (i32.add (local.get $v_wa) (i32.const 2))))))
     (if (i32.eq (local.get $i) (i32.const 0xFFFF))
       (then (br $gpa))) ;; return 0 — function not found
+    ;; SDL retries failed WGL extension lookups through GetProcAddress. A name
+    ;; in our import table is not an implemented driver export. In particular,
+    ;; compiled vertex arrays must stay unavailable through BOTH lookup paths.
+    ;; Real mapped DLL/EXE exports have already been resolved above.
+    (if (call $gl_dynamic_api_unsupported (local.get $i))
+      (then
+        (global.set $last_error (i32.const 127)) ;; ERROR_PROC_NOT_FOUND
+        (br $gpa)))
     ;; Create thunk: store RVA and api_id at THUNK_BASE + num_thunks*8.
     ;; The index is reserved from the process-wide cursor, not taken from this
     ;; instance's count: GetProcAddress runs on whatever thread the guest calls

@@ -325,6 +325,18 @@ for (const [id, api] of apiTable.entries()) {
 }
 out.push('    (i32.const 0))', '');
 
+// SDL first asks wglGetProcAddress, then falls back to GetProcAddress on the
+// system GL library. Both routes must agree about unsupported driver APIs.
+// Real loaded PE export tables are resolved before this fallback predicate.
+out.push('  (func $gl_dynamic_api_unsupported (param $id i32) (result i32)');
+for (const [id, api] of apiTable.entries()) {
+  if (/^(?:gl[A-Z]|wgl[A-Z])/.test(api.name) &&
+      !gpuApis.has(api.name) && !nativeWglApis.has(api.name) && !nativeGlApis.has(api.name)) {
+    out.push(`    (if (i32.eq (local.get $id) (i32.const ${id})) (then (return (i32.const 1)))) ;; ${api.name}`);
+  }
+}
+out.push('    (i32.const 0))', '');
+
 function handlerCall(api) {
   const gpuOpcode = gpuApiOrder.indexOf(api.name);
   if (gpuOpcode >= 0) {
