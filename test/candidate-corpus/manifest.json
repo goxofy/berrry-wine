@@ -5178,6 +5178,19 @@
       },
       "manual": "Use tools/verify-penguin-command.js --prepare ORIGINAL CRT FRESH_DEST to prepare the exact accepted recovery game subset, including standing authentic msvcrt.dll. No acquisition packages, installer, executable patching or replacement libraries. See test/candidate-corpus/penguin-command-README.md.",
       "notes": "91 original runtime game files / 1778442 bytes. Historical b41a7c5 module/runner evidence: Normal Game, score 160 to 240 and Wave 2, Hiscores/menu; no isolated projectile causality, audio or current-main runtime qualification. Local selector/corpus route is filesystem tested only; ordinary loading depends on the shared manifest boundary adapter."
+    },
+    {
+      "id": "tzar-the-burden-of-the-crown",
+      "name": "Tzar: The Burden of the Crown",
+      "kind": "game",
+      "version": "Windows (2000); owner-requested title, release package not yet verified",
+      "executables": [],
+      "sourcePage": "https://x.com/oldyzach/status/2115839577156161544",
+      "license": "Proprietary title; no acquisition or redistribution permission established by the linked post.",
+      "localOnly": true,
+      "packages": [],
+      "manual": "Requested via Telegram inbox 135 on 2026-10-30. Locate an authorized original demo or owner-supplied installation and record source, hashes, executable and complete assets before adding a launch route.",
+      "notes": "Requested, untested catalog entry. No executable or game assets acquired; no runtime or gameplay qualification. See docs/re-notes/tzar-the-burden-of-the-crown.md."
     }
   ]
 }
