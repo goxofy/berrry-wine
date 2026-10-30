@@ -133,6 +133,59 @@ original 21:17:17.472Z expiry. Parent snapshot/state were reread unchanged;
 other Boats were untouched. Explicit shutdown delegation is fulfilled and
 recovery ownership returns to the coordinator.
 
+The material Begin/End repair on 2026-10-30 permits `glMaterialfv`,
+`glMaterialf` and `glMateriali` during an immediate primitive. Validation runs
+before observers or list capture; invalid faces/pnames and out-of-range
+shininess latch GL errors. Before each valid material update, pending vertices
+are lit using the preceding material through the existing WAT lighting
+evaluator. The primitive keeps its topology and current colour. Packed mode
+bit `0x20000` carries these already-lit colours through software, render-worker
+and JS replay without applying lighting again; JS restores lighting after
+the draw, including on exceptions. Display lists own material vector bytes.
+This reuses the existing lighting model and does not establish new back-face,
+two-sided-lighting or colour-material conformance.
+
+The interrupted worker's complete archive was recovered without restarting its
+session or duplicating its transfer. All 140 remote files and the 8,107,379-byte
+archive were SHA256-verified again. The self-contained closeout is
+`scratch/runs/20261030T2127Z-tuxracer-closeout/`; the earlier
+`20261030T2115Z-tuxracer-material` evidence remains unchanged. Its retained
+source manifest and staged 286-file verification tie the observations to module
+`9e37f0f17c3106a6a6665c7ea3d408c6d924c839b0d7a4fd7961b095c954928f`
+and runner `c82398cf64e381ef2a729696280e4eab858eb51b7deb956f2b150281691b5748`.
+All five repaired runtime source files still matched that manifest on takeover.
+The original 157-file canonical mount preflight passed. The archived module
+is preserved separately from subsequent shared-tree builds.
+
+Two software-rendered invocations used native Enter, P, Enter. The first used
+the batch clock and exited normally after 52.625 seconds. The second used
+`--real-ticks --no-threads` (cooperative guest threads), ran 127.414 seconds,
+and retained race frames through 120 seconds after race Enter, with no material
+trap and exit 0. Left/Right/Up events were actually dispatched; the relocated,
+verified SDL key array records each key changing 0→1→0 around its hold.
+Personally inspected held-Left and held-Right frames show different turns and
+terrain positions. The final inspected frame shows Tux descending, fish **8**,
+speed **11 km/h**, and HUD time **01:46.79**. This establishes visible bounded
+race progression and steering; the 120-second controller interval is not the
+HUD elapsed time. Race completion, competitive timing, audio playback,
+browser/WebGL gameplay and sustained performance remain unverified.
+
+Focused material/list/ABI/colour/topology/software/JS-replay checks and the
+encoder, matrix-observer, software-raster and shared-render-worker controls
+passed again on takeover, together with the locked full build. Three prior
+broken variants (late lighting, borrowed list vector, skipped validation) were
+rejected. No further runtime blocker emerged in the retained run.
+
+Only explicitly delegated Boat `bx_fsqw4bh6` was touched. Its named snapshot is
+`tuxracer-material-oct30-retained`; final snapshot verification completed at
+2026-10-30T21:28:02.337Z and STOPPED was verified at 21:28:02.375Z, before
+the original expiry 21:42:44.456Z. Both runtime groups report reaped descendants.
+Recovery uses the saved snapshot and `/home/user/tuxracer-render`, or the local
+runtime bundle, exact module, original manifest recipe and capture scripts.
+The next useful gameplay gate is a complete Frozen River run with timing and
+finish-state verification. No parent box, public deployment or Telegram action
+was used.
+
 The compiled-array blocker is an advertisement bug in the dynamic system-API
 fallback. WGL already returns NULL for `glLockArraysEXT` and
 `glUnlockArraysEXT`, but SDL retries through `GetProcAddress` on the OpenGL

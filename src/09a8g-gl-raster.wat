@@ -2895,7 +2895,7 @@
     (if (i32.eqz (global.get $gl_sw_enabled)) (then (return)))
     ;; The encoder has already expanded strips, loops and fans: mode 0 is
     ;; single points, 1 separate lines, 4 separate triangles.
-    (local.set $mode (i32.load offset=8 (local.get $start)))
+    (local.set $mode (i32.and (i32.load offset=8 (local.get $start)) (i32.const 0xFFFDFFFF)))
     (if (i32.eq (local.get $mode) (i32.const 0x10000)) (then
       (call $gl_bitmap_sw_draw (local.get $start) (local.get $vertices)) (return)))
     (local.set $step (if (result i32) (i32.eqz (local.get $mode))
@@ -2940,8 +2940,9 @@
       (call $gl_mtx_stack_top (local.get $b) (i32.const 1))
       (call $gl_mtx_stack_top (local.get $b) (i32.const 0)))
     (global.set $gl_sw_mv (call $gl_mtx_stack_top (local.get $b) (i32.const 0)))
-    (global.set $gl_sw_lit (i32.ne (i32.and (i32.load (global.get $gl_sw_st))
-      (i32.const 128)) (i32.const 0)))
+    (global.set $gl_sw_lit (i32.and
+      (i32.eqz (i32.and (i32.load offset=8 (local.get $start)) (i32.const 0x20000)))
+      (i32.ne (i32.and (i32.load (global.get $gl_sw_st)) (i32.const 128)) (i32.const 0))))
     (global.set $gl_sw_sphere (i32.and
       (i32.eq (i32.and (i32.load (global.get $gl_sw_st)) (i32.const 0x60000)) (i32.const 0x60000))
       (i32.eq (global.get $gl_sw_texgen_modes) (i32.const 0x24022402))))  ;; SPHERE_MAP x2
@@ -3236,7 +3237,7 @@
     (global.set $gl_sw_wk_flags1 (i32.load offset=1028 (local.get $snap)))
     (global.set $gl_sw_wk_border0 (i32.load offset=1032 (local.get $snap)))
     (global.set $gl_sw_wk_border1 (i32.load offset=1036 (local.get $snap)))
-    (local.set $mode (i32.load offset=8 (local.get $rec)))
+    (local.set $mode (i32.and (i32.load offset=8 (local.get $rec)) (i32.const 0xFFFDFFFF)))
     (local.set $step (select (i32.const 1)
       (select (i32.const 2) (i32.const 3) (i32.eq (local.get $mode) (i32.const 1)))
       (i32.eqz (local.get $mode))))

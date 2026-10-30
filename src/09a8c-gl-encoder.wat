@@ -25,6 +25,9 @@
   (global $gl_immediate_guest (mut i32) (i32.const 0))
   (global $gl_immediate_capacity (mut i32) (i32.const 0))
   (global $gl_immediate_floats (mut i32) (i32.const 0))
+  ;; Only material-changing primitives use prelit transport mode bit 0x20000.
+  (global $gl_material_prelit (mut i32) (i32.const 0))
+  (global $gl_material_lit_floats (mut i32) (i32.const 0))
   (global $gl_immediate_mode (mut i32) (i32.const -1))
   (global $gl_shade_model (mut i32) (i32.const 0x1D01))
   (global $gl_current_context (mut i32) (i32.const 0))
@@ -250,6 +253,33 @@
     (f32.store offset=72 (local.get $p) (global.get $gl_tex1_q))
     (global.set $gl_immediate_floats (i32.add (global.get $gl_immediate_floats) (i32.const 19))))
 
+  ;; Finalize only vertices preceding the next material update. Keep the
+  ;; original topology and current colour untouched. The existing lighting
+  ;; evaluator writes into scratch first (COLOR_MATERIAL reads input colour).
+  (func $gl_material_light_pending
+    (local $b i32) (local $caps i32) (local $saved i32) (local $v i32) (local $k i32)
+    (local.set $b (call $gl_mtx_block))
+    (local.set $caps (i32.load offset=9036 (local.get $b)))
+    (if (i32.eqz (i32.and (local.get $caps) (i32.const 128))) (then (return)))
+    (local.set $saved (i32.load (global.get $gl_sw_st)))
+    (i32.store (global.get $gl_sw_st) (local.get $caps))
+    (call $gl_sw_light_setup (local.get $b))
+    (block $done (loop $vertices
+      (br_if $done (i32.ge_u (global.get $gl_material_lit_floats) (global.get $gl_immediate_floats)))
+      (local.set $v (i32.add (global.get $gl_immediate_wa)
+        (i32.shl (global.get $gl_material_lit_floats) (i32.const 2))))
+      (call $gl_sw_light_vertex (local.get $v) (i32.add (global.get $gl_sw_scratch) (i32.const 0x500)))
+      (local.set $k (i32.const 0))
+      (loop $channels
+        (f32.store (i32.add (i32.add (local.get $v) (i32.const 12)) (local.get $k))
+          (f32.min (f32.const 1) (f32.max (f32.const 0)
+            (f32.load (i32.add (i32.add (global.get $gl_sw_scratch) (i32.const 0x500)) (local.get $k))))))
+        (local.set $k (i32.add (local.get $k) (i32.const 4)))
+        (br_if $channels (i32.lt_u (local.get $k) (i32.const 16))))
+      (global.set $gl_material_lit_floats (i32.add (global.get $gl_material_lit_floats) (i32.const 19)))
+      (br $vertices)))
+    (i32.store (global.get $gl_sw_st) (local.get $saved)))
+
   (func $gl_copy_vertex (param $dst i32) (param $index i32) (param $color_index i32)
     (local $src i32) (local $csrc i32) (local $i i32) (local $from i32)
     ;; Both source vertices belong to the same verified affine allocation.
@@ -320,7 +350,8 @@
     (local.set $start (i32.add (global.get $gl_stream_wa) (global.get $gl_stream_used_bytes)))
     (i32.store (local.get $start) (i32.const 32))
     (i32.store offset=4 (local.get $start) (i32.const 0x10000))
-    (i32.store offset=8 (local.get $start) (local.get $mode))
+    (i32.store offset=8 (local.get $start) (i32.or (local.get $mode)
+      (select (i32.const 0x20000) (i32.const 0) (global.get $gl_material_prelit))))
     (i32.store offset=12 (local.get $start) (i32.const 0))
     (i32.store offset=16 (local.get $start) (i32.const 0))
     (i32.store offset=20 (local.get $start) (i32.const 0))
@@ -351,6 +382,7 @@
     (local $i i32) (local $start i32) (local $n i32) (local $need i32) (local $q i32)
     (local $flat i32) (local $prov i32) (local $a i32) (local $b i32) (local $c i32)
     (local $out_count i32) (local $group i32) (local $max_chunk i32) (local $first_chunk i32)
+    (if (global.get $gl_material_prelit) (then (call $gl_material_light_pending)))
     (local.set $count (i32.div_u (global.get $gl_immediate_floats) (i32.const 19)))
     (local.set $mode (global.get $gl_immediate_mode))
     (global.set $gl_immediate_mode (i32.const -1))
@@ -622,6 +654,12 @@
     ;; (glPushAttrib/glPopAttrib) return 1 from it and would otherwise never
     ;; reach the observer, leaving the mirror silently stale instead of
     ;; marked untrusted. See src/09a8f-gl-matrix.wat.
+    (if (i32.and (i32.ge_s (global.get $gl_immediate_mode) (i32.const 0))
+        (i32.or (i32.eq (local.get $op) (i32.const 68))
+                (i32.or (i32.eq (local.get $op) (i32.const 71)) (i32.eq (local.get $op) (i32.const 92))))) (then
+      (call $gl_material_light_pending)
+      (global.set $gl_material_prelit (i32.ne
+        (i32.and (i32.load offset=9036 (call $gl_mtx_block)) (i32.const 128)) (i32.const 0)))))
     (call $gl_mtx_observe (local.get $op) (local.get $stack))
     ;; glClear/glClearColor for the WAT software target; inert when it is off.
     (call $gl_sw_observe (local.get $op) (local.get $stack))
@@ -638,9 +676,13 @@
     (if (i32.eq (local.get $op) (i32.const 21)) (then
       (if (i32.ge_s (global.get $gl_immediate_mode) (i32.const 0)) (then (unreachable)))
       (global.set $gl_immediate_mode (i32.load offset=4 (local.get $stack)))
+      (global.set $gl_material_prelit (i32.const 0))
+      (global.set $gl_material_lit_floats (i32.const 0))
       (global.set $gl_immediate_floats (i32.const 0)) (return (i32.const 0))))
     (if (i32.eq (local.get $op) (i32.const 22)) (then
-      (drop (call $gl_finish_immediate)) (return (i32.const 0))))
+      (drop (call $gl_finish_immediate))
+      (global.set $gl_material_prelit (i32.const 0))
+      (global.set $gl_material_lit_floats (i32.const 0)) (return (i32.const 0))))
     (if (i32.eq (local.get $op) (i32.const 23)) (then
       (global.set $gl_color_r (f32.load offset=4 (local.get $stack)))
       (global.set $gl_color_g (f32.load offset=8 (local.get $stack)))
@@ -675,7 +717,9 @@
           (global.set $gl_tex_t (f32.load offset=12 (local.get $stack)))
           (global.set $gl_tex_r (f32.const 0)) (global.set $gl_tex_q (f32.const 1))))
       (return (i32.const 0))))
-    (if (i32.ge_s (global.get $gl_immediate_mode) (i32.const 0)) (then (unreachable)))
+    (if (i32.and (i32.ge_s (global.get $gl_immediate_mode) (i32.const 0))
+        (i32.eqz (i32.or (i32.eq (local.get $op) (i32.const 68))
+                        (i32.or (i32.eq (local.get $op) (i32.const 71)) (i32.eq (local.get $op) (i32.const 92)))))) (then (unreachable)))
     (local.set $spec (call $gl_pointer_length (local.get $op) (local.get $stack)))
     (local.set $ptr (i32.wrap_i64 (local.get $spec)))
     (local.set $len (i32.and
@@ -706,6 +750,8 @@
     (local.get $result))
 
   (func $gl_wat_encoder_reset
+    (global.set $gl_material_prelit (i32.const 0))
+    (global.set $gl_material_lit_floats (i32.const 0))
     (call $gl_list_reset)
     (drop (call $gl_wat_stream_flush))
     (global.set $gl_stream_used_bytes (i32.const 0))

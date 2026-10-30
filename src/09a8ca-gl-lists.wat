@@ -98,6 +98,33 @@
       (local.set $p (i32.load (local.get $p))) (br $play)))
     (i32.store offset=28 (local.get $ctx) (i32.sub (i32.load offset=28 (local.get $ctx)) (i32.const 1))))
 
+  ;; Material validation precedes capture and observers, so rejected calls
+  ;; cannot light pending vertices, mutate state or enter a display list.
+  (func $gl_material_validate (param $ctx i32) (param $op i32) (param $stack i32) (result i32)
+    (local $face i32) (local $name i32) (local $v f32)
+    (if (i32.eqz (i32.or (i32.eq (local.get $op) (i32.const 68))
+                        (i32.or (i32.eq (local.get $op) (i32.const 71)) (i32.eq (local.get $op) (i32.const 92))))) (then (return (i32.const 0))))
+    (local.set $face (i32.load offset=4 (local.get $stack)))
+    (local.set $name (i32.load offset=8 (local.get $stack)))
+    (if (i32.eqz (i32.or
+        (i32.or (i32.eq (local.get $face) (i32.const 0x404)) (i32.eq (local.get $face) (i32.const 0x405)))
+        (i32.eq (local.get $face) (i32.const 0x408)))) (then
+      (call $gl_list_error (local.get $ctx) (i32.const 0x500)) (return (i32.const 1))))
+    (if (i32.or
+        (i32.and (i32.or (i32.eq (local.get $op) (i32.const 71)) (i32.eq (local.get $op) (i32.const 92))) (i32.ne (local.get $name) (i32.const 0x1601)))
+        (i32.eqz (i32.or (i32.le_u (i32.sub (local.get $name) (i32.const 0x1200)) (i32.const 2))
+                        (i32.le_u (i32.sub (local.get $name) (i32.const 0x1600)) (i32.const 3))))) (then
+      (call $gl_list_error (local.get $ctx) (i32.const 0x500)) (return (i32.const 1))))
+    (if (i32.eq (local.get $name) (i32.const 0x1601)) (then
+      (local.set $v (if (result f32) (i32.eq (local.get $op) (i32.const 68))
+        (then (f32.load (call $g2w (i32.load offset=12 (local.get $stack)))))
+        (else (if (result f32) (i32.eq (local.get $op) (i32.const 92))
+          (then (f32.convert_i32_s (i32.load offset=12 (local.get $stack))))
+          (else (f32.load offset=12 (local.get $stack)))))))
+      (if (i32.or (f32.lt (local.get $v) (f32.const 0)) (f32.gt (local.get $v) (f32.const 128))) (then
+        (call $gl_list_error (local.get $ctx) (i32.const 0x501)) (return (i32.const 1))))))
+    (i32.const 0))
+
   ;; Returning 1 means consumed; $gl_list_result carries an API return value.
   ;; Deliberately unsupported commands trap while compiling, BEFORE observers
   ;; can execute them. Pointer/array/image capture is not silently borrowed.
@@ -119,6 +146,8 @@
           (i32.ne (i32.load offset=36 (local.get $ctx)) (i32.const 0)))) (then
       (call $gl_list_error (local.get $ctx) (i32.const 0x502))
       (return (i32.const 1))))
+    (if (call $gl_material_validate (local.get $ctx) (local.get $op) (local.get $stack))
+      (then (return (i32.const 1))))
     (local.set $id (i32.load offset=4 (local.get $stack)))
     (if (call $gl_stencil_validate (local.get $ctx) (local.get $op) (local.get $stack))
       (then (return (i32.const 1))))
@@ -244,7 +273,8 @@
           (call $gl_list_error (local.get $ctx) (i32.const 0x502)) (return (i32.const 1))))
         (i32.store offset=36 (local.get $ctx) (i32.const 0))))
       (if (i32.or (call $gl_list_scalar_command (local.get $op))
-          (i32.eq (local.get $op) (i32.const 109))) (then
+          (i32.or (i32.eq (local.get $op) (i32.const 109))
+                  (i32.eq (local.get $op) (i32.const 68)))) (then
         (local.set $p (call $gl_list_alloc (i32.const 88)))
         (if (i32.eqz (local.get $p)) (then
           (call $gl_list_error (local.get $ctx) (i32.const 0x505)) (return (i32.const 1))))
@@ -255,6 +285,15 @@
           (call $gl_copy_from_guest (i32.add (local.get $p) (i32.const 16))
             (i32.load offset=4 (local.get $stack)) (i32.const 64))
           (i32.store offset=12 (local.get $p) (call $w2g (i32.add (local.get $p) (i32.const 16))))))
+        (if (i32.eq (local.get $op) (i32.const 68)) (then
+          ;; stack occupies node +8..+23; payload follows, owned by node.
+          (call $gl_copy_from_guest (i32.add (local.get $p) (i32.const 24))
+            (i32.load offset=12 (local.get $stack))
+            (select (i32.const 4)
+              (select (i32.const 12) (i32.const 16)
+                (i32.eq (i32.load offset=8 (local.get $stack)) (i32.const 0x1603)))
+              (i32.eq (i32.load offset=8 (local.get $stack)) (i32.const 0x1601))))
+          (i32.store offset=20 (local.get $p) (call $w2g (i32.add (local.get $p) (i32.const 24))))))
         (local.set $b (i32.load offset=20 (local.get $ctx)))
         (if (local.get $b) (then (i32.store (local.get $b) (local.get $p)))
           (else (i32.store offset=16 (local.get $ctx) (local.get $p))))

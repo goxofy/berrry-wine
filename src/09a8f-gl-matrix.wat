@@ -40,6 +40,7 @@
   ;;   +9008 viewport x, y, width, height (4 i32, as glViewport was given them)
   ;;   +9024 depth range near, far (2 f32, demoted from GL's GLclampd)
   ;;   +9032 depth of the attribute stack, the count of saved frames
+  ;;   +9036 lighting enables (software cap bit layout), per context
   ;;   +9040 attribute stack, 16 frames of 112 bytes (1792 bytes)
   ;;         (ends at +10832)
   ;;
@@ -380,6 +381,7 @@
       (i32.add (local.get $b) (i32.const 8352)) (i32.const 16))
     (memory.copy (i32.add (local.get $f) (i32.const 24))
       (i32.add (local.get $b) (i32.const 8880)) (i32.const 80))
+    (i32.store offset=104 (local.get $f) (i32.load offset=9036 (local.get $b)))
     (i32.store offset=9032 (local.get $b) (i32.add (local.get $d) (i32.const 1))))
 
   ;; glPopAttrib. An empty stack is a no-op that latches GL_STACK_UNDERFLOW --
@@ -400,6 +402,8 @@
       (i32.add (local.get $f) (i32.const 8)) (i32.const 16))
     (memory.copy (i32.add (local.get $b) (i32.const 8880))
       (i32.add (local.get $f) (i32.const 24)) (i32.const 80))
+    (if (i32.and (i32.load (local.get $f)) (i32.const 0x2040))
+      (then (i32.store offset=9036 (local.get $b) (i32.load offset=104 (local.get $f)))))
     (i32.store offset=9032 (local.get $b) (local.get $d)))
 
   ;; The generated factors below are built in the staging slot as f32, which is
@@ -812,7 +816,20 @@
     (i32.add (local.get $b) (i32.const 8992)))
 
   (func $gl_mtx_observe (param $op i32) (param $stack i32)
-    (local $b i32)
+    (local $b i32) (local $bit i32)
+    ;; Lighting enables are needed even when the software target is disabled:
+    ;; an immediate primitive with material changes is lit at vertex time.
+    (if (i32.or (i32.eq (local.get $op) (i32.const 8))
+                (i32.eq (local.get $op) (i32.const 10))) (then
+      (local.set $bit (i32.and (call $gl_sw_cap_bit (i32.load offset=4 (local.get $stack)))
+        (i32.const 0x1FF80)))
+      (if (local.get $bit) (then
+        (local.set $b (call $gl_mtx_block))
+        (i32.store offset=9036 (local.get $b) (select
+          (i32.or (i32.load offset=9036 (local.get $b)) (local.get $bit))
+          (i32.and (i32.load offset=9036 (local.get $b)) (i32.xor (local.get $bit) (i32.const -1)))
+          (i32.eq (local.get $op) (i32.const 10))))))
+      (return)))
     ;; Cheapest possible rejection of the common case: almost every GL call in
     ;; a frame is a vertex, a texture bind or a state toggle, none of which
     ;; reach this state at all. Everything handled below is in 32..41 (the
@@ -946,6 +963,11 @@
         (call $g2w (i32.load offset=8 (local.get $stack)))) (return)))
 
     ;; 71 glMaterialf(face, pname, GLfloat), 79 glFogf(pname, GLfloat).
+    (if (i32.eq (local.get $op) (i32.const 92))
+      (then (call $gl_mtx_set_material
+        (i32.load offset=8 (local.get $stack))
+        (call $gl_mtx_scalar (local.get $b)
+          (f32.convert_i32_s (i32.load offset=12 (local.get $stack))))) (return)))
     (if (i32.eq (local.get $op) (i32.const 71))
       (then (call $gl_mtx_set_material
         (i32.load offset=8 (local.get $stack))
