@@ -1,5 +1,52 @@
 # Darkstone demo 1.0
 
+## Software manual combat, October 30
+
+Run `scratch/runs/20261030T2206Z-darkstone-software-combat/` establishes
+original skeleton combat on the software backend. It reuses the retained
+committed-main `10952264c` runtime compiled at 21:54:53.532 UTC, module
+`4649ee5fcf5a10a0212e690d826940bf0ba6445bea678bcac3978c0464bd67c6`
+(1,891,324 bytes), independently hashed from the actual HTTP response at
+22:03:35.209 UTC. All 15 original installed files match before/after hashes.
+Chrome 151.0.7922.108 uses isolated guest Workers and software D3DIM.
+No production code, guest memory, exports, saves or input queues were changed.
+
+The original keyboard configuration/readme map `F` to automatic/manual combat.
+Native `F` in Town visibly displays **Combat Mode: Manual**; native `I`
+shows **LIFE 35/35, MANA 25/25**. The established Town exit and ground clicks
+`(.65,.35)`, `(.78,.60)` reach the skeleton clearing. Read-only state before
+attack at 22:06:52.082 UTC is **LIFE 32/35, EXP 0**: the enemy has already
+damaged CODEX while manual mode remains selected. Native left holds at
+`(.64,.48)` for 4.5 seconds and `(.66,.48)` for 20 seconds leave the enemy
+alive. After correcting the target to its torso, native left at
+`(.625,.46)` from **22:07:42.698 UTC for 18 seconds** defeats it.
+Personally inspected `third-settled.png` shows its absence; subsequent
+`victory-inventory.png` and `survival-final.png` confirm survival with
+**LIFE 17/35, MANA 25/25**, level 1 and an advanced experience bar.
+The successful hold is not represented as one instantaneous hit.
+
+`numeric-state.json` records **EXP 0 → 79** and health through the encounter.
+The samples only read shared linear memory and locate the live CODEX record;
+the original executable's inventory disassembly identifies name at entity
+`+0x30` (`0x4b0756`), level at `+0xca` and experience at `+0xcc`
+(`0x4b0aba`, feeding the experience bar). In this run the name is at linear
+`0x6ec03c`, so experience is at `0x6ec0d8`. These are run-specific observed
+addresses, not a production ABI. The visible inventory independently checks
+health and the experience-bar increase; it does not print numeric experience.
+Unused copies of the character record remain unchanged and are retained in
+the raw samples. Enemy numeric HP was not decoded.
+
+Owning main legacy endpoint 1 has advancing native software completed draws,
+zero observed fallback software completions and no guest trap in captured
+slices. Exact counters, native inputs, times, hashes and personally inspected
+screenshots are retained in the run. A read-only inspection connection briefly
+resized the page to 800×600; it was restored to 1280×900 before the attack.
+The game canvas remains 640×480. Child renderer ownership, audio, FPS,
+save/reload and broad rendering parity remain untested. No production blocker
+reproduced and no repair was invented. Quit was acknowledged and PAGE CLOSED
+logged, but the outer browser harness returned 143, cause unknown; local
+process/port cleanup is recorded separately. No Boat or assigned box was used.
+
 ## Original skeleton combat, October 30
 
 Run `scratch/runs/20261030T2158Z-darkstone-combat/` personally inspected
