@@ -38,6 +38,7 @@
   ;;   +3904  legacy clip normalization (sx,tx,sy,ty,sz,tz) (24)
   ;;   +3928  legacy clip normalization enabled        (i32, 4)
   ;;   +3932  immutable legacy creation version (0=other) (i32, 4)
+  ;;   +3936  active legacy TEXTUREMAPBLEND mode (2/4, or 0 for TSS) (4)
   ;;   +3968  render Worker producer descriptor scratch (32)
   ;;   +4000  D3DCLIPSTATUS round-trip storage          (24)
   ;;   +4024  texture-transform block guest ptr        (i32, 4)  ($d3dim_tex_block)
@@ -1390,6 +1391,13 @@
               (then (call $host_dx_trace (i32.const 29) (local.get $rs)
                       (local.get $val) (i32.const 0) (i32.const 0))))
             (call $gs32 (local.get $slot) (local.get $val))
+            ;; Legacy texture blending is a separate effective stage state.
+            ;; Preserve the application's raw TSS values for GetTextureStageState.
+            (if (i32.eq (local.get $rs) (i32.const 21)) (then
+              (call $gs32 (i32.add (local.get $state) (i32.const 3936))
+                (select (local.get $val) (i32.const 0)
+                  (i32.or (i32.eq (local.get $val) (i32.const 2))
+                          (i32.eq (local.get $val) (i32.const 4)))))))
             ;; D3DRENDERSTATE_TEXTUREHANDLE = 1 in the v1 execute-buffer API.
             (if (i32.eq (local.get $rs) (i32.const 1))
               (then
@@ -3545,7 +3553,29 @@
       (i32.shl (i32.sub (local.get $xtype) (i32.const 16)) (i32.const 6))))
 
   (func $d3dim_tss_load (param $state i32) (param $stage i32) (param $type i32) (result i32)
-    (local $addr i32)
+    (local $addr i32) (local $legacy i32) (local $tex i32) (local $fmt i32)
+    (if (i32.and (i32.ne (local.get $state) (i32.const 0)) (i32.eqz (local.get $stage))) (then
+      (local.set $legacy (call $gl32 (i32.add (local.get $state) (i32.const 3936))))
+      (if (local.get $legacy) (then
+        (if (i32.eq (local.get $type) (i32.const 1)) (then (return (i32.const 4))))
+        (if (i32.or (i32.eq (local.get $type) (i32.const 2))
+                    (i32.eq (local.get $type) (i32.const 5))) (then (return (i32.const 2))))
+        (if (i32.or (i32.eq (local.get $type) (i32.const 3))
+                    (i32.eq (local.get $type) (i32.const 6))) (then (return (i32.const 1))))
+        (if (i32.eq (local.get $type) (i32.const 4)) (then
+          ;; MODULATEALPHA multiplies texture and diffuse alpha. MODULATE
+          ;; selects texture alpha only when the original format has alpha;
+          ;; decoding RGB565 into RGBA must not turn it into an alpha texture.
+          (if (i32.eq (local.get $legacy) (i32.const 4)) (then (return (i32.const 4))))
+          (local.set $tex (call $d3dim_texture_entry_from_slot
+            (call $gl32 (i32.add (local.get $state) (global.get $D3DIM_OFF_TEX_STAGE)))))
+          (if (i32.eqz (local.get $tex)) (then (return (i32.const 2))))
+          (local.set $fmt (call $dx_surf_fmt_get (local.get $tex)))
+          (return (if (result i32)
+            (i32.or (i32.or (i32.eq (local.get $fmt) (i32.const 1))
+                            (i32.eq (local.get $fmt) (i32.const 2)))
+                    (i32.eq (local.get $fmt) (i32.const 6)))
+            (then (i32.const 3)) (else (i32.const 2))))))))))
     (local.set $addr (call $d3dim_tss_addr (local.get $state) (local.get $stage) (local.get $type)))
     (if (local.get $addr) (then (return (call $gl32 (local.get $addr)))))
     (i32.const 0))
@@ -3628,14 +3658,20 @@
     (local.set $state (call $d3ddev_state (local.get $this)))
     (if (i32.eqz (local.get $state)) (then (i32.store offset=0 (global.get $reg_base) (i32.const 0)) (return)))
     (local.set $addr (call $d3dim_tss_addr (local.get $state) (local.get $stage) (local.get $type)))
-    (if (local.get $addr) (then (call $gs32 (local.get $addr) (local.get $val))))
+    (if (local.get $addr) (then
+      (call $gs32 (local.get $addr) (local.get $val))
+      (if (i32.and (i32.eqz (local.get $stage))
+            (i32.and (i32.ge_u (local.get $type) (i32.const 1))
+                     (i32.le_u (local.get $type) (i32.const 6)))) (then
+        (call $gs32 (i32.add (local.get $state) (i32.const 3936)) (i32.const 0))))))
     (i32.store offset=0 (global.get $reg_base) (i32.const 0)))
 
   (func $d3dim_get_tss (param $this i32) (param $stage i32) (param $type i32) (param $out i32)
-    (local $state i32) (local $val i32)
+    (local $state i32) (local $val i32) (local $addr i32)
     (if (i32.eqz (local.get $out)) (then (i32.store offset=0 (global.get $reg_base) (i32.const 0)) (return)))
     (local.set $state (call $d3ddev_state (local.get $this)))
-    (local.set $val (call $d3dim_tss_load (local.get $state) (local.get $stage) (local.get $type)))
+    (local.set $addr (call $d3dim_tss_addr (local.get $state) (local.get $stage) (local.get $type)))
+    (if (local.get $addr) (then (local.set $val (call $gl32 (local.get $addr)))))
     (call $gs32 (local.get $out) (local.get $val))
     (i32.store offset=0 (global.get $reg_base) (i32.const 0)))
 
