@@ -17,6 +17,7 @@ const apps = {
   wordpad:   { exe: 'binaries/win98-apps/wordpad.exe' },
   mspaint98: { exe: 'binaries/win98-apps/mspaint.exe' },
   write:     { exe: 'binaries/win98-apps/write.exe' },
+  scr_architec: { exe: 'binaries/screensavers/ARCHITEC.SCR', args: '/s' },
 };
 
 function makeShell(opts = {}) {
@@ -67,6 +68,10 @@ function makeShell(opts = {}) {
     'falls back to the registered exe basename when the key differs');
   assert.strictEqual(shell.appKeyForExe('nosuchprogram.exe'), null,
     'an unregistered exe resolves to nothing');
+  assert.strictEqual(shell.appKeyForExe('ARCHITEC.SCR'), 'scr_architec',
+    'native applet Preview resolves a registered saver basename');
+  assert.strictEqual(shell.appKeyForExe('architec.scr'), 'scr_architec');
+  assert.strictEqual(shell.appKeyForExe('ARCHITEC.SCR.txt'), null);
   assert.strictEqual(shell.appKeyForExe(''), null);
   console.log('ok: exe name resolution');
 }
@@ -184,7 +189,7 @@ function makeShell(opts = {}) {
     'browser host offers relative and absolute executable names to the caller VFS');
   const relativeLaunch = hostSource.indexOf('if (!absolute && shell.launchVfsExe && shell.launchVfsExe(launchFile, self, launchDir, params, launchOpts))');
   assert(relativeLaunch >= 0 && relativeLaunch <
-      hostSource.indexOf("if (/\\.exe$/i.test(file) && shell.launchExe(file, launchOpts))"),
+      hostSource.indexOf("if (/\\.(exe|scr)$/i.test(file) && shell.launchExe(file, launchOpts))"),
     'a bare name in the caller current directory (NFS II autorun "setup.exe") beats the registry basename match');
   assert.strictEqual(
     (shellSource.match(/queuePendingLaunch\(key, SINGLE_APP\(\), launchOpts\);/g) || []).length,

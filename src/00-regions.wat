@@ -1070,3 +1070,7 @@
   ;; Retained CACA000A owners: sixteen thread slots, 64 records of 32 bytes.
   (region.declare $MM_CALLBACK_CONTEXTS (size 0x00008000) (align 16)
     (owner "09a-handlers.wat:$MM_CALLBACK_CONTEXTS"))
+
+  ;; Standalone Screen Savers applet strings, appended to preserve allocations.
+  (region.declare $SCRSAVE_TEXT (size 0x00001000) (align 0x00000010)
+    (owner "09ca-screensavers.wat:$SCRSAVE_TEXT"))
