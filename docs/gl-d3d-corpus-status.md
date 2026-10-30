@@ -1,5 +1,17 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30 Boids browser animation
+
+The original `dx_boids` sample rendered moving colored flock triangles and
+cyan boundaries in two inspected browser captures. Run
+`scratch/runs/20261030T2255Z-dx-boids-browser/` pins the loaded module
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`
+(compiled source revision unknown), 39 inputs, served asset hashes, WebGL
+host selection and a `D3DIMGpu` instance. Chrome used ANGLE SwiftShader and
+guest threads. Readback-shadow performance warnings remain; this is animated
+render evidence, not complete correctness, paired software parity, FPS, or
+recovery of the original 27-member list. Browser and servers were closed.
+
 ## October 30 Pawn browser move
 
 Run `20261030T2250Z-pawn-browser-move` adds inspected original Pawn browser

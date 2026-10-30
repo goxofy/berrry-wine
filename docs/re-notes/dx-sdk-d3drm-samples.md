@@ -1,5 +1,22 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 30: original Boids browser animation
+
+`scratch/runs/20261030T2255Z-dx-boids-browser/investigation.json` records a
+fresh original `dx_boids` run. Both inspected frames show colored flock
+triangles and cyan boundary lines, with positions changing between captures.
+This registered sample uses immediate mode, separate from the retained-mode
+samples discussed below.
+
+Chrome 151 ran with ANGLE SwiftShader, WebGL selected, and guest threads
+observed enabled. The host reported backend `webgl` and a `D3DIMGpu` object.
+The loaded module was `7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`;
+its compiled source revision is unknown. All 39 input hashes and served SDK
+asset hashes were verified. Repeated readback-shadow performance warnings
+remain in the console log. This establishes animated output, not complete
+scene correctness, paired software parity, FPS, or historical corpus membership.
+The browser and servers were closed and its temporary profile removed.
+
 `--app=dx_globe`, `--app=dx_viewer`, `--app=dx_flip3dtl`. The binaries are the
 DirectX 5 SDK samples in `binaries/dx-sdk/bin/`, and their assets (`sphere3.x`,
 `mslogo.x`, the `.ppm` textures) sit beside the exe and are mounted by the
