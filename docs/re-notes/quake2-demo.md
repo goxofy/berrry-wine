@@ -771,3 +771,46 @@ this software run. Static-harness HTTP 404 messages remain; no page exception,
 guest trap or `FreeLibrary failed` message was observed. Own browser and server
 ports were closed and checked, profile removed, no Boat used, and /home free
 space remained above 2 GB. No blocker reproduced and no code repair was needed.
+
+## 2026-10-30: native combat, death and autosave on WAT software OpenGL
+
+Run `scratch/runs/20261030T2225Z-quake2-software-combat/result.json` advances
+native W/arrow-key movement into the lower area with debris, medkits and a
+live armored enemy. Trusted mouse-one bursts produce blaster impact particles
+and light. Enemy attacks reduce player health 100 → 73 → 43 → 0; the rolled
+death view appears behind the ordinary Load Game menu with `ENTERING Outer
+Base` selected. Enter restores the autosave's starting room and health 100.
+Postreload W movement approaches the diagonal support, and a fresh blaster
+burst produces visible particles and yellow illumination. Five held-fire
+samples have key 200/state 5/mouse mask 1; release clears these to key 0/state
+4/mask 0. A further close enemy encounter reaches health 32 and a second
+health-zero death. Further ordinary mouse attack starts another autosave load;
+that second reload's completed movement was not inspected.
+
+The close enemy, red particles and native firing attempts were inspected, but
+**enemy damage and defeat remain unverified**. The corpse already present by
+the debris is not credited as a kill. This run verifies player damage/death,
+one completed ordinary autosave reload and resumed movement/fire, not enemy
+health accounting or level completion. No console command, guest-memory write,
+synthetic game state, forced input handler or asset edit was used. No runtime
+blocker reproduced and no repair was needed.
+
+This is original **`ref_gl` on emulator WAT software OpenGL**, not `ref_soft`.
+Actual loaded-module `gl_sw_enabled()` remains 1; triangles advance
+313,125 → 4,327,627 and presents 183 → 1,720, with zero unsupported texture
+uploads. The window has no WebGL frame layer; guest threads and render Worker
+are disabled. Generic WebGL UI/string labels and Chrome SwiftShader launch
+flags do not supersede these actual backend counters.
+
+The exact retained and downloaded module remains
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`;
+its compiled source commit is explicitly **unknown**. This is not certification
+of a fresh current-main build. All 67 registered file hashes, including 65
+original extracted assets, match the preceding software run; the known pak
+hash matches. The installer remains absent. Served host/module hashes, native
+input timestamps, reviewed captures and scoped checks are retained in the run.
+Focused module/assets/backend/native-input/release/cleanup checks pass. No
+page exception, guest trap or `FreeLibrary failed` was recorded; static-harness
+HTTP 404 messages remain. Audio, FPS, networking and Worker rendering are not
+qualified. Own Chrome and both servers closed, ports checked, profile removed,
+no Boat/test boxes used, and /home free space stayed above 2 GB.
