@@ -25,7 +25,13 @@ def unpack(fmt,data,offset=0): return struct.unpack_from('<'+fmt,data,offset)
 
 
 class Backend:
-    def __init__(self, root, live_limit=32768, write_limit=65536, file_limit=16384, *, rename_evidence_limit=0, namespace_evidence_limit=0):
+    def __init__(self, root, live_limit=32768, write_limit=65536, file_limit=16384, *, rename_evidence_limit=0, namespace_evidence_limit=0, setattr_evidence_limit=0):
+        if type(setattr_evidence_limit) is not int or not 0<=setattr_evidence_limit<=64:
+            raise ValueError('setattr evidence limit must be an integer from 0 to 64')
+        self.setattr_evidence_limit=setattr_evidence_limit
+        if setattr_evidence_limit:
+            self.setattr_callbacks=0
+            self.setattr_evidence=deque(maxlen=setattr_evidence_limit)
         if type(rename_evidence_limit) is not int or not 0<=rename_evidence_limit<=64:
             raise ValueError('rename evidence limit must be an integer from 0 to 64')
         self.rename_evidence_limit=rename_evidence_limit
@@ -64,7 +70,26 @@ class Backend:
                 limit=self.namespace_evidence_limit,callbackCount=self.namespace_callbacks,
                 countSaturated=self.namespace_callbacks==0xffffffffffffffff,
                 records=[dict(record) for record in self.namespace_evidence])
+        if self.setattr_evidence_limit:
+            state['setattrEvidence']=dict(
+                limit=self.setattr_evidence_limit,callbackCount=self.setattr_callbacks,
+                countSaturated=self.setattr_callbacks==0xffffffffffffffff,
+                records=[dict(record,before=dict(record['before']),after=dict(record['after']))
+                         for record in self.setattr_evidence])
         return state
+
+    def accounting_counters(self):
+        return dict(live=self.live,peak=self.peak,written=self.written,
+                    inodes=len(self.nodes),openHandles=self.handles)
+
+    def record_setattr_callback(self,op,unique,ino,error,before):
+        # Only serve supplies the actual handler outcome and pre-dispatch counters.
+        # Numeric accounting only; no payload, names, credentials or exception text.
+        if self.setattr_evidence_limit and op==4:
+            self.setattr_callbacks=min(self.setattr_callbacks+1,0xffffffffffffffff)
+            self.setattr_evidence.append(dict(opcode=op,unique=unique,inode=ino,
+                errno=-error,callbackCount=self.setattr_callbacks,
+                before=before,after=self.accounting_counters()))
 
     def record_rename_callback(self,op,unique,ino,error):
         # Called only by serve after handle returns/raises, before the wire reply.
@@ -269,10 +294,12 @@ class Backend:
                         if not raw:return
                         length,op,unique,ino,uid,gid,pid,padding=unpack('2I2Q4I',raw)
                         if length!=len(raw):raise RuntimeError('FUSE request truncated')
+                        before=self.accounting_counters() if self.setattr_evidence_limit and op==4 else None
                         try:answer=self.handle(op,ino,raw[40:]);error=0
                         except OSError as e:answer=b'';error=-e.errno
                         except BaseException as e:
                             self.failure='filesystem protocol failure: '+repr(e);answer=b'';error=-errno.EIO
+                        self.record_setattr_callback(op,unique,ino,error,before)
                         self.record_rename_callback(op,unique,ino,error)
                         self.record_namespace_callback(op,unique,ino,error)
                         if answer is not None:os.write(self.fd,pack('IiQ',16+len(answer),error,unique)+answer)
@@ -298,9 +325,12 @@ def main(argv=None):
                         metavar='0..64',help='retain up to N numeric RENAME/RENAME2 callback records; default off')
     parser.add_argument('--namespace-evidence',type=int,choices=range(65),default=0,
                         metavar='0..64',help='retain up to N numeric CREATE/MKDIR/UNLINK/RMDIR callback records; default off')
+    parser.add_argument('--setattr-evidence',type=int,choices=range(65),default=0,
+                        metavar='0..64',help='retain up to N numeric SETATTR callback/accounting records; default off')
     args=parser.parse_args(argv)
     backend=Backend(args.root,args.live_limit,args.write_limit,args.file_limit,
-                    rename_evidence_limit=args.rename_evidence,namespace_evidence_limit=args.namespace_evidence)
+                    rename_evidence_limit=args.rename_evidence,namespace_evidence_limit=args.namespace_evidence,
+                    setattr_evidence_limit=args.setattr_evidence)
     backend.mount();backend.serve(args.status)
 
 
