@@ -44,8 +44,8 @@ take effect until after extraction and may stop before the following rename.
 WAD, CFG, and media files.
 
 The completed local run used `--save-vfs` and `--reg-export`. Its installer
-snapshot is `/private/tmp/hlu-installer-registry-complete.json`; the exported
-tree was `/private/tmp/hlu-installed5.oN75DN/sierra/half-lifeuplink` before it
+snapshot is `hlu-installer-registry-complete.json`; the exported
+tree was `half-lifeuplink` before it
 was staged under the candidate directory.
 
 ## Registry delta
@@ -95,7 +95,7 @@ truthful; `iMaxUdpDg` stays zero because the virtual LAN exposes no UDP, and
 MCI commands or skips the video path. The focused host regression verifies
 case-insensitive lookup and alias removal on close.
 
-Acceptance screenshot: `/private/tmp/hlu-game-mci-final.png`. The main menu
+Acceptance screenshot: `hlu-game-mci-final.png`. The main menu
 shows New game, Hazard course, Configure, Load game, View readme, Previews, and
 Quit; the 70-second run ended normally with no unimplemented API or crash.
 
@@ -122,7 +122,7 @@ The stronger no-dismiss run confirms that the socket warning is gone. Normal
 renderer pointer input at guest `(148,193)` hits the measured New Game button
 (live control ID 1016, rectangle `70,180 156x26`) and reaches the Easy / Medium
 / Difficult selector. Best progress screenshot:
-`/private/tmp/hlu-gameplay-click2/halflife_uplink-new-game-click.png`.
+`halflife_uplink-new-game-click.png`.
 This is not yet a first-person frame; do not treat the current browser smoke as
 full gameplay acceptance.
 
@@ -142,7 +142,7 @@ MFC dialog rather than relying on the visible `WNDPROC_DIALOG` marker.
 With that fix, normal renderer input reaches the live Easy control (ID 26) and
 creates the next 640x480 Half-Life window without abandoning a continuation or
 exiting the app. The post-click evidence is under
-`/private/tmp/hlu-gameplay-postfix/`; `halflife_uplink-easy-loaded.png` is the
+``; `halflife_uplink-easy-loaded.png` is the
 furthest frame, but it is a uniform light-grey client area, not gameplay.
 
 The grey frame is not an active presentation or an unresponsive browser:
@@ -287,7 +287,7 @@ responsive Quake II scale. A fresh SwiftShader browser acceptance loaded
 `hw.dll`, clicked New Game -> Easy, remained active for a 90-second gameplay
 settle, issued 940 `gpuPresent` calls, and captured a textured corridor plus
 HUD with 4,905 sampled colours and no trap or GL bridge error:
-`/private/tmp/hlu-opengl-depth-fixed/halflife_uplink-easy-loaded-gpu.png`.
+`halflife_uplink-easy-loaded-gpu.png`.
 
 ### Owner-drawn dialog background
 
@@ -305,7 +305,7 @@ BTNFACE initialization for classless dialogs, but do not overwrite a custom
 class's owner-drawn client. The focused test covers both halves. A rebuilt
 real-browser capture shows the black textured menu with all labels and no
 grey slab:
-`/private/tmp/hlu-menu-isolated-fixed/halflife_uplink-before.png`.
+`halflife_uplink-before.png`.
 
 ### Threads-mode menu publication
 
@@ -350,13 +350,13 @@ cycle completed both restarts without `Z_Free` and returned the quantum to
 
 The Software leg of the same-process acceptance reached a textured Lambda
 Complex corridor and HUD after a 90-second settle:
-`/private/tmp/hlu-final-both-renderers/halflife_uplink-software-gameplay.png`.
+`halflife_uplink-software-gameplay.png`.
 The test then opened the live pause menu, selected OpenGL, observed the quantum
 return to 10,000, confirmed replacement of the active game, and captured the
 same corridor through the GPU layer after another 90-second settle. That leg
 issued 569 `gpuPresent` calls, loaded 1,863 textures, remained active with no
 GL error or trap, and produced 34,101 sampled colours:
-`/private/tmp/hlu-final-both-renderers/halflife_uplink-opengl-gameplay-after-switch-gpu.png`.
+`halflife_uplink-opengl-gameplay-after-switch-gpu.png`.
 
 ## First-run keyboard bindings and movement GL calls
 
@@ -384,8 +384,8 @@ to 258, the key-down state transitioned zero -> one, and `Host_Frame` continued
 from 839 to 848. Visual comparison confirms forward camera displacement: the
 right-wall panels and overhead opening move toward and past the camera. The
 before/held captures differ at 305,732 of 459,360 pixels (66.56%):
-`/private/tmp/hlu-keyboard-color3ubv/halflife_uplink-movement-before.png` and
-`/private/tmp/hlu-keyboard-color3ubv/halflife_uplink-movement-w-held.png`.
+`halflife_uplink-movement-before.png` and
+`halflife_uplink-movement-w-held.png`.
 
 ## The Direct3D renderer: `CoCreateInstance(CLSID_DirectDraw)`, not `DirectDrawCreate`
 
@@ -504,7 +504,7 @@ node test/run.js --exe=test/binaries/candidates/half-life-uplink-installer/insta
   --args='-D3D' --reg-import=/path/to/hl-d3d-reg.json --quiet-api --no-build \
   --max-batches=300000 --max-seconds=540 --no-close --dx-surfaces \
   --input='3200:mousedown:110:192,3230:mouseup:110:192,4500:mousedown:70:152,4530:mouseup:70:152' \
-  --png=/tmp/hl.png
+  --png=hl.png
 ```
 
 (110,192) is **New game** on the main menu and (70,152) is **Easy** on the
@@ -1436,3 +1436,32 @@ instances sharing memory, checks two independent objects, failure preservation,
 and returning to NORMAL. Flag roles follow the
 [DirectDraw cooperative-level documentation](https://learn.microsoft.com/nl-be/windows/win32/api/ddraw/nf-ddraw-idirectdraw7-setcooperativelevel);
 the error code is defined in [Wine's ddraw.h](https://github.com/wine-mirror/wine/blob/master/include/ddraw.h).
+
+## Additional dated branch findings
+
+These historical observations supplement the current facts above; they do not establish a new current-main runtime result.
+
+Final runtime integration through `a5bc63b1f` builds module
+`3d4b51591ebb7a5684ddc673383aebd648c3043a677b461a8f1a7a81bad557d9`
+with the same layout. Sequential fresh Worker runs
+`20261029-uplink-final-{software,gl,d3d}` all reach textured gameplay and
+movement. D3D's final harness explicitly seeds the 640x480 mode values observed
+from the game's own UI; an unconfigured direct-D3D launch instead requests a
+320x240 viewport inside a 640x480 primary. The normal public launch is OpenGL.
+
+**Correction to the earlier Software menu qualification:** all labels were
+visible, but the game remained between them where the textured menu background
+belonged. `20261029-uplink-software-background-before/gdi-source.png` shows the
+complete correct background in the canonical GDI surface; the simultaneous
+displayed capture omits it. The visible root is a borderless guest dialog with
+a real dialog proc and newer upload regions than the paused DirectDraw frame.
+The exclusive overlay now includes those fresh dialog background regions,
+while captioned windows retain child-only overlays. A later primary still
+covers old GDI pixels; a partial control upload cannot revive an old full
+background. Regression coverage exercises direct and postprocessing composition,
+captioned-window exclusion and both ordering cases.
+
+`20261029-uplink-software-background-fixed` verifies a complete textured pause
+background, resume plus movement, another pause, Configuration/Video and an
+eight-second settled Video screen. No previous menu background remains over
+the resumed world. The WASM stays `3d4b51591ebb`; this final fix is compositor-only.

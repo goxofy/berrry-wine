@@ -32,14 +32,14 @@ The root owner can establish the missing ordinary fixture alias, without copying
 or modifying original bytes:
 
 ```sh
-ln -s /home/user/wine-assembly/test/binaries/explorer98/dlls/ole32.dll /tmp/wa-recovery-20261014/test/binaries/dlls/ole32.dll
-node /tmp/wa-dungeon-thread-oct19/tools/dungeon-siege-retry-preflight.js
+ln -s /home/user/wine-assembly/test/binaries/explorer98/dlls/ole32.dll ole32.dll
+node dungeon-siege-retry-preflight.js
 ```
 
 Only after a fresh sole-runtime grant and successful preflight:
 
 ```sh
-node /tmp/wa-dungeon-thread-oct19/tools/dungeon-siege-retry-controller.js 20261019-dungeon-siege-snapshot-original-1
+node dungeon-siege-retry-controller.js 20261019-dungeon-siege-snapshot-original-1
 ```
 
 The controller uses the previous ordinary launch settings (`--no-threads` retains
@@ -167,7 +167,7 @@ API trace logging starts paused. Startup with tracing has not been measured.
 After fresh root runtime grant, the exact proposed launch is:
 
 ```sh
-node /tmp/wa-dungeon-thread-oct19/tools/dungeon-siege-retry-controller.js 20261019-dungeon-siege-resource-trace-1 --trace-reads
+node dungeon-siege-retry-controller.js 20261019-dungeon-siege-resource-trace-1 --trace-reads
 ```
 
 Capture the genuine EULA to that run's `eula-before.png` using ordinary `ctl.js`,
@@ -175,7 +175,7 @@ then visually review its title, terms and actual button position. Only after tha
 review invoke:
 
 ```sh
-node /tmp/wa-dungeon-thread-oct19/tools/dungeon-siege-trace-control.js 20261019-dungeon-siege-resource-trace-1 arm-reviewed eula-before.png
+node dungeon-siege-trace-control.js 20261019-dungeon-siege-resource-trace-1 arm-reviewed eula-before.png
 ```
 
 The helper validates the screenshot/run identity, records the reviewed screenshot
@@ -196,3 +196,47 @@ is included: a prior graceful quit request cannot suppress a later safety kill.
 Original/core source remains unchanged; only diagnostic controller/helper/docs changed.
 
 Measured trace output budget (2026-10-19): prior complete observation retained 20 files, 636835 logical bytes / 684032 allocated bytes, including 536028-byte runtime pins. Trace retains the 4 MiB raw log cap; reserve 16 MiB for up to eight 800x600 PNGs (2 MiB each), 4 MiB for pins/registry/control/metadata and 8 MiB additional margin. Total output cap and admission reserve are now 32 MiB, with no VFS export. The independent 512 MiB transient admission buffer and 2214592512-byte hard floor are unchanged. This is a measured output estimate, not evidence of a trace run.
+
+## Additional dated branch findings
+
+These historical observations supplement the current facts above; they do not establish a new current-main runtime result.
+
+## Resource CRC and lazy-page findings (2026-10-19)
+
+Original resource-directory CRC comparison is at `0x00628d6a`, after the
+CALL at `0x00628d62` to `0x0041317f`. The reliable block-entry observation
+point is its return `0x00628d67` (ADD ESP,12), not the interior CMP.
+The CRC owner is four bytes before its embedded virtual-buffer object:
+owner buffer pointer `+0xc`, length `+0x9c`, expected CRC `+0xd8`;
+inner allocation base `+8`, length `+0xc`, slice `+0x14`.
+
+The actual return capture recorded EAX `0x96e4949a`, expected `0x6fdb45eb`,
+buffer `0x08a10000`, length1,836,044 and 449 missing packed PTEs. No guest
+buffer bytes were captured or synthesized. The original file region has CRC
+`0x6fdb45eb`; independently applying the original CRC table to1,836,044 zero
+bytes produces `0x96e4949a`. This supports a zero-read hypothesis rather than
+corrupted original media. Slice handle `0x7000000a` was at194,794,100
+(directory offset194,793,312 plus788-byte header); no payload ReadFile
+preceded the comparison. The fill routine seeks absolutely, so that cursor
+alone does not prove a seek defect.
+
+Captured innerFlags0 takes MEM_RESERVE/PAGE_NOACCESS at `0x006293c7` and
+skips eager fill `0x00629654`. Constructor `0x00629281` registers filter
+`0x0062978e` through `0x0041465b`; the native FS handler `0x00409ef0`
+uses scope table `0x006fb2f0`, active filter `0x00628cb0`. The filter
+accepts C0000005/80000001, finds the registered buffer, aligns the fault
+offset through `0x00629765`, commits the page, seeks via `0x0041cc51`,
+reads through `0x0042bc65`, and returns CONTINUE_EXECUTION. The default
+unmapped sentinel does not execute this file-loading path. The existing
+`reservedPageFaults` capability enables mode5 synchronous guest SEH; it
+retains eligibility, nesting and unhandled-fault limitations.
+
+A capability-enabled original startup subsequently stalled in resolver
+`0x004178eb`. The first-entry capture found a healthy SHFOLDER.DLL table
+requesting SHGetFolderPathA(required) and SHGetFolderPathW(optional),
+with present pages and normal string termination. Module `0x00400000`
+is the loader's existing bare-DLL compatibility alias, not a proven handle
+defect. It does not identify the later faulting iteration. Existing
+`unmapped_trace` is reached after unsuccessful/skipped mode5 handling and
+cannot recover the first pre-dispatch fault state. See the separate
+[fault observer investigation](dungeon-siege-fault-observer.md).
