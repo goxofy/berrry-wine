@@ -12,6 +12,27 @@ DirectDraw and Direct3D Immediate Mode underneath it. That makes them a good
 test of the D3DIM surface: d3drm is unmodified and will simply decline to
 render if it does not like what it is given.
 
+## October 30: Architecture browser scene on both routes
+
+Runs `20261030T2338Z-architecture-webgl` and
+`20261030T2338Z-architecture-software` launch registered original
+`ARCHITEC.SCR /s`, with its seven registered scene assets, through the normal
+browser launcher. Personally inspected WebGL frames 2/3 and software frames
+1/2 show the textured marble interior and changing central green objects.
+WebGL frame 1 records startup's white area; it is superseded by the later
+rendered captures, not counted as a scene failure.
+
+Both Chrome 151/ANGLE SwiftShader runs load retained canonical module
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`
+(source fix `de2e338c4`), with guest threads off. Backend records verify the
+owning host's GPU enabled only for WebGL. All eight registered input hashes
+and every served-response hash are verified separately in each run. Exact
+identities, inspected frames and cleanup appear in `investigation.json`.
+Both browsers are absent, their six ports closed and private profiles removed;
+no Boat was used. This establishes a visible animated scene on both routes,
+not same-frame pixel parity, FPS, physical GPU behavior, a full screensaver
+cycle or completion of the historical 27-app set.
+
 ## Status 2026-10-06 (software D3DIM arm, main 80dfe68e)
 
 All seven render. Reviewed runs: `scratch/runs/20261006T0250Z-<app>-w4-software/`
