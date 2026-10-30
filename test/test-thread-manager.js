@@ -932,5 +932,59 @@ console.log('PASS  ThreadManager keeps pending worker handles unsignaled');
 console.log('PASS  ThreadManager recycles closed event and semaphore handles');
 console.log('PASS  ThreadManager preserves and atomically consumes wait-all state');
 console.log('PASS  ThreadManager keeps main wait completion logs trace-only');
+// Enigma's audio worker releases and immediately reacquires its mutex within
+// one cooperative slice. Main must get its real parked wait completed between
+// iterations, rather than missing every moment at which the mutex is available.
+{
+  const mtm = makeThreadManager();
+  const mutex = mtm.createMutex(false, '', 2);
+  assert.strictEqual(mtm.waitSingle(mutex, 0xFFFFFFFF, 2), 0);
+  assert.strictEqual(mtm.waitSingle(mutex, 0xFFFFFFFF, 1), 0xFFFF);
+  let reason = 1, handle = mutex, handles = 0, stackBytes = 12, depth = 0;
+  let esp = 0x100, eax = null, pc = null;
+  mtm.mainInstance.exports = {
+    get_yield_reason: () => reason, get_wait_handle: () => handle,
+    get_wait_handles_ptr: () => handles, get_wait_stack_bytes: () => stackBytes,
+    get_sync_msg_depth: () => depth, get_wait_timeout: () => 0xFFFFFFFF,
+    get_esp: () => esp, guest_read32: () => 0x401234,
+    clear_yield: () => { reason = 0; }, set_eax: n => { eax = n; },
+    set_esp: n => { esp = n; }, set_eip: n => { pc = n; },
+  };
+  assert.strictEqual(mtm.releaseMutex(mutex, 2), 1);
+  assert.strictEqual(mtm.waitSingle(mutex, 0xFFFFFFFF, 2), 0xFFFF,
+    'the releasing worker cannot steal the parked main wait');
+  assert.strictEqual(mtm.syncView[mtm._getSyncIdx(mutex) * 4 + 2], 0,
+    'deferring acquisition does not invent ownership');
+  assert.strictEqual(reason, 1, 'a competing acquisition cannot complete main');
+  assert.strictEqual(mtm.checkMainYield(), false);
+  assert.deepStrictEqual([reason, eax, esp, pc], [0, 0, 0x10c, 0x401234],
+    'the ordinary scheduler completes the original guest wait');
+  assert.strictEqual(mtm.waitSingle(mutex, 0, 2), 0x102);
+  assert.strictEqual(mtm.waitSingle(mutex, 0, 1), 0, 'owner recursion is preserved');
+  assert.strictEqual(mtm.releaseMutex(mutex, 1), 1);
+  assert.strictEqual(mtm.releaseMutex(mutex, 1), 1);
+  for (const invalidate of [() => { reason = 0; }, () => { handle++; },
+    () => { handles = 0x200; }, () => { stackBytes = 24; }, () => { depth = 1; },
+    () => { mtm._mainThreadState.suspendCount = 1; }]) {
+    reason = 1; handle = mutex; handles = 0; stackBytes = 12; depth = 0;
+    mtm._mainThreadState.suspendCount = 0; invalidate();
+    assert.strictEqual(mtm.waitSingle(mutex, 0, 2), 0,
+      'a stale, different, nested, or suspended wait cannot reserve the mutex');
+    assert.strictEqual(mtm.releaseMutex(mutex, 2), 1);
+  }
+  reason = 0; mtm._mainThreadState.suspendCount = 0;
+  const workerExports = { get_yield_reason: () => 1, get_wait_handle: () => mutex,
+    get_wait_handles_ptr: () => 0, get_wait_stack_bytes: () => 12 };
+  mtm.threads.set(0xe1000, { tid: 2, state: 'active', instance: { exports: workerExports } });
+  assert.strictEqual(mtm.waitSingle(mutex, 0, 1), 0x102, 'parked workers also get precedence');
+  assert.strictEqual(mtm.waitSingle(mutex, 0, 3), 0, 'the selected worker acquires normally');
+  assert.strictEqual(mtm.releaseMutex(mutex, 3), 1);
+  mtm.threads.get(0xe1000).state = 'exited';
+  assert.strictEqual(mtm.waitSingle(mutex, 0, 1), 0, 'exited workers do not reserve a mutex');
+  assert.strictEqual(mtm.releaseMutex(mutex, 1), 1);
+  mtm.threads.get(0xe1000).state = 'active'; mtm.workerBackend = {};
+  assert.strictEqual(mtm.waitSingle(mutex, 0, 1), 0, 'worker-backed ownership is unchanged');
+}
+console.log('PASS  ThreadManager gives live parked cooperative mutex waiters an acquisition turn');
 console.log('PASS  ThreadManager keeps synchronization-object creation logs trace-only');
 console.log('PASS  ThreadManager keeps every worker hwnd inside its own app slice');
