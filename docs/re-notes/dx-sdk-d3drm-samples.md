@@ -1,5 +1,26 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 30: Tunnel renders from a verified canonical build
+
+Runs `20261030T2317Z-dx-tunnel-browser` and
+`20261030T2317Z-dx-tunnel-software` contain inspected initial/final captures
+of original `dx_tunnel`: gray textured tunnel walls with yellow/black edges.
+Software frames show changed orientation; WebGL animation is not established.
+Chrome 151/ANGLE SwiftShader used `D3DIMGpu` on WebGL and the DX2–7 WAT
+software rasterizer without `D3DIMGpu` on software. Guest threads were enabled.
+
+The locked canonical build passed on source `8cfa97b0d`; all 1,148 tracked
+build-source file hashes stayed unchanged across compilation, with no tracked
+source patch. It produced module `7e8d3194…`, matching each loaded module.
+This newly verified build reproduces the earlier retained module hash; it does
+not retroactively establish the earlier runs' complete host/source identity.
+Each run verified 39 inputs and 38 served SDK responses. Build logs, source
+manifest, captures, route observations and cleanup are in its `investigation.json`.
+Both browsers exited, six ports closed, and private profiles were removed.
+No Boat was used. The guest FPS overlay is not a benchmark; these captures do
+not establish pixel parity, full scene correctness, or completion of the 27-app corpus.
+
+
 ## October 30: paired original Flip3DTL browser animation
 
 Runs `20261030T2311Z-dx-flip3dtl-browser` and
