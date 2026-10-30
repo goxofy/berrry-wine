@@ -288,3 +288,74 @@ quit explicitly, its Chrome/server closed, and local endpoints were checked clos
 No Boat, assigned box, public deployment, FPS or audio qualification was involved.
 Exact captures, input history, hashes, cleanup and the partial outcome are retained
 in the run's `result.json` and artifact manifest.
+
+## Protected city, staffed Senate, and population 148 (2026-10-30)
+
+Run `scratch/runs/20261030T2240Z-caesar3-protected/` made one bounded local
+browser gameplay attempt with a recovery launch. Its **highest and last
+personally inspected population was 148**, November 498 BC through January
+497 BC; the last capture shows treasury 557. **Population 150 and an assignment
+transition remain unproven.** The browser closed at its 28-minute controller
+deadline, 46 seconds after that final capture, so this is the observed peak,
+not an assertion about every intervening simulation tick. The final queued
+engineer-post/growth-check commands were never executed.
+
+The retained browser module is exactly
+`1dbddeafbeff685596095d18a4fd9240820b00b0fa293d21ac03393f9f652fb1`.
+`original-source-assets.json` and `original-launch-source-commit.json` preserve
+the preceding run's source identity at `d4fb06b465988b52d98f5c9299c47c8391537f1e`;
+this run did not reconstruct that module from current source. Current launch
+source hashes and actual HTTP response hashes are retained separately. Installed
+payload checks matched all 86 observed installed-file responses against both
+disk and retained hashes; the app mounted 112 files.
+Chrome 151 used SwiftShader, a fixed 1100x850 viewport, and no guest Worker.
+The final inspected history contains 451 trusted input events and no untrusted
+events. Gameplay used browser mouse/keyboard events without guest memory,
+state, or asset edits. The normal existing launcher profile was unchanged.
+
+Useful inspected progression and constraints:
+
+- The first fire tutorial explicitly unlocks the prefecture only **after**
+  the first fire. The first collapse similarly unlocks the engineer. A western
+  prefecture had all six employees and a prefect patrolling at population 63;
+  an engineer had all five employees and was out working at population 70.
+- A cleared cross street provided a separate expansion. A genuinely built
+  Senate, unlike the preceding run's failed placements, showed **30 of 30
+  employees** and complete efficiency at population 97. Its placement preview
+  had shown unemployment of 74%; later growth followed its construction, but
+  this is not a controlled attribution of the population stall.
+- The city displayed its first-100 milestone at population 103. Labour and
+  Population advisors explicitly said **Not available in this assignment**.
+  A branch dwelling was a **Large tent with 28 occupants**, whose native panel
+  required a local market for further evolution.
+- Clearing a nearby temple footprint accidentally demolished the Senate.
+  The temple also lacked road access. It was removed and the Senate rebuilt;
+  the restored Senate again showed all 30 employees. These were construction
+  errors, not reproduced emulator defects.
+- A short western street beside the existing service end, individual housing
+  placements, and a new well brought the city from 103 to 126 and then 148.
+  Two final plots remained vacant in the last capture. Their sustained
+  occupation and the remaining two citizens were not demonstrated. Citywide
+  protection and a functioning temple were not qualified.
+
+For replay, cancel tools or dismiss information panels by right-clicking the
+blank sidebar, e.g. `(740,750)`. Right-clicking bare map terrain instead opens
+another native information panel. Use individual placement clicks with distinct
+press/release slices; the fast drag helper was unreliable for this route.
+Spacebar is the demonstrated native pause control. Large footprints need room:
+clearing one occupied footprint cell removes the whole building. Keep the Senate
+and any future temple sites well separated and verify road access before growing
+the residential block. No working demo save is available from the preceding
+native Save game rejection, so the next attempt still requires a fresh city.
+
+The first Chrome launch was externally terminated by SIGKILL after the initial
+population-zero capture; its cause is unknown and its evidence is preserved.
+The recovery browser ran until its bounded deadline. Both private servers and
+Chrome processes were verified gone, endpoints closed, and profiles removed.
+No Boat or assigned box was used (ID/state/expiry not applicable); no public
+deployment or workers were launched. Disk remained above 2 GB.
+
+`node test/test-caesar3-gameplay.js` passed on the separate current build.
+No runtime code changed, so no full build was needed for this documentation-only
+outcome. Exact inputs, inspected capture hashes, source/module/assets provenance,
+cleanup, and the remaining limitations are retained in the run's `result.json`.
