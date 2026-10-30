@@ -1,5 +1,15 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30 Tile World census lead replay
+
+Run `20261030T2242Z-tworld-input` replayed the registered original Tile World
+on SDL's GDI route. Root inspected Level 1 before/after ordinary keyboard
+movement: remaining chips 6 → 3 and time 200 → 138. Exit 0 after 650
+100,000-block batches. Exact module `7e8d3194` and original input hashes are
+retained; compiled source revision is unknown. This validates bounded gameplay
+for an explicitly named historical census row, while providing no GL/D3D
+renderer qualification. Full-level completion and browser replay remain open.
+
 ## October 30 Pawn move and extended Jazz scene
 
 Run `20261030T2238Z-pawn-software-move` exercised the original Pawn executable
