@@ -238,3 +238,53 @@ a runtime repair was reproduced. This records city construction and
 inhabitation, not completion of the assignment's population-150 objective.
 No Boat, public deployment, or asset replacement was used. Next useful
 gameplay work is sustaining services and reaching that assignment objective.
+
+
+## Population extension with services (2026-10-30)
+
+Run `scratch/runs/20261030T2213Z-caesar3-pop150/` advanced ordinary browser
+city gameplay to a personally inspected **126** in October 499 BC; the final
+November captures show **124**, treasury 1152. **Population 150 was not reached.**
+The earlier session had no retained city save, so this run used its known menu
+route and expanded a fresh city rather than repeating startup investigation.
+
+The browser used the exact retained `1dbddeafbeff685596095d18a4fd9240820b00b0fa293d21ac03393f9f652fb1`
+module from the preceding run. Its compiled-source identity remains the preceding
+run's retained provenance; it is not a build of the current source. Current
+launch-time source commit/hashes are in `launch-source.json`, and HTTP response
+hashes in `requests.json` identify resources actually served. The installer-produced
+payload remained unchanged; `assets-check.json` verifies 93 observed installed-file
+responses, while the app reported 112 mounted files. Local Chrome 151 ran with
+SwiftShader, no guest Worker, and a fixed 1100x850 viewport. Browser mouse/key
+inputs were trusted native events; construction and progression used no guest
+memory edits. The only page evaluation beyond the launch was evidence inspection.
+
+Personally inspected checkpoints include March 500 BC population 36, April 62,
+November's first-100 milestone at 102, September 499 BC population 111,
+`population-last-expansion.png` at 126, and `final-return-city.png` at 124.
+`engineer-staffed-check.png` shows all five employees and an engineer out working.
+`prefecture-november.png` and `east-prefecture-final.png` show fully staffed
+six-employee prefectures out patrolling at separate stages; `east-well-final.png`
+shows the eastern well's native information panel. The final occupied dwelling
+is a **Small tent with 5 occupants**. Its panel explicitly reports that the nearby
+prefecture harms desirability. Earlier fire/collapse notices, nonadjacent engineer
+warnings and failed placement attempts are retained, including unsuccessful Senate
+placements; no Senate construction or employment diagnosis is claimed.
+
+The concrete remaining gameplay gap is service coverage and housing evolution:
+old-quarter fires/collapses repeatedly offset immigration, while the final eastern
+tent remains small beside the prefecture. Built wells and staffed prefectures were
+demonstrated over advancing time, but sustained citywide coverage and the 150-person
+objective remain unproven. Next play should separate prefectures from housing,
+provide garden desirability, and protect the old quarter while filling the new
+streets. `save-dialog.png` records the native Save game rejection, **Not available
+in the demo version**, so there is no ordinary save to hand off.
+
+`node test/test-caesar3-gameplay.js` passed on the separate current build observed
+as `7e8d3194fd189a8e...`; this does not qualify that module for the extended city
+route. No runtime code was changed, execution blocker reproduced, or full build
+required for this documentation-only outcome. The bounded browser controller was
+quit explicitly, its Chrome/server closed, and local endpoints were checked closed.
+No Boat, assigned box, public deployment, FPS or audio qualification was involved.
+Exact captures, input history, hashes, cleanup and the partial outcome are retained
+in the run's `result.json` and artifact manifest.
