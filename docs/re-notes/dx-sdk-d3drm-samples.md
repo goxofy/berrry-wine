@@ -1,5 +1,22 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 30: paired Boids motion, incomplete scene acceptance
+
+Runs `20261030T2335Z-dx-boids-webgl` and
+`20261030T2335Z-dx-boids-software` retain the original `boids.exe` and each
+contain two personally inspected browser frames. Cyan polygon outlines change
+position on both routes. The images do **not** establish a correctly rendered
+flock; this is narrower than the earlier colored-triangle observation.
+Both Chrome 151/ANGLE SwiftShader runs loaded canonical module `d83e413f…`
+(source `de2e338c4`) with guest threads disabled. Owning-host GPU state was
+verified enabled for WebGL and disabled for software. Each run verifies all
+38 local SDK-directory input hashes and all served response hashes; the input
+manifest includes the renamed ProgressiveMesh aliases described below.
+`investigation.json` records exact module identity, backend and frame paths.
+Both browsers were stopped, all six ports closed and private profiles removed.
+No Boat was used. Full scene correctness, pixel parity, FPS and historical
+corpus membership remain unqualified.
+
 ## October 30: Globe motion verified on both repaired-build routes
 
 Runs `20261030T2330Z-dx-globe-webgl` and
@@ -12,8 +29,8 @@ the historical texture-band correctness question or establish pixel parity.
 Both Chrome 151/ANGLE SwiftShader runs loaded retained canonical module
 `d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`.
 WebGL had the owning host's `d3dimGpu` and GPU selection enabled; software
-had neither. Guest threads were disabled in both. Each run verified 38 original
-SDK input hashes and all 182 served-response hashes. Its `investigation.json` records
+had neither. Guest threads were disabled in both. Each run verified 38 local
+SDK-directory input hashes and all 182 served-response hashes. Its `investigation.json` records
 frames, build/backend evidence and cleanup: browser absent, three ports closed,
 private profile removed, no Boat. The different orientations and sphere sizes
 are not a same-frame comparison; FPS, full scene correctness and completion of
@@ -139,23 +156,23 @@ output on both routes, not pixel parity, full scene correctness, performance,
 or completion of the historical 27-app corpus.
 
 
-## October 30: Viewer original-mesh startup failure
+## October 30: Viewer input provenance corrected
 
-`20261030T2308Z-dx-viewer-browser/investigation.json` records a fresh
-original `viewer.exe` browser attempt with WebGL selected. The normal registry
-replaces `camera.x`, `mslogo.x`, and `sphere2.x` with tetra/cube test fixtures.
-For this run only, the launch manifest instead used the original SDK files
-from `dx_globe`, retaining the original Viewer executable. No fixture mesh was
-fetched; 39 input hashes and 38 served SDK responses passed verification.
+The earlier run `20261030T2308Z-dx-viewer-browser` did **not** mount original
+Viewer meshes. It replaced the registered test fixtures with local SDK-directory
+files, but those names are fabricated aliases: `camera.x == pm_cam.x`,
+`mslogo.x == pm_mslog.x`, and `sphere2.x == pm_sph2.x`, byte for byte.
+Run `20261030T2334Z-viewer-input-diagnosis/investigation.json` records all
+three SHA-256 comparisons; `test/fixtures/d3drm/README.md` already documents
+their origin and the loader's Mesh-versus-ProgressiveMesh type filter.
 
-The inspected startup dialog says **Failed to load camera.x —
-D3DRMERR_NOTFOUND**. A trusted click on OK left no Viewer windows or running
-app. This does not establish a rendered original scene; prior fixture-based
-Open/menu checks do not close this gap. Original `camera.x` uses binary
-`xof 0303bin` ProgressiveMesh/InlineData representation; the failure's cause
-remains unknown. Chrome 151/ANGLE SwiftShader loaded retained module
-`7e8d3194…`, compiled source revision unknown. The browser, three listening
-ports, and private profile were cleaned up; no Boat was used.
+The inspected **Failed to load camera.x — D3DRMERR_NOTFOUND** dialog therefore
+does not establish a parser defect. The existing browser-manifest regression
+passes and deliberately mounts plain-Mesh fixtures. Original-scene acceptance
+remains open pending the actual plain-Mesh Viewer assets; fixture scenes do
+not close that gap. The earlier run still establishes the rejection, its loaded
+module and cleanup, but its “original SDK meshes” provenance claim is withdrawn.
+No production code or guest asset was changed for this diagnosis.
 
 ## October 30: paired original Globe browser renders
 

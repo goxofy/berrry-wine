@@ -1,5 +1,22 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 30: paired Boids motion, incomplete scene acceptance
+
+Runs `20261030T2335Z-dx-boids-webgl` and
+`20261030T2335Z-dx-boids-software` retain the original `boids.exe` and each
+contain two personally inspected browser frames. Cyan polygon outlines change
+position on both routes. The images do **not** establish a correctly rendered
+flock; this is narrower than the earlier colored-triangle observation.
+Both Chrome 151/ANGLE SwiftShader runs loaded canonical module `d83e413f…`
+(source `de2e338c4`) with guest threads disabled. Owning-host GPU state was
+verified enabled for WebGL and disabled for software. Each run verifies all
+38 local SDK-directory input hashes and all served response hashes; the input
+manifest includes the renamed ProgressiveMesh aliases described below.
+`investigation.json` records exact module identity, backend and frame paths.
+Both browsers were stopped, all six ports closed and private profiles removed.
+No Boat was used. Full scene correctness, pixel parity, FPS and historical
+corpus membership remain unqualified.
+
 ## October 30: Globe motion verified on both repaired-build routes
 
 Runs `20261030T2330Z-dx-globe-webgl` and
@@ -12,8 +29,8 @@ the historical texture-band correctness question or establish pixel parity.
 Both Chrome 151/ANGLE SwiftShader runs loaded retained canonical module
 `d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`.
 WebGL had the owning host's `d3dimGpu` and GPU selection enabled; software
-had neither. Guest threads were disabled in both. Each run verified 38 original
-SDK input hashes and all 182 served-response hashes. Its `investigation.json` records
+had neither. Guest threads were disabled in both. Each run verified 38 local
+SDK-directory input hashes and all 182 served-response hashes. Its `investigation.json` records
 frames, build/backend evidence and cleanup: browser absent, three ports closed,
 private profile removed, no Boat. The different orientations and sphere sizes
 are not a same-frame comparison; FPS, full scene correctness and completion of
@@ -416,12 +433,12 @@ Receipt groups used in the table:
 | `simgolf_demo` / M | H dated table: software gameplay; exact October 6 ID/source U. | H `20261006T0503Z-simgolf_demo-webgl-route-w5`, browser GL course/build bar; tested source/module U. | Historical screenshot review, not fresh controls/FPS qualification. Recover software ID, browser bundle/identities and original membership. Cursor edge-scroll can explain a black view. |
 | `ptct` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, software GL beams. | H P10 Node GL beams; B6 describes browser beams in `20261006T1840Z-gld3d-webgl`. | Correctness explicitly unverified, zero texture uploads in P10. The old 0.35 presents/s is not qualified gameplay FPS. Recover images/expected content and original membership; presentation demo input applicability unresolved. |
 | `mw3` / M | H older cockpit gameplay; exact routed software ID/source U. | H `20261010T2110Z-mw3-webgl-cockpit-w5`, Node `--headless-gl --d3dim-gpu`, cockpit/forward movement, 49,818 draws/zero fallback reported; tested source/module U. | Node result is not browser proof. Recover both routed bundles/identities, screenshot/input receipts and original membership; FPS U. |
-| `dx_boids` / M | H September 23 rendering report; exact software ID/source U. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; tested source/module not pinned by that row. | Non-game render sample: input/FPS U. Recover exact source and two-arm scene receipts, plus membership; do not count unit pixel tests as app rendering. |
+| `dx_boids` / M | L `20261030T2335Z-dx-boids-software`: changing cyan outlines, canonical `d83e413f…`. | L `20261030T2335Z-dx-boids-webgl`: changing cyan outlines, same module/source `de2e338c4`. | Two inspected frames per route; flock/scene correctness not established. Inputs, served hashes, backend and cleanup verified. FPS, parity and membership U. |
 | `dx_tunnel` / M | H September 23 rendering report; exact software ID/source U. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; exact source/module U. | Same missing source/scene/ID/membership evidence as Boids; FPS U. |
 | `dx_twist` / M | H September 23 rendering report; exact software ID/source U. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; exact source/module U. | Same missing source/scene/ID/membership evidence as Boids; FPS U. |
 | `dx_flip3dtl` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, textured cube. | H `20261006T1935Z-gld3d-webgl-recheck`, browser render; later P10 Node GL reports 33k draws/zero fallback. | Recover paired images and browser source/module; sample interaction/FPS U. Original membership remains unproved. |
-| `dx_globe` / M | L `20261030T2330Z-dx-globe-software`: original textured sphere visibly rotates; canonical module `d83e413f…`, source `de2e338c4`. | L `20261030T2330Z-dx-globe-webgl`: original textured sphere visibly rotates on owning D3DIMGpu, same module/source. | Two inspected frames per route, 38 original inputs and 182 served hashes each. Threads disabled, cleanup verified. Texture-band correctness, same-frame parity, FPS and historical membership remain unqualified. |
-| `dx_viewer` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, renders. | H B6 browser; H P10 Node GL. | Recover reviewed scene/identity evidence and membership. SDK Open/Change Color tests alone do not prove scene correctness; FPS U. |
+| `dx_globe` / M | L `20261030T2330Z-dx-globe-software`: original textured sphere visibly rotates; canonical module `d83e413f…`, source `de2e338c4`. | L `20261030T2330Z-dx-globe-webgl`: original textured sphere visibly rotates on owning D3DIMGpu, same module/source. | Two inspected frames per route, 38 local SDK-directory inputs and 182 served hashes each. Threads disabled, cleanup verified. Texture-band correctness, same-frame parity, FPS and historical membership remain unqualified. |
+| `dx_viewer` / M | Historical fixture rendering only; original plain-Mesh assets unavailable. | L `20261030T2308Z-dx-viewer-browser`: rejects renamed PM input with D3DRMERR_NOTFOUND; no original scene. | `20261030T2334Z-viewer-input-diagnosis` proves camera/mslogo/sphere2 aliases equal PM files. Prior original-mesh provenance claim withdrawn. Restore actual plain-Mesh inputs before original-scene retest; fixture/menu checks remain narrower. FPS and membership U. |
 | `mcm` / M | H P10: `20261010T1850Z-gld3d-current-main-probes`, routed Stunt Quarry race, 200 s. | H P10 Node GL routed race, 225k draws/zero fallback reported; older September 20 browser report lacks exact ID here. | Recover route/input/frame receipts; don't promote Node GL to browser. FPS and original membership U. |
 | `arcanum_demo` / M | H `20261008T1431Z-arcanum-gameplay-qualified`, browser cooperative software D3DIM, crash-site westward movement. | H same run, explicit browser WebGL, westward movement. | [Review](../ops/handoffs/arcanum-gameplay-20261008.md) pins module `d8d4096f957ed51cecab589b5a1ec7bf402336f13959ce0710faf2f7d3c68960`; full tested closure is missing `provenance/pins.json` (branch base `7e4ce05ce` alone is insufficient). WebGL 434/20.127145 s = **21.562919 visible presentations/s**, idle scene, not scanout. Software FPS rejected because observer missed OffscreenCanvas. Recover bundle/membership. |
 | `ut2003_demo` / M | H U10 Antalus movement; later `20261013T2247Z-ut2003-registered-comctl-software` fails `invalid native free list` / LockRect after native COMCTL loads. | H U10 Node GL Antalus movement; historical browser gameplay September 25 lacks exact run ID here. | [Later report](re-notes/unreal-family-demos.md): candidate `a4d487337`, underlying source `3540d8304`, module `9b3ef6f173daaa8be90733a4b8449733d74ca861062d0383a709f4be02ce1c77`. Later failure supersedes an unqualified current software pass. Recover bundles/first-failure evidence; FPS/membership U. |
