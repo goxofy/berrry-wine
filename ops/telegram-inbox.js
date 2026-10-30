@@ -4,8 +4,8 @@
 //   {"id":N,"at":"<ISO>","text":"...","attachments":["/abs/path", ...]}
 // and consumers read past their own cursor file
 //   scratch/telegram/inbox.<agent>.cursor   (plain integer: last id read)
-// replying with ops/telegram-send.js. The work watchdog only nudges an idle or
-// stalled consumer with one fixed line (nudgeDecision); it never pastes text.
+// replying with ops/telegram-send.js. Opted-in Codex consumers receive native
+// queued notifications even while busy; legacy consumers use guarded TUI nudges.
 const fs=require('node:fs'),fsp=require('node:fs/promises'),path=require('node:path');
 const INBOX='scratch/telegram/inbox.jsonl';
 const cursorPath=(dir,agent)=>{
@@ -65,9 +65,18 @@ function nudgeDecision({unread=[],terminal,consumer={},previous={},now=Date.now(
   const skip=reason=>({send:false,record:{...record,reason}});
   if(config.enabled===false||config.paused)return skip('paused');
   if(!unread.length)return skip('no unread entries');
+  const queued=consumer.kind==='codex'&&consumer.deliveryMode==='codex-queue';
   const oldest=Math.min(...unread.map(e=>Date.parse(e.at)).filter(Number.isFinite));
-  if(!Number.isFinite(oldest)||now-oldest<(config.staleMs??180000))return skip('unread entries are recent');
+  if(!Number.isFinite(oldest)||now-oldest<(queued?(config.queueStaleMs??0):(config.staleMs??180000)))return skip('unread entries are recent');
   if(!terminal)return skip('consumer terminal not registered');
+  if(queued){
+    const thread=String(terminal.agentId||'').match(/^codex:([a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/)?.[1];
+    if(!thread)return skip('queue requires a full Codex thread id');
+    const pendingKey=unread.map(e=>e.id).sort((a,b)=>a-b).join(',');
+    if(previous.queuedPendingKey===pendingKey&&previous.lastQueueAt&&now-previous.lastQueueAt<(config.cooldownMs??900000))return skip('queue cooldown');
+    return {send:true,transport:'codex-queue',thread,pendingKey,message:nudgeLine(unread.length,true),goalResume:false,
+      record:{...record,reason:'pending inbox for queued Codex consumer'}};
+  }
   if(terminal.promptOpen)return skip('draft or prompt open');
   if(!terminal.idle&&!terminal.stalled)return skip('consumer busy');
   if(previous.lastNudgeAt&&now-previous.lastNudgeAt<(config.cooldownMs??900000))return skip('cooldown');
