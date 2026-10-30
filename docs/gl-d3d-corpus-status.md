@@ -13,7 +13,7 @@ Both Chrome 151/ANGLE SwiftShader runs loaded retained canonical module
 `d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`.
 WebGL had the owning host's `d3dimGpu` and GPU selection enabled; software
 had neither. Guest threads were disabled in both. Each run verified 38 original
-SDK input hashes and all 182 served-response hashes. Its `result.json` records
+SDK input hashes and all 182 served-response hashes. Its `investigation.json` records
 frames, build/backend evidence and cleanup: browser absent, three ports closed,
 private profile removed, no Boat. The different orientations and sphere sizes
 are not a same-frame comparison; FPS, full scene correctness and completion of
