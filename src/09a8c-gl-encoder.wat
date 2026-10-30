@@ -613,6 +613,8 @@
       (then (return (i32.const 0))))
     (global.set $gl_wat_stat_calls (i64.add (global.get $gl_wat_stat_calls) (i64.const 1)))
     (if (i32.eqz (call $gl_wat_init)) (then (unreachable)))
+    (if (i32.eq (local.get $op) (i32.const 142)) (then
+      (call $gl_rectf (local.get $stack)) (return (i32.const 0))))
     ;; Shadow the fixed-function transform/lighting state into WAT. This only
     ;; observes -- the call goes on to the stream unchanged, so nothing about
     ;; what gets drawn moves. It runs BEFORE $gl_state_intercept because that

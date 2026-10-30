@@ -215,14 +215,14 @@ for(const esp of [0xffffffec,0xfffffffc,0xffffffff]) {
   assert.strictEqual(h.v.getUint32(272,true),esp,'wrapping scalar stack rejected');
 }
 for(const p of [0xfffffff1,0xffffffff])assert.throws(()=>h.e.invoke(p),WebAssembly.RuntimeError,'vector wrap rejected');
-for(const name of ['glColor3d','glMultMatrixd','glGetBooleanv','glRectf']) {
+for(const name of ['glColor3d','glMultMatrixd','glGetBooleanv']) {
   const row=api.find(a=>a.name===name);assert.strictEqual(row.handler,'gl_unimplemented');
   assert.strictEqual(h.e.available(row.id),0);assert.throws(()=>h.e.other(row.id),WebAssembly.RuntimeError);
 }
 assert.strictEqual(api[scalarId].nargs,4);assert.strictEqual(api[scalarId].convention,'stdcall');
 const compat=require('../lib/gl-compat'),stream=require('../lib/gl-command-stream');
 assert.strictEqual(compat.CALL_INDEX.glTexCoord2f,28);assert.strictEqual(stream.ARG_WORDS[28],2);
-assert.strictEqual(compat.CALLS.length,142);
+assert.strictEqual(compat.CALLS.length,143);
 console.log(JSON.stringify({PASS:true,cases:36,scalarAndVector:true,nonAffineStack:true,displayLists:true,
   mutations:['cleanup','source','stride','opcode','route'],failureStatePreserved:true,
   moduleSHA:h.moduleSHA,sourceSHA:files.map((p,i)=>[p,hash(sources[i])])}));

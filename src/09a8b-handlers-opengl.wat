@@ -235,6 +235,24 @@
     (i32.store offset=0 (global.get $reg_base) (i32.const 0))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 16))))
 
+  ;; glRectf is one list command, lowered at execution time to GL_QUADS.
+  ;; Keeping it atomic lets replay inside Begin reject the whole rectangle
+  ;; without ending or replacing the caller's primitive. The list interceptor
+  ;; validates that case (including compilation's shadow Begin state).
+  (func $gl_rectf (param $stack i32)
+    (local $x1 f32) (local $y1 f32) (local $x2 f32) (local $y2 f32)
+    (local.set $x1 (f32.load offset=4 (local.get $stack)))
+    (local.set $y1 (f32.load offset=8 (local.get $stack)))
+    (local.set $x2 (f32.load offset=12 (local.get $stack)))
+    (local.set $y2 (f32.load offset=16 (local.get $stack)))
+    (global.set $gl_immediate_mode (i32.const 7))
+    (global.set $gl_immediate_floats (i32.const 0))
+    (call $gl_append_vertex (local.get $x1) (local.get $y1) (f32.const 0))
+    (call $gl_append_vertex (local.get $x2) (local.get $y1) (f32.const 0))
+    (call $gl_append_vertex (local.get $x2) (local.get $y2) (f32.const 0))
+    (call $gl_append_vertex (local.get $x1) (local.get $y2) (f32.const 0))
+    (drop (call $gl_finish_immediate)))
+
   ;; glTexCoord2d(GLdouble s, GLdouble t): the scalar arguments occupy four
   ;; x86 stack words. Reuse the vector's checked guest-double loads and encoder
   ;; path from ESP+4, never the dispatcher's individual i32 argument values.

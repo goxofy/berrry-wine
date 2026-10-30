@@ -233,7 +233,7 @@ function combined(h) {
     assert.deepStrictEqual(Array.from(a.slice(3,7)),rgba,'production color setter feeds production vertex route');
   }
   const n=e.count();e.mode(-1);e.invokeVertex(cases[0][0]);assert.strictEqual(e.count(),n);
-  for(const name of ['glColor3d','glMultMatrixd','glGetBooleanv','glRectf']) {
+  for(const name of ['glColor3d','glMultMatrixd','glGetBooleanv']) {
     const row=api.find(a=>a.name===name);assert.strictEqual(row.handler,'gl_unimplemented');
     assert.throws(()=>e.other(row.id),WebAssembly.RuntimeError,name+' stays fail-fast');
   }
@@ -270,7 +270,7 @@ for(const p of [0xffffffe9,0xffffffff])assert.throws(()=>rgb.e.invoke(p),WebAsse
 // Stable command ABI: canonicalization adds no new opcode or argument layout.
 const compat=require('../lib/gl-compat');const stream=require('../lib/gl-command-stream');
 assert.strictEqual(compat.CALL_INDEX.glColor4f,25);assert.strictEqual(compat.CALL_INDEX.glColor4fv,26);
-assert.strictEqual(compat.CALL_INDEX.gluScaleImage,141);assert.strictEqual(compat.CALLS.length,142);
+assert.strictEqual(compat.CALL_INDEX.gluScaleImage,141);assert.strictEqual(compat.CALLS.length,143);
 assert.strictEqual(stream.ARG_WORDS[25],4);
 console.log(JSON.stringify({PASS:true,cases:8,vertexCases:8,rgbImplicitAlpha:true,rgbNoFourthRead:true,rgbFailurePreservesColor:true,combinedColorVertex:true,vertexRouteMutationRejected:true,mutations:['r','g','b','a','stride','opcode','rgb-alpha','rgb-stride','cleanup','rgb-route'],displayListReplay:true,packedCommandReplay:true,fixtureSHA:hash(fs.readFileSync(__filename)),
   moduleSHA:h.moduleSHA,transformSHA:h.transformSHA,sourceSHA:files.map((p,i)=>[p,hash(sources[i])])}));

@@ -37474,8 +37474,7 @@
     "name": "glRectf",
     "nargs": 4,
     "convention": "stdcall",
-    "hash": 2093255294,
-    "handler": "gl_unimplemented"
+    "hash": 2093255294
   },
   {
     "id": 4395,
