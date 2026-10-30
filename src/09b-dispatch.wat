@@ -139,6 +139,8 @@
     (global.set $rsrc_api_scope (i32.sub (global.get $rsrc_api_scope) (i32.const 1)))
     (if (i32.and (global.get $dll_drain_pending) (i32.eqz (global.get $yield_reason)))
       (then
+        ;; Deferred unload may redirect after the handler's assignment.
+        (global.set $null_transfer_kind (i32.const 0))
         (global.set $dll_drain_pending (i32.const 0))
         ;; Ordinary handlers popped their stdcall frame but leave return EIP
         ;; to the thunk dispatcher. Callback continuations already own EIP.
@@ -1034,6 +1036,7 @@
             ;; The consumed DialogBoxParamA frame remains at ESP. Preserve the
             ;; completed call's return/result while restoring the previous
             ;; modal pump saved in its five argument slots.
+            (call $null_diag_event (i32.const 3) (local.get $arg1) (i32.load offset=16 (global.get $reg_base)))
             (global.set $dlg_pump_hwnd
               (call $gl32 (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 4))))
             (global.set $dlg_proc
@@ -1051,6 +1054,7 @@
             (i32.store offset=0 (global.get $reg_base) (local.get $arg0))
             (global.set $eip (local.get $arg1))
             (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 24)))
+            (call $null_diag_event (i32.const 4) (local.get $arg1) (i32.sub (i32.load offset=16 (global.get $reg_base)) (i32.const 24)))
             (global.set $dlg_ended (i32.const 0))
             (global.set $dlg_result (i32.const 0))
             (global.set $quit_flag (i32.const 0))
@@ -1331,6 +1335,9 @@
     (if (i32.eq (local.get $name_rva) (i32.const 0xCACA0005))
       (then
         (global.set $handler_set_eip (i32.const 1))
+        (call $null_transfer_record (i32.const 1) (i32.const 0)
+          (i32.load offset=16 (global.get $reg_base)) (i32.const 0) (i32.const 0)
+          (global.get $current_thunk_eip) (local.get $name_rva))
         (global.set $eip (i32.const 0))  ;; Stop nested run loop
         (return)))
 
