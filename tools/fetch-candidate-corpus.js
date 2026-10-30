@@ -735,6 +735,132 @@ function writeBrowserManifest(candidate, destination) {
       ...(browser.cue ? { trackSizes } : {}) }, null, 2)}\n`);
 }
 
+// Publication is a same-filesystem, single-writer transaction. The journal is
+// durable before either rename; restart reconciliation runs before KEEP/PREP.
+// An unjournalled/foreign stage is evidence, never a source of trusted assets.
+function publicationStat(filename) {
+  return fs.lstatSync(filename, { throwIfNoEntry: false });
+}
+
+function publicationIdentity(filename) {
+  const stat = publicationStat(filename);
+  if (!stat) return null;
+  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error(`unsafe publication directory: ${filename}`);
+  return `${stat.dev}:${stat.ino}`;
+}
+
+function publicationSync(filename) {
+  const fd = fs.openSync(filename, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+}
+
+function publicationTree(directory, durable = false) {
+  const hash = crypto.createHash('sha256');
+  const buffer = Buffer.alloc(64 * 1024);
+  function walk(at, relative) {
+    publicationIdentity(at);
+    hash.update(JSON.stringify(['directory', relative]));
+    for (const name of fs.readdirSync(at).sort()) {
+      const filename = path.join(at, name);
+      const child = `${relative}/${name}`;
+      const stat = publicationStat(filename);
+      if (stat.isDirectory() && !stat.isSymbolicLink()) walk(filename, child);
+      else if (stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1) {
+        hash.update(JSON.stringify(['file', child, stat.size]));
+        const fd = fs.openSync(filename, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+        try {
+          let count;
+          while ((count = fs.readSync(fd, buffer, 0, buffer.length, null))) hash.update(buffer.subarray(0, count));
+          if (durable) fs.fsyncSync(fd);
+        } finally { fs.closeSync(fd); }
+      } else throw new Error(`unsafe publication entry: ${filename}`);
+    }
+    if (durable) publicationSync(at);
+  }
+  walk(directory, '');
+  return hash.digest('hex');
+}
+
+function publicationKey(candidate, finalDestination) {
+  return crypto.createHash('sha256').update(JSON.stringify({ candidate, finalDestination })).digest('hex');
+}
+
+function publicationParent(finalDestination) {
+  const parent = path.dirname(finalDestination);
+  const relative = path.relative(ASSET_ROOT, finalDestination);
+  if (relative.startsWith('..') || path.isAbsolute(relative) || !relative) throw new Error('unsafe publication destination');
+  let at = ASSET_ROOT;
+  publicationIdentity(at);
+  for (const part of path.relative(at, parent).split(path.sep).filter(Boolean)) {
+    at = path.join(at, part);
+    publicationIdentity(at);
+  }
+  return parent;
+}
+
+function reconcilePublication(candidate, finalDestination) {
+  const parent = publicationParent(finalDestination);
+  if (!publicationStat(parent)) return;
+  const prefix = path.basename(finalDestination) + '.replacement-';
+  const stages = fs.readdirSync(parent).filter(name => name.startsWith(prefix));
+  if (!stages.length) return;
+  if (stages.length !== 1) throw new Error(`ambiguous publication stages for ${finalDestination}; retained`);
+  const staging = path.join(parent, stages[0]);
+  const stageIdentity = publicationIdentity(staging);
+  const journal = path.join(staging, 'publication.json');
+  const stat = publicationStat(journal);
+  if (!stat || !stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 65536) {
+    throw new Error(`unsafe or incomplete publication journal: ${journal}; retained`);
+  }
+  const record = JSON.parse(fs.readFileSync(journal, 'utf8'));
+  if (record.schema !== 1 || record.key !== publicationKey(candidate, finalDestination) ||
+      record.stage !== stageIdentity || !/^[a-f0-9]{64}$/.test(record.nextHash) ||
+      !(record.old === null || (typeof record.old === 'string' && /^[a-f0-9]{64}$/.test(record.oldHash)))) {
+    throw new Error(`foreign or stale publication journal: ${journal}; retained`);
+  }
+  const entries = fs.readdirSync(staging);
+  if (entries.some(name => !['publication.json', 'fixture', 'previous'].includes(name))) throw new Error('foreign publication entries; retained');
+  const fixture = path.join(staging, 'fixture');
+  const previous = path.join(staging, 'previous');
+  const next = publicationIdentity(fixture);
+  const old = publicationIdentity(previous);
+  const final = publicationIdentity(finalDestination);
+  if (next && (next !== record.next || publicationTree(fixture) !== record.nextHash)) throw new Error('unverified publication stage; retained');
+  if (old && old !== record.old) throw new Error('foreign previous fixture; retained');
+  if (old && publicationTree(previous) !== record.oldHash) throw new Error('changed previous fixture; retained');
+  if (!final && old && next) {
+    // Prefer the original (including saves) to completing an interrupted replacement.
+    fs.renameSync(previous, finalDestination);
+    publicationSync(parent);
+    publicationSync(staging);
+  } else if (!final && !old && next && record.old === null) {
+    fs.renameSync(fixture, finalDestination);
+    publicationSync(parent);
+    publicationSync(staging);
+  } else if (final === record.old && next && !old) {
+    if (publicationTree(finalDestination) !== record.oldHash) throw new Error('changed original fixture; retained');
+  } else if (final === record.next && !next) {
+    if (publicationTree(finalDestination) !== record.nextHash) throw new Error('changed published fixture; retained');
+  } else throw new Error(`ambiguous publication state: ${staging}; retained`);
+  fs.rmSync(staging, { recursive: true });
+  publicationSync(parent);
+  console.log(`RECOVER ${candidate.id}: reconciled interrupted publication`);
+}
+
+function journalPublication(candidate, finalDestination, staging, destination) {
+  const parent = publicationParent(finalDestination);
+  const old = publicationIdentity(finalDestination);
+  const record = { schema: 1, key: publicationKey(candidate, finalDestination),
+    stage: publicationIdentity(staging), next: publicationIdentity(destination), old,
+    oldHash: old ? publicationTree(finalDestination, true) : null,
+    nextHash: publicationTree(destination, true) };
+  const fd = fs.openSync(path.join(staging, 'publication.json'), 'wx', 0o600);
+  try { fs.writeFileSync(fd, JSON.stringify(record) + '\n'); fs.fsyncSync(fd); }
+  finally { fs.closeSync(fd); }
+  publicationSync(staging);
+  publicationSync(parent);
+}
+
 async function fetchCandidate(candidate) {
   const fixture = fixtureId(candidate);
   assertSafeRelative(fixture, `${candidate.id}.fixture`);
@@ -744,6 +870,7 @@ async function fetchCandidate(candidate) {
     console.log(`SHARED ${candidate.id}: uses fixture ${candidate.fixture}`);
     return { shared: 1 };
   }
+  reconcilePublication(candidate, finalDestination);
   const provenanceFile = path.join(destination, '.candidate-source.json');
   if (prepare) {
     if (!fs.existsSync(destination)) {
@@ -766,6 +893,8 @@ async function fetchCandidate(candidate) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), `wa-candidate-${candidate.id}-`));
   let staging;
   let backup;
+  let journalled = false;
+  let complete = false;
   const provenance = [];
   try {
     if (force) {
@@ -812,10 +941,14 @@ async function fetchCandidate(candidate) {
       postExtract: candidate.postExtract || [],
     }, null, 2)}\n`);
     if (force) {
+      journalPublication(candidate, finalDestination, staging, destination);
+      journalled = true;
       if (fs.lstatSync(finalDestination, { throwIfNoEntry: false })) {
         const previous = path.join(staging, 'previous');
         fs.renameSync(finalDestination, previous);
         backup = previous;
+        publicationSync(staging);
+        publicationSync(path.dirname(finalDestination));
       }
       try {
         fs.renameSync(destination, finalDestination);
@@ -824,15 +957,23 @@ async function fetchCandidate(candidate) {
           try {
             fs.renameSync(backup, finalDestination);
             backup = null;
+            publicationSync(staging);
+            publicationSync(path.dirname(finalDestination));
+            journalled = false;
           } catch (rollbackError) {
             throw new Error(`${error.message}; rollback failed: ${rollbackError.message}; previous fixture retained at ${backup}`);
           }
         }
         throw error;
       }
+      // A sync failure after rename must retain the journal and both trees.
+      // Rolling back here could overwrite an already published destination.
+      publicationSync(staging);
+      publicationSync(path.dirname(finalDestination));
       // Publication succeeded; only now may cleanup remove the previous tree.
       backup = null;
     }
+    complete = true;
     console.log(`READY  ${candidate.id}: ${path.relative(ROOT, finalDestination)}`);
     return { fetched: 1 };
   } catch (error) {
@@ -840,8 +981,12 @@ async function fetchCandidate(candidate) {
     return { failed: 1 };
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
-    // A failed rollback must never delete the only remaining previous fixture.
-    if (staging && !backup) fs.rmSync(staging, { recursive: true, force: true });
+    // Preserve every journalled failure for restart reconciliation, including
+    // fsync errors and successful rollback followed by a sync error.
+    if (staging && !backup && (!journalled || complete)) {
+      fs.rmSync(staging, { recursive: true, force: true });
+      publicationSync(path.dirname(finalDestination));
+    }
   }
 }
 
