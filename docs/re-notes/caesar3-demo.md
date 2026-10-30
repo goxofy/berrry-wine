@@ -359,3 +359,55 @@ deployment or workers were launched. Disk remained above 2 GB.
 No runtime code changed, so no full build was needed for this documentation-only
 outcome. Exact inputs, inspected capture hashes, source/module/assets provenance,
 cleanup, and the remaining limitations are retained in the run's `result.json`.
+
+## Early western expansion interrupted by browser termination (2026-10-30)
+
+Run `scratch/runs/20261030T2316Z-caesar3-final/` made one bounded original
+browser attempt with one recovery launch. **Population 150 and the objective
+transition remain unproven.** The first browser's last inspected frame shows
+population **61**, March 500 BC, with the western street, individual housing
+plots, and well already built. The recovery's last inspected frame shows
+**64**, April 500 BC. These are sampled observations, not final simulation
+counts: both browsers subsequently disappeared before the next capture.
+
+The concrete execution interruption is retained in `browser-exit.json` and
+`recovery/browser-exit.json`: Chrome PIDs 1109572 and 1116305 exited with
+**SIGKILL** at 23:19:40 and 23:27:40 UTC. Subsequent screenshots failed with
+`TargetCloseError`. The sender and cause are unknown. Readable cgroup
+`memory.events` counters through `user.slice` showed zero OOM kills when
+inspected; kernel logs were unavailable. This does not establish a gameplay
+or emulator defect, and no speculative repair was made. See
+`termination-diagnostics.json` for the diagnostic boundary.
+
+This replay moved the demonstrated western layout into March 500 BC rather
+than leaving it until late growth. It used individual placements and native
+Spacebar pause. A separate road connector and Senate clearing were prepared,
+but the administration button was still disabled in the inspected April frame;
+**no Senate construction or staffing is claimed**. Prefecture and engineer
+staffing were likewise not reached in this run. The native speed dialog showed
+90%, followed by an ordinary browser click on its increase control. Further
+water placement and growth-check commands were attempted, but the browser
+termination prevented their visual qualification. The failed temple placement
+and accidental Senate demolition from the preceding run were not repeated.
+
+Both launches used the retained browser module
+`1dbddeafbeff685596095d18a4fd9240820b00b0fa293d21ac03393f9f652fb1`, with its
+original source manifests copied into the run. First-launch source hashes and
+actual response hashes for both launches are retained separately; this is not
+a claim that the retained module was rebuilt from current main. All 114
+inventoried installed files still matched the original recorded hashes; 206
+observed installed-file responses across both launches, covering 113 distinct
+files, matched disk and original hashes. The app reported 112 mounted data
+files. The last successful input snapshots contain 88 and 164 trusted events,
+respectively, with zero untrusted events. No guest state, asset, or additional
+profile patch drove gameplay.
+
+`node test/test-caesar3-gameplay.js` passed on the separate current module.
+No runtime source changed and no full build was required. Both private servers,
+browsers, and controllers were closed or verified absent, known ports were
+closed, and private profiles removed. No Boat or assigned box was used
+(ID/state/expiry not applicable). Before another fresh city, identify the
+repeated Chrome SIGKILL source or provide a browser lifetime that survives the
+growth window; native demo saves remain unavailable. The gameplay follow-up is
+still unlocked staffed protection, a verified Senate, and inspected population
+150 plus the assignment transition.
