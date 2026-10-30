@@ -48,3 +48,37 @@ Its stopped snapshot retains `/home/user/tuxracer-render`,
 including the original fixture and `capture-gl2d-oct30`. Fork a new finite-TTL
 test box for the next API repair; the local run archive also preserves this
 retest's captures and control scripts. No public deployment was performed.
+
+The `glRectf` repair on 2026-10-30 is code commit `5cd674228` on main.
+It appends opcode 142 without changing earlier command IDs, captures four
+float words as one display-list command, and executes the rectangle through
+native GL_QUADS vertices `(x1,y1),(x2,y1),(x2,y2),(x1,y2)` at z=0/w=1.
+Existing vertex attributes and quad triangulation are reused. Direct calls,
+compilation and replay inside Begin/End report GL_INVALID_OPERATION without
+ending or changing the caller's primitive. WGL lookup exposes the real API.
+Focused rectangle/ABI/list/packed-replay/mutation, color/texture, full-module
+WGL, existing display-list/stream/encoder suites and locked build all passed.
+
+The single original 157-file invocation in
+`scratch/runs/20261030T2040Z-tuxracer-glrectf/` ran the exact module
+`4e62aa1563afe438ab39011b90910d4d311c05d4809241e4e8f6f00b710412b2`
+and runner `c82398cf64e381ef2a729696280e4eab858eb51b7deb956f2b150281691b5748`.
+Ordinary Enter down/up, then P down/up reached the personally inspected
+**Practice “Select a race” / Frozen River screen**. An additional native
+Enter down/up in that same invocation reached **“Loading, Please Wait…”**;
+both subsequent frames still showed loading. The controller quit normally
+at 27.953 seconds (20:41:55.062–20:42:23.015 UTC), exit 0, no new API trap.
+Practice selection is verified; race gameplay is not. The next useful step
+is a longer bounded observation after race Enter, rather than claiming the
+loading frames demonstrate gameplay. Initial read-only mount preflight
+inherited the supervisor's small child limit and failed to start Node;
+restoring the supervisor's normal child limits verified all 157 files and
+the exact hashes after launch, without a second game invocation.
+
+Task-owned fork `bx_msqscjw8`, from stopped parent `bx_na7bzcfg`, has a
+verified completed snapshot at 20:43:09.436Z and was verified STOPPED at
+20:43:33.964Z, before its original 21:08:03.788Z expiry. The explicit shutdown
+delegation is fulfilled. Fork this retained snapshot with a finite TTL;
+`/home/user/tuxracer-render` retains the original assets/current runtime and
+`capture-glrectf-oct30` control/evidence. All 40 remote artifacts were copied
+using Boat exec and SHA-verified locally; no SSH/scp or public deployment.
