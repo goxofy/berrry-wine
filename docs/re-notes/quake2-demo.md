@@ -1377,3 +1377,54 @@ closed and two profiles removed, with over 6 GB free. No Boat or assigned test
 box was used (ID/state/expiry N/A); ownership is handed back. Next: establish
 an onward route beyond this local wall/corner sweep, or use the unchanged
 indoor health-21 checkpoint to investigate another route.
+
+## 2026-10-31: indoor side door reaches a live stair guard
+
+Run `scratch/runs/20261031T0154Z-quake2-indoor/` uses fresh native F9 to
+recover the unchanged **health-21, kills-7/18 indoor checkpoint**. A courtyard
+running jump landed in the lower channel without collecting the opposite
+ledge pickups. F9 restored the indoor position; no dry-duct corner sweep was
+repeated. Turning left from the saved view instead enters a slatted corridor.
+Its mechanical door opens into a room with two barrels and stairs toward
+red-sky openings (`live/door-through.png`, `live/retry-door.png`).
+
+The first stair approach ended in death (HUD -2); the damage source was not
+identified in that attempt. Native F9 restored the original save again.
+On the retry, inspected `live/stair-fight.png` and `live/stair-retreat.png`
+show a **live guard on the stairs**, with health reduced to **9**. Native
+blaster fire was visibly aimed too high after PageDown; no hit or eighth kill
+is established. This is a newly inspected enemy encounter reached by the
+indoor side route, not a claim that the room itself was previously unvisited.
+The next engagement request failed because Chrome received SIGKILL at
+01:58:57Z, sender unknown. No new F6 checkpoint was made.
+
+A fresh browser remounted all eight original indoor save files. Its initial
+F9 was issued during startup, so early captures remain loading evidence only.
+Actual world recovery is confirmed by `retry/load-wait.png` (F1 **7/18**, HP
+**21**) and `retry/restored-wait.png` (same room and health after 15 seconds
+without input). Read-only VFS exports in `retry/retained-save-manifest.json`
+match the starting checkpoint byte for byte. `recovery.txt`, `driver.cjs`,
+`retry-driver.cjs`, and the action logs retain the route and recovery details.
+Gameplay/recovery ran about 01:54Z–02:04Z, within 20 minutes. No cheats,
+game/console commands, memory edits, binding changes or asset changes were used.
+
+Both browsers loaded retained module SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown; this does not certify current main. Fresh recovery
+probes report original ref_gl, WebGL 1, ANGLE Intel Mesa UHD 620, software
+flag 0, threads/render Worker off. Focused verification passes for 65 original
+assets, 67 prior inputs, 324 served responses, eight exact save files, and
+107 initial / 11 recovery trusted input events. The last retained snapshots
+have no held keys or mouse buttons; rejected post-disconnect requests are not
+counted as delivered. No page exception was recorded; static HTTP 404s remain.
+Audio, FPS and networking remain unqualified. No runtime source changed, so
+no build was run.
+
+The first controller was stopped with targeted SIGTERM. Fresh recovery quit
+responded successfully, then its controller raised the inherited
+`ERR_STREAM_WRITE_AFTER_END`; no browser exit event was retained, so clean
+exit is not claimed. All owned browser/controller processes are absent, six
+known ports closed, two profiles removed and over 6 GB free. No Boat or test
+box was used (ID/state/expiry N/A); ownership is handed back. Next: recover
+indoor21, follow the left corridor through the mechanical door, and engage
+or lure the stair guard from doorway cover with centered aim before advancing.
