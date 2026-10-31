@@ -2,7 +2,33 @@
 
 Historical source last updated, 2026-10-12. Runtime and implementation claims below describe that dated source; see current app notes and source for subsequent changes.
 
-## DirectX startup detection
+## 2026-10-31: pinned-module startup recheck
+
+Run `scratch/runs/20261031T0114Z-crimson-alien-startup-sweep/` pins module
+`f2911e1fcfc094d3c6d998bbdb071bdd800ede18cd0082a5eed53de15cf08bb9`
+and hashes all 60 local candidate files, including its manifest. The complete
+concurrent source snapshot is unverified. Sequential eight-second CLI probes
+ended normally: the inspected cooperative frame shows the original DirectX
+8.1 warning; the threaded frame is blank teal. This does not establish a
+threading defect or gameplay acceptance. Clicking the native **No** button
+at batch 10000 in a separate cooperative run produced guest ExitProcess(0)
+and an inspected empty desktop; **Cancel** behaved the same way. **Yes**
+reached unimplemented `HlinkNavigateString` (guest return address `0x42c77d`)
+and trapped at batch 10000, process exit 1. The later scheduled launcher click
+was not reached. None of these paths advanced to the launcher.
+
+The current `test/test-static-dx-version.js` passes all **12** checks against
+that pinned module. It requires an installed file resource and explicitly
+rejects invented versions for static module handles. The historical
+23-assertion synthetic-version claim below no longer describes current
+behavior. Do not restore fabricated component versions merely to suppress
+the warning. Next resolve actual installed DirectX component/resource
+requirements; the hyperlink is a separate unsupported path, not gameplay.
+Retain the original input files.
+Logs, native input command, frames, file pins and artifact hashes are retained
+in the run directory. No browser, server or Boat was provisioned.
+
+## DirectX startup detection (historical)
 
 The original `DirectX8.1 or newer not detected` message is at guest string
 `0x474ec0`, used by the startup path around `0x42c700`. Version detection
