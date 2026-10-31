@@ -424,3 +424,35 @@ before further diagnostics; its termination cause is unknown. Controller/server
 closure, process absence and profile removal are recorded separately. No source
 repair or visualizer rendering is claimed. Next: trace the native visualization
 page creation/enumeration and visibility calls, comparing the working Input page.
+
+
+## Visualization enumeration repaired, 2026-10-31
+
+Run `scratch/runs/20261031T0010Z-winamp-visualization-trace/` traced the blank
+pane to a nested synchronous WM_NOTIFY callback. Reopening the resident AVS
+plug-in walked its dependencies again; the synchronous host lookup repeatedly
+returned a Promise for unavailable `shell32.dll`, exhausting the callback's
+bounded service rounds. Returning a known miss in a diagnostic session populated
+the AVS, MilkDrop and Nullsoft list, which was inspected.
+
+The production host now uses the browser DLL availability catalog to complete
+known missing system-dependency lookups synchronously through the loader's
+existing built-in import fallback. Resident and cached bytes still win; lazy
+mounted files, catalogued DLLs, unknown vendor DLLs and hosts without a catalog
+keep their asynchronous lookup. DLL identity/path matching is unchanged. The
+regression fails on the old host and passes after the fix. The loader test's
+older fake exports and DLL-operation mocks were aligned with its current API;
+dependency mapping, patching and initializer ordering remain asserted.
+`test-process-boot-yields`, `test-sync-send-loadlibrary` and the locked canonical
+build pass. Callback ownership remains pending; this adds no callback boundary.
+
+A fresh original browser session, without the diagnostic lookup override,
+populated all three visualizers. MilkDrop Start first correctly requested music;
+starting native playback and retrying reached the original **Plug-in executed
+illegal operation (2)** dialog. Both frames were inspected. Visualization rendering
+is still unqualified; the separate plug-in exception is the next runtime gate.
+The loaded retained module was the same `d83e413f…` identified above, with the
+host-only repair served separately, threads off and software flag zero. Full
+compiled source identity remains unavailable. Before/after served hashes,
+trusted input, screenshots and cleanup records accompany `investigation.json`;
+no Boat was used.

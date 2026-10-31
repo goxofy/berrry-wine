@@ -4555,21 +4555,37 @@ class WineAssembly {
   // directories. The CLI answers the same question against the filesystem —
   // the yield pumps themselves are shared (lib/process-boot.js).
   // Synchronous subset of _findDllBytes: an exact VFS entry whose bytes are
-  // already resident, or a DLL this page already loaded. Anything else returns
-  // a Promise, which tells serviceLoadLibraryYieldSync to leave the yield for
-  // the async path.
+  // already resident, a DLL this page already loaded, or a known missing
+  // built-in system dependency. Unknown or lazy inputs return a Promise so
+  // serviceLoadLibraryYieldSync leaves their yield for the async path.
   _findDllBytesSync(fileName, fullName) {
     const vfs = this._helpCtx && this._helpCtx.vfs;
     if (vfs && typeof vfs._resolvePath === 'function') {
       let resolved = '';
       try { resolved = vfs._resolvePath(fullName); } catch (_) {}
       const entry = resolved && vfs.files.get(resolved);
-      if (entry && !entry._provider) {
+      if (entry && entry._provider) return Promise.resolve(null);
+      if (entry) {
         try { if (entry.data) return entry.data; } catch (_) {}
       }
     }
     if (this._loadedDllBytesByName && this._loadedDllBytesByName[fileName]) {
       return this._loadedDllBytesByName[fileName];
+    }
+    // The browser catalog is also the dynamic has_dll_file contract. If it
+    // excludes a system DLL and there are no mounted/cached bytes, dependency
+    // loading can immediately use its existing built-in import fallback. A
+    // spurious async miss here strands LoadLibrary inside synchronous WndProc
+    // callbacks (for example Winamp's visualization enumeration). Vendor DLLs
+    // and hosts without a catalog retain their normal async search.
+    const available = this._helpCtx && this._helpCtx.availableDllFiles;
+    if (available && typeof DllLoader !== 'undefined' &&
+        DllLoader.isWindowsSystemDll(fileName)) {
+      const full = String(fullName).toLowerCase().replace(/\//g, '\\');
+      const known = typeof available.has === 'function'
+        ? available.has(fileName) || available.has(full)
+        : available[fileName] || available[full];
+      if (!known) return null;
     }
     return Promise.resolve(null);
   }
