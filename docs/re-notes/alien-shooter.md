@@ -5,6 +5,41 @@ The complete companion assets are required (`--vfs-include='**/*'`). Original
 installer/provenance and SHA-256 are recorded in `reflexive.md` and the local
 candidate manifest. No guest executable or asset patches were made.
 
+## Stable-geometry recovery interrupted before world entry (2026-10-31)
+
+Runs `20261031T0305Z-alien-stable` and `20261031T0312Z-alien-stable-retry`
+reuse the retained `573e235d…` module with the matching 141-path frozen host.
+Both launch and attached input helpers use `defaultViewport:null`; the page
+stays 1024×768 and inspected game input bounds stay `684×544@(10,186)`.
+No timed route replay is attempted. Original graphics OK, New Game, Campaign
+and Continue reach Mission01 loading, but the first run never displays terrain.
+Captures from 03:07:01Z through 03:10:37Z still show LOADING. Native Escape
+and a one-second ArrowUp hold have inspected before/after captures with no
+visible transition; final inspected host input mask is zero with no held keys.
+Frames and ticks advance, and read-only EIP samples fall in the documented
+sprite writer (`0x41730c`/`0x417322`); these observations do not prove a hang
+or a causal emulator defect.
+
+The first browser disappears during the next capture, before its 15-minute
+controller timer. A fresh retry adds browser-process exit observation and
+records **SIGKILL at 03:12:44.355Z**, immediately after the native graphics OK
+click and before route movement. Its disconnect follows 25 ms later. The signal
+sender is unknown. A subsequent cgroup read reports cumulative `oom_kill=4`,
+but no pre-run counter or accessible kernel log exists to attribute either
+termination to OOM. A post-termination screenshot is unavailable because the
+page has closed. The earlier inspected loading/input pairs and retry setup
+capture are retained. Inner-yard recovery, usable-door contact and enemies
+remain unverified; the demonstrated immediate blocker is runtime interruption.
+
+Original 432 input pins, the loaded module, frozen host and served snapshots
+verify. This is retained-runtime evidence, not current-main acceptance. Both
+controllers exit zero after explicit quit; both browsers, their six ports and
+private profiles are absent, and the owned messageboard watcher is closed.
+No source fix, guest edit, cheat, synthetic asset, Boat or test box was used
+(box ID/state/expiry N/A). Next identify the browser SIGKILL sender, then retry
+the same stable geometry with short inspected movement checkpoints. Recovery
+commands, action logs, hashes and cleanup checks are in both run directories.
+
 ## Doorway approach blocked by courtyard replay drift (2026-10-31)
 
 Run `20261031T0252Z-alien-door` does not reach building entry or a live enemy.
