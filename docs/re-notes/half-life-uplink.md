@@ -1842,3 +1842,58 @@ Both owned controllers and browsers are absent, all six HTTP/CDP ports are
 closed, both profiles are removed and over6GB remains free. No Boat/test box
 was used (ID/state/expiry N/A); ownership is handed back. Evidence is indexed
 by `result.json`, `verification.json` and `native-save-pins.json` in this run.
+
+## Health60 headcrab-clear checkpoint and distant shot (2026-10-31)
+
+Run `20261031T0131Z-uplink-clear` freshly mounts the safer nine-file office
+save and verifies **health70 / pistol17** (`office-settled.png`). Native Tab
+opens the office door despite the Controls menu displaying the new Use=G
+binding; that menu/startup binding mismatch remains unresolved. A new native
+F6 corridor export preserves health70 / pistol12. A second browser ordinarily
+mounts all nine files and native Load Game/F7 restores that state
+(`retry/corridor-restored.png`). The old unsafe health10 save is never mounted.
+
+The first attempt flattens a close headcrab with pistol fire but loses health
+to20 before an unexplained browser disappearance. The retry initially dies to
+the second crab beside the Danger equipment: **one observed death** this run.
+F7 restores the healthier corridor save. On the final attempt, holding the
+crowbar downward at the room entrance gibs the first attacker at health65
+(`retry/wait-crab-swing.png`). After advancing slightly and turning right while
+attacking, the second is flattened near the guard. Health holds at60 during a
+six-second observation (`retry/crab-clear-stable.png`). The guard is nearby,
+so this establishes clearance of the two active pursuers without claiming
+both kills were solely the player's.
+
+Native F6 exports ten unchanged files to `retry/crab-clear-save/`; native F7
+restores **health60 / pistol12**, personally inspected in
+`retry/crab-save-reloaded.png`. This is the recommended newer checkpoint.
+Its fresh-browser remount remains unverified; `recovery.txt` gives the ordinary
+VFS mounting recipe. The earlier office70/17 and corridor70/12 exports remain
+available. All progress uses native controls; no cheats, console commands,
+guest-memory writes or original-asset edits supply it.
+
+The player then equips the pistol, aims toward the blue-beam doorway from
+farther back and fires once (`retry/mine-target.png`, `retry/distant-shot.png`).
+Ammo falls12→11; immediate backward retreat is survived at health60
+(`retry/distant-retreat.png`). **No explosion is observed: a mine hit,
+detonation and mine clearance remain unverified.** The second Chrome process
+disappears before the attempted post-retreat F6 can be verified or exported.
+The retained final save is the earlier health60 / pistol12 crab-clear state,
+not a post-shot save. Both browser losses have unknown sender/cause; detached
+CDP frames prevent final runtime inspection. No isolated emulator defect or
+source repair is claimed. All named screenshots were personally inspected.
+
+Both launches load retained WASM
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`;
+the inherited source-manifest/compile-delta limits still apply, and this is
+not a current-main compilation. Verification passes65 original asset pins,
+45 original responses, all341 served response hashes and28 retained save
+files. Last successful retry capture records191 trusted events,87 paired key
+presses and no held keys/buttons. Rendering is WebGLBackend, software disabled,
+GL error zero. Evidence is indexed by `result.json`, `verification.json` and
+`native-save-pins.json`; this documentation-only change needs no new build.
+Both owned browsers/controllers are absent, six ports are closed, profiles
+and the owned watcher are removed; over6GB remains free. No Boat/test box
+was used (ID/state/expiry N/A); ownership is handed back. Next: freshly mount
+the healthier crab-clear save, identify the exact mine body and correct the
+distant aim, retreat after firing, then export a survived native save.
