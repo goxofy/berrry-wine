@@ -241,7 +241,21 @@ const tailCalls = !process.argv.includes('--compat');
     attached(texture, C.texture | C.mip, managedCaps === 0x18 ? 4 : 8, false);
     com(level, 2); com(texture, 2);
   }
-  for (const invalid of [desc(C.system, 0x14), desc(C.texture, 0x1c)]) {
+  // OPAQUE is a texture access promise, not an unsupported storage format.
+  // Diablo II's font atlas requests exactly this flag through DirectDraw4.
+  ok(com(dd, 0, iid4, out.p), 'opaque DirectDraw4 factory view');
+  const opaqueDD4 = read(out.p);
+  for (const factory of [opaqueDD4, dd]) {
+    ok(com(factory, 6, desc(C.texture, 0x80), out.p, 0), 'opaque CreateSurface');
+    const opaque = read(out.p);
+    assert.strictEqual(caps(opaque)[1], 0x80, 'opaque cap retained');
+    assert.strictEqual(read(describe(opaque) + 108), 0x80, 'opaque descriptor');
+    ok(com(opaque, 0, iidTexture2, out.p), 'opaque texture exposes Texture2');
+    com(read(out.p), 2); com(opaque, 2);
+  }
+  com(opaqueDD4, 2);
+  for (const invalid of [desc(C.system, 0x14), desc(C.texture, 0x1c),
+    desc(C.system, 0x80), desc(C.texture, 0x84), desc(C.texture, 0x88)]) {
     write(out.p, POISON);
     assert.strictEqual(com(dd, 6, invalid, out.p, 0), 0x80070057);
     assert.strictEqual(read(out.p), 0);

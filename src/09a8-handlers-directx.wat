@@ -2641,7 +2641,7 @@
         (return)))
       (if (i32.and (call $gl32 (i32.add (local.get $arg1) (i32.const 4))) (i32.const 1)) (then
       (local.set $caps2 (call $gl32 (i32.add (local.get $arg1) (i32.const 108))))
-      (if (i32.or (i32.and (local.get $caps2) (i32.const -131101)) ;; allowed: 0x2001c
+      (if (i32.or (i32.and (local.get $caps2) (i32.const -131229)) ;; allowed: 0x2009c
             (i32.or (call $gl32 (i32.add (local.get $arg1) (i32.const 112)))
                     (call $gl32 (i32.add (local.get $arg1) (i32.const 116))))) (then
         (call $gs32 (local.get $arg2) (i32.const 0))
@@ -2649,11 +2649,17 @@
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
         (return)))))))
     ;; Managed textures retain CPU storage; the existing dirty upload path
-    ;; synchronizes the GPU copy on use. Dynamic/static are access hints.
+    ;; synchronizes the GPU copy on use. OPAQUE (0x80) promises no future CPU
+    ;; access and permits retiling/compression; retaining ordinary storage is
+    ;; valid too. Like dynamic/static, it requires TEXTURE and excludes the
+    ;; other access hints. Diablo II uses it for its debug-font textures.
     (if (local.get $caps2) (then
       (if (i32.or
             (i32.eqz (i32.and (call $gl32 (i32.add (local.get $arg1) (i32.const 104))) (i32.const 0x1000)))
-            (i32.eq (i32.and (local.get $caps2) (i32.const 12)) (i32.const 12))) (then
+            (i32.or
+              (i32.eq (i32.and (local.get $caps2) (i32.const 12)) (i32.const 12))
+              (i32.and (i32.ne (i32.and (local.get $caps2) (i32.const 128)) (i32.const 0))
+                       (i32.ne (i32.and (local.get $caps2) (i32.const 12)) (i32.const 0))))) (then
         (call $gs32 (local.get $arg2) (i32.const 0))
         (i32.store (global.get $reg_base) (i32.const 0x80070057))
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20)))
@@ -6436,7 +6442,7 @@
         (return)))
     (local.set $requested (call $gl32 (local.get $arg1)))
     (if (i32.eq (call $dx_native_desc_size (local.get $arg0)) (i32.const 124)) (then
-      (if (i32.or (i32.and (call $gl32 (i32.add (local.get $arg1) (i32.const 4))) (i32.const -131101))
+      (if (i32.or (i32.and (call $gl32 (i32.add (local.get $arg1) (i32.const 4))) (i32.const -131229))
             (i32.or (call $gl32 (i32.add (local.get $arg1) (i32.const 8)))
                     (call $gl32 (i32.add (local.get $arg1) (i32.const 12))))) (then
         (call $gs32 (local.get $arg2) (i32.const 0))

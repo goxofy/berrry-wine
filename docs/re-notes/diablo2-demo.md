@@ -1460,3 +1460,42 @@ Together with `20261013T2055Z-diablo2-pointlist-candidate`, this supplies
 ordinary browser town/control evidence for both software and WebGL on the
 recorded versions. It is not a matched performance comparison: RNG/time differ.
 No audio, combat, mobile, logical/display FPS or long-session claim is made.
+
+
+## Original WebGL combat attempt, 2026-10-31 (goal incomplete)
+
+Run `20261031T0258Z-diablo2-combat` verified all 26 existing original asset
+hashes before and after; no reinstall or original-asset copies were needed.
+The initial frozen module `8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`
+(compiled source unknown) hit the original D2Direct3D font assertion at
+`d3dDebugFont.cpp:192`. Disassembly of its texture helper identified the
+DDSCAPS2_OPAQUE texture request rejected by CreateSurface validation.
+
+The repair accepts OPAQUE texture hints in CreateSurface and attached-surface
+validation, retaining the required texture-only and incompatible dynamic/static
+hint checks. OPAQUE permits driver optimization; ordinary storage remains valid.
+The public x86 COM regression covers DD4 and DD7 creation, reported caps and
+surface descriptions, Texture2 queries, and invalid combinations.
+`node test/test-directdraw-surface47-abi-candidate.js` and
+`flock /tmp/wine-build.lock bash tools/build.sh` both passed.
+
+The fresh original `diablo2_demo` retest used explicit WebGL, default guest
+workers and paired trusted browser mouse input. Its frozen module is
+`7f9da4e9da5183e9f7f061d2356cd34626fe74bdbaf7da0345f6693dd81152be`;
+source manifest/archive, patch and every frozen host/module response are retained.
+Read-only worker/backend inspection confirms WebGL execution with guest GPU enabled.
+Long held presses were needed for reliable game polling; reconnecting browser
+helpers must use `defaultViewport:null` to preserve pointer geometry.
+
+Reviewed captures show successful startup, Barbarian name COMBAT, and movement
+through town. The final `retest/25-final-road.png` still says Rogue Encampment:
+the hero is beside the town wall and Gheed/Warriv map labels. The real exit and
+first monster were not reached within the bounded attempt. There is no combat
+before/after proof and no complete-playability, audio or FPS claim. This stops at
+a route/navigation boundary; it does not establish a runtime failure at the exit.
+
+`recovery.txt` and `replay-server.cjs` in the run restore the exact tested host
+and module over the existing verified original assets. No save checkpoint was
+exported: recovery starts from the original launch/character route. Both owned
+browsers/controllers were closed; no remote test box was used. Next work is to
+locate the real exit in this randomized town and capture the first native fight.
