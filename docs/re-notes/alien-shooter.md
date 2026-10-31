@@ -5,6 +5,50 @@ The complete companion assets are required (`--vfs-include='**/*'`). Original
 installer/provenance and SHA-256 are recorded in `reflexive.md` and the local
 candidate manifest. No guest executable or asset patches were made.
 
+## Browser Mission 01 destructible obstacles (2026-10-31)
+
+Run `20261031T0215Z-alien-combat` reuses the original installation and the
+retained browser driver/module from `20261031T0136Z-alien-shooter-browser`.
+All 432 prior manifest/companion-file pins match; the separately verified EXE is
+SHA-256 `aae2547ccec2e235344bc9cf6e5e9ef4c9923b13c9e8fbd1fe14c65b64252446`.
+Loaded WASM is `573e235db16e351668289f49e2f279ff48bcad56e7ca533167cb94cd6f4ec3fc`;
+all 1,149 retained source-manifest entries match Git commit
+`2606d61735906c02ed66024b5925757a07ea73e0`. Actual concurrent browser host
+responses are separately retained and hashed, without claiming whole-host
+equality to that build. Chrome 151 uses the owning WebGL device through ANGLE
+SwiftShader, with guest threads off.
+
+Native setup, New Game, Campaign and Continue reach Mission 01. Arrow/WASD
+movement explores the locked gate and fence perimeter to containers, barrels
+and a red route arrow. `crate-target.png` shows a clear muzzle flash and impact;
+`native-escape-control.png` then shows the orange crate breaking into wooden
+debris. `barrel-final.png` and `destruction-settled.png` show the neighboring
+barrels/crates gone and persistent debris. The final native right-button movement
+in `bend-approach-final.png` places the soldier beside that debris on the yard
+side of the front fence. These establish browser firing, destructible-object
+interaction and local traversal beyond the previous movement/aim-only result.
+No live enemy, enemy damage, kill, score gain or mission completion is verified;
+health remains 110 and score 0.
+
+The driver records trusted down/up pairs. A small retained helper adds ordinary
+Puppeteer right-button holds, matching the original readme's movement control.
+Read-only DOM inspection finds the input canvas at `(10,226)`, size `460×336`,
+while the composited game image is larger; several early absolute aim attempts
+therefore do not establish accurate targeting. Later muzzle/impact/destruction
+captures are the positive evidence. Presentation slows late in the run, but
+the runtime continues, reports no bridge error, and the final host input state
+has no held buttons or physical keys. No causal emulator defect is established.
+No guest patch, cheat, synthetic asset, source edit or new build was used.
+
+Explicit quit records browser/server closure; independent checks find the owned
+browser absent, all three ports closed and its private profile removed. The
+controller tool reports status 143 after quit, with unknown signal source;
+normal controller exit is not claimed. No Boat/test box was assigned (ID, state
+and expiry N/A). Recovery, original pins, trusted controls, paired inspected
+captures and verification remain in the run directory. Next: replay the native
+destruction route, continue from the yard toward the complex and inspect the
+first enemy encounter.
+
 ## Pinned browser Mission 01 movement (2026-10-31)
 
 Run `20261031T0136Z-alien-shooter-browser` launches the original registered
