@@ -554,3 +554,33 @@ earlier `20261030T2226Z-d3drm-four-scenes` Jazz capture. The sparse early image
 does not establish a renderer defect. This run establishes an original software
 scene, not browser/WebGL parity, audio, physical GPU behavior or current-main
 validation. Commands, asset hashes and inspected artifacts are in the run folder.
+
+### 2026-10-31: Falling Leaves with browser guest threads
+
+Run `20261031T0248Z-fallingl-threaded` launched registered `scr_fallingl`
+with its original executable and six scene assets in Chrome 151.0.7922.108,
+cross-origin isolation and guest threads enabled. Sequential WebGL and software
+arms each captured the original scene three times, approximately 25, 35 and 45
+seconds after launch. Personally inspected first/last images show moving gold
+and green leaves with shadows on both routes. In the scene-only rectangle
+`(10,205,683,524)`, first/last captures differ at 39,455 pixels for WebGL and
+18,279 for software. These are separate animation samples, not pixel parity.
+
+Both arms used retained module SHA-256
+`8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`;
+its complete compiled source identity is unknown. Host code was cached by first
+served bytes and reused across arms; 105 cached files are preserved by hash.
+All seven original input hashes remained unchanged. Samples confirm threads
+enabled and the selected route; WebGL additionally created a D3D render worker.
+Owning GPU draw/error counters were not recovered, so this does not establish
+absence of fallback or hardware-GPU behavior (Chrome used SwiftShader).
+
+No page exceptions were recorded. Expected missing-DLL stub warnings and a
+resource 404 remain in the console logs. The first script stopped after the
+WebGL captures because its browser cleanup API was incompatible with the
+installed Puppeteer; the corrected software continuation reused the saved
+host bytes and module. Both browser PIDs are absent, profiles removed, and
+servers closed. No Boat was created. Evidence includes scripts, input hashes,
+served snapshots, captures, samples and `verification.json` in the run folder.
+This extends the earlier cooperative-thread coverage; it is not current-main
+source validation, physical-GPU acceptance or a full-corpus result.
