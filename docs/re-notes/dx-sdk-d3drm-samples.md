@@ -251,6 +251,50 @@ edge-on. Animation phase was not aligned, so no pixel-equivalence claim follows.
 This proves original asset loading and visible output, not full scene
 correctness, interaction, or complete 27-app acceptance.
 
+## October 31: original Boids flock is phase-dependent, not absent
+
+Run `20261031T0135Z-boids-original-flock` reuses the prior browser driver
+with the built module after `2606d6173`, SHA-256
+`573e235db16e351668289f49e2f279ff48bcad56e7ca533167cb94cd6f4ec3fc`.
+Three personally inspected moving captures on each software/WebGL route
+progress from isolated colored birds to a clustered colored flock over the
+cyan terrain. Software also shows a textured obstacle. A separate WebGL
+startup capture reproduces cyan outlines without visible birds, followed by
+a later capture with a bird and textured obstacle. Threads are disabled;
+the owning host has `d3dimGpu` only on WebGL, with zero reported fallbacks
+or errors. No guest state, executable, or asset was modified.
+
+The original executable matches the recovered DX5 archive byte-for-byte
+(`b9327e6f…`). Its `samples/boids/boids.cpp` defines 13 birds, seeds
+`srand(time(NULL))`, scatters their initial X/Z positions across approximately
+±100 units, and starts the camera at `(0,30,100)` looking at `(0,0,50)`.
+Each render advances the simulation, looks toward the flock centroid, and
+orbits the camera with a time-seeded phase. Launch time and simulation phase
+therefore change how much of the flock a short capture sees.
+
+Read-only observations of three complete WebGL frames each contain 67 draws:
+50 terrain line strips, all 13 birds (30 indexed vertices / 10 triangles each),
+and four obstacles. In the startup frame **all 13 bird bounds are outside
+the 640×480 viewport**; two later frames have all 13 intersecting it. An
+independent float32 projection of the original 16-vertex bird model through
+the observed world/view/projection matrices and viewport normalization
+matches every submitted bird position, depth, and reciprocal W exactly in
+all three frames. In the startup and final traced frames, world translations
+also match all 13 live original bird locations. See `geometry-analysis.json`,
+the raw geometry captures, original source/disassembly, and `recovery.txt`
+in the run directory.
+
+This demonstrates an off-camera flock in an actual outline-only startup
+phase, and visible convergence on both current routes. The October 30 runs
+did not retain comparable geometry, so their exact cause remains unproven.
+The Globe repair changes DX1 Execute; Boids uses Device2 indexed primitives,
+so these observations do not attribute the flock's return to that repair.
+No emulator defect was isolated and no code repair or new build was needed.
+Native frame-aligned correctness, lighting/raster parity, and performance
+remain unqualified. All 38 registered inputs and served-response hashes
+were checked; all three owned browsers/servers were closed, nine ports
+verified closed, and their private profiles removed. No Boat was used.
+
 ## October 30: paired Boids motion, incomplete scene acceptance
 
 Runs `20261030T2335Z-dx-boids-webgl` and
