@@ -1702,3 +1702,40 @@ renderer dialog-button queue and modal key-posting tests pass, and
 `flock /tmp/wine-build.lock bash tools/build.sh` passes (retry log; the first
 verification build was terminated). Current-main build validation is separate
 from the retained gameplay module.
+
+The inherited live browser was preserved for the finishing continuation
+00:43:56–00:47:25 UTC, after repair commit `49340601e` was pushed to main.
+Native S/W/A/D, arrows, E, F6/F7 and Escape route the player through the red
+corridor and maintenance breakroom, then reload the first exported F6
+checkpoint and inspect the metal alcove beside the crates. Health remains
+100; the office, pistol, tripmine crossing and satellite objective are **not**
+reached. This is bounded navigation progress, not completion of the demo.
+`inherited-east.png`, `maintenance-enter.png`, `inside-breakroom.png`,
+`white-opposite.png` and their page companions show the inspected route.
+`fixed-pause-page.png` visibly shows Resume game and `fixed-resume-page.png`
+shows gameplay. Further native Escape pairs resume successfully at the end;
+their pause captures catch the menu fade before its text appears.
+
+`continuation-save/` and `final-native-save/` contain all nine read-only
+exported game-generated save files per checkpoint; the original two crowbar
+exports remain. `native-save-pins.json` records all 36 file hashes and
+`recovery.txt` describes ordinary mounting. F7 reload of the first continuation
+F6 checkpoint was inspected in-session; final export was not remounted in a
+fresh browser. No guest writes, console commands or modified original assets
+supply gameplay. The final-page log has 101 trusted keydown/up pairs, 250
+trusted events total and no held keys or buttons. Earlier pre-refresh input
+logs remain separately preserved.
+
+`verification.json` checks all 65 original files and 66 original responses
+across the three prior launches/refreshes; all 619 served responses retain
+hashes and the source check accounts for both exact renderer variants.
+The final inspected backend is hw.dll generation 1 / WebGLBackend WebGL 1,
+ANGLE/Mesa Intel UHD 620, software disabled and GL error zero, frame sequence
+49048. The runtime was running, with memory present and no stop events since
+the corrected refresh, immediately before requested cleanup. The installed
+seven-label menu test also passes against the newly built main module.
+The browser PID1202823 and controller PID1202807 are absent, ports
+45617/45519/45481 closed, profile removed and inherited watcher stopped;
+over 7.5 GB remains free. No Boat was used; box ID/state/expiry are N/A.
+Next: use the retained health100 save to navigate toward the office, preserve
+that checkpoint outside the browser, then try the mine from greater distance.
