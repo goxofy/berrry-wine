@@ -149,3 +149,33 @@ responses and 141 unique host paths. The controller exited 0 after explicit
 quit; its browser, profile and three ports were closed. No Boat was used.
 The next runtime check should start with a small UI slice and test original
 menu selection; this capture establishes rendering only.
+
+## Original new game reaches sailing (2026-10-31)
+
+A second local Chrome 151 run started with UI slice **5000** before Launch,
+cooperative execution and the same retained `573e235d…` module. Native mouse
+and keyboard input advanced Play → Crew Signups → tavern → English captain
+welcome → crew decision → **cast off at Port Royale**. The inspected sailing
+view shows the ship, ocean, port, 600 gold and 41 crew. Subsequent paired
+Right and Up key inputs were delivered; the ship becomes visible and the
+coast/port position changes across the captures. This establishes progression
+beyond the menu and an updating original sailing scene; the small sample does
+not isolate each key's effect or qualify a voyage, combat or objective.
+
+Rendering remains visibly defective: the mountains are white, and the console
+records 270 “specular lighting is not implemented” errors. Their causal
+relationship is unproven. No source fix, complete graphics acceptance, audio
+acceptance or persistent save is claimed. This retained module's full source
+identity remains unknown; it is not a newly built main revision.
+
+Evidence: `scratch/runs/20261031T0215Z-pirates-small-slice/`. Personally inspected
+`play-enter.png`, `crew-confirm.png`, `captains.png`, `captain-continue.png`,
+`captain-next.png`, `cast-off.png`, `sailing-turn.png` and `sailing-sails.png`
+show the route. `actions.jsonl` and screenshot metadata retain timing and
+25 trusted input events, with all keys/buttons released. Verification matches
+1374 original input pins, 465 served responses and 141 unique host paths;
+179 artifact hashes preserve the run. Explicit quit closed the browser,
+controller (exit 0), three ports and profile; no Boat was used.
+`recovery.txt` records the exact native route. A next graphics investigation
+should first reproduce the white terrain with a source-identified build and
+compare a matched scene, rather than infer a cause from the specular warning.
