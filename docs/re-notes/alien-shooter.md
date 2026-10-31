@@ -5,6 +5,27 @@ The complete companion assets are required (`--vfs-include='**/*'`). Original
 installer/provenance and SHA-256 are recorded in `reflexive.md` and the local
 candidate manifest. No guest executable or asset patches were made.
 
+## Pinned native startup capture (2026-10-31)
+
+Run `20261031T0119Z-alien-shooter-native-start` uses module SHA-256
+`f2911e1fcfc094d3c6d998bbdb071bdd800ede18cd0082a5eed53de15cf08bb9`
+with 432 hashed local input files. The module is exact; a complete matching
+concurrent source snapshot is unverified. This is a new native software-renderer
+startup observation, not a replay of the historical browser gameplay below.
+
+The original renderer setup accepts the native click at `(333,214)` and creates
+the 640×480 AlienShooter window. A 45-second run and a 55-second live-control run
+without continuous presentation produced inspected black captures despite
+continued batches and software D3D requests. A separate bounded run with
+`--live-present` displayed the original LOADING screen and then the SIGMA TEAM
+splash; all three finite runs exited with code zero. This capture-mode
+contrast does not establish a guest rendering regression or its cause.
+Native Enter down/up reached the focused game window; no menu/gameplay response
+is qualified. Keep `--tick-ms-per-batch=5 --batch-size=200000` and record both
+wall time and guest batch progress when extending the original startup test.
+Exact commands, snapshots, captures, input hashes and cleanup checks are retained
+in the run directory; no guest assets or emulator source were changed.
+
 ## DirectSound8 startup (2026-09-29)
 
 Startup originally stopped at `DSOUND.DLL#11`, IAT `0x47a01c`, caller
