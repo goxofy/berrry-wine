@@ -2081,3 +2081,61 @@ controller exit is not claimed. There are no unexplained browser losses.
 Other agents are preserved. No Boat/test box was used (ID/state/expiry N/A);
 ownership is handed back. Recovery instructions and evidence are retained in
 this run's `recovery.txt`, `verification.json` and `result.json`.
+
+## West-wall passage explored; exposed far end and browser loss (2026-10-31)
+
+Run `20261031T0236Z-uplink-onward` uses the prior `pinned/driver.cjs`,
+captured `served-source/` host snapshot, retained module and all ten unchanged
+`floor-cover-save/` files. Native Load Game selects20:36; `settled-page.png`
+personally confirms **health44 / pistol9**. The south/east perimeter exposes
+a human soldier firing directly ahead (`east-perimeter-page.png`), reducing
+health to26. Native F7 restores44/9. No pistol rounds are spent in this run.
+
+The west wall offers a different route behind the crate stacks. From the
+floor checkpoint, turn to yaw approximately89, strafe left about1000ms, then
+advance north with W. Short native steps reach behind the first red stack
+with **44/9** (`west-gap-run-page.png`). Continuing north crosses another
+firing lane: `west-far-stack-page.png` shows35 health and
+`north-wall-page.png` shows29 beside the far stack, with sky and a fence
+visible through an opening. Waiting five seconds there reduces health to14
+(`far-stack-stable-page.png`): this is **not safe cover or a verified onward
+exit**. An earlier crouched west-lane attempt ends in one observed death,
+followed by automatic native recovery. Soldiers can fire along this route;
+no enemy defeat, cleared warehouse or satellite progress is established.
+
+Native F6 is attempted at the far stack, but the browser disappears before
+the read-only VFS export completes. No new save export is retained or claimed.
+A second fresh browser again mounts the original ten unchanged floor files;
+the native menu selects20:36, but this browser disappears while the loading
+image remains visible (`retry/fresh-floor-page.png`), before a settled HUD.
+Thus there are **two unexplained browser losses**, with no proven source
+cause. Controllers remain reachable and report closed-target errors; browser
+PIDs are already absent before explicit controller cleanup. These runtime
+interruptions and the exposed far end are the concrete blockers. The original
+verified44/9 export remains unchanged and is the recommended recovery point.
+
+Verification passes65 original asset pins, ten mounted save pins,342 served
+response hashes and44 original response hashes. Both loaded modules hash to
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`.
+The126 retained native input events are trusted, with51 paired key presses
+and no held inputs in the available snapshots. The first browser's final
+input tail after `far-stack-stable-page.png` is unavailable; action requests
+are retained, but a complete final trusted-event audit is not claimed.
+All observation and progress use native inputs and read-only inspection:
+no guest/save edits, original-asset changes, cheats or game commands.
+
+The inherited `source-identity.json` and `compile-source-delta.patch` retain
+the incomplete compiled-source provenance. The pinned host snapshot avoids
+the previously documented module54a33f/current-mirrorb77d layout mismatch;
+this is not a current-main build or a production repair. No source fix or
+new build is claimed for this documentation-only continuation. Evidence and
+recovery details are in this run's `verification.json`, `lifecycle.json`,
+`recovery.txt` and `result.json`.
+
+Only owned resources are closed: both browsers absent, six ports closed, two
+private profiles removed and the board watcher stopped. Both controllers
+exit0 after explicit cleanup; that does not explain the earlier browser
+losses. Other agents are preserved. No Boat/test box was used (ID/state/expiry
+N/A); ownership is handed back. Next: recover the original44/9 floor export,
+establish a firing position before the west-wall gap, and investigate browser
+exit signals if native loading or export is interrupted again.
