@@ -987,3 +987,47 @@ clean controller exit is not claimed. Both owned PIDs are absent, all three
 ports closed and profile removed, with over 7 GB free. No Boat was used.
 Next: continue the health-22 native checkpoint and engage the remaining guards
 from cover, keeping the mouse inside the game area.
+
+## 2026-10-31: four kills and passage beyond the guards
+
+Run `scratch/runs/20261031T0032Z-quake2-health22/result.json` continues the
+preserved health-22/two-kill checkpoint. Personally inspected captures show
+two guards near the passage pursuing the player, native blaster fire from
+the corner, hit reactions and both guards falling. The ordinary F1 screen
+confirms **kills 4/18**, with the player alive at **health 11**. Native F6
+saves that checkpoint. F9 recovery retains four kills. Eight exported native
+save files were then mounted as ordinary app files after stopping/restarting
+the app; F9 and F1 again confirm health 11 and kills 4/18. Exported bytes
+after this external recovery match the combat save exactly.
+
+The player subsequently entered the slatted passage beyond those guards.
+A further guard killed the player there; no fifth kill, completed next room
+or level transition is established. The recommended recovery is
+`combat-save-manifest.json`, before passage entry. `recovery.txt`,
+`remount.cjs`, the eight native files and the original starting health-22
+files are retained separately. The corner save is an earlier position, not
+the recommended four-kill checkpoint. Browser gameplay and recovery ran from
+approximately 00:29:01Z to 00:36:43Z, below eight minutes and the 20-minute
+bound. No guest-memory writes, console commands, cheats or original-asset changes
+supplied progress. No emulator defect or runtime repair is demonstrated.
+
+The exact retained module remains SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown. Actual backend probes report original ref_gl,
+WebGL 1, ANGLE Intel Mesa UHD 620, software flag 0, threads/render Worker off.
+This does not certify a fresh current-main build. All 67 prior registered
+inputs, including 65 original assets, remain unchanged; the current manifest
+has 74 entries including eight checkpoint files. All 158 served responses
+pass hash verification. The original installer remains unavailable.
+
+Focused module/assets/served-byte/native-save/backend/input/cleanup checks
+pass. All 212 recorded input events are trusted; final physical mouse mask
+and native attack bit are clear. A redundant release request returned
+`left is not pressed`; no page exception, guest trap or FreeLibrary failure
+was recorded. Static-harness HTTP 404s remain. Browser close was requested;
+the controller records browser SIGKILL, with its precise sender unknown.
+Controller shutdown required SIGTERM followed by targeted SIGKILL, so clean
+process exit is not claimed. Both owned PIDs are absent, three ports closed,
+profile removed and over 7 GB free. No Boat or assigned test box was used.
+Next: recover the four-kill save and engage the passage guard from cover;
+health 11 remains fragile.
