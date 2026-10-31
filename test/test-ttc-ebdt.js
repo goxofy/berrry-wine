@@ -9,6 +9,9 @@ const {bootRenderHarness} = require('./render-helper');
     (func (export "test_call_GetCharWidth32A") (param i32 i32 i32 i32) (result i32)
       (call $handle_GetCharWidth32A (local.get 0) (local.get 1) (local.get 2) (local.get 3)
         (i32.const 0) (i32.const 0)) (i32.load (global.get $reg_base)))
+    (func (export "fixture_geometry") (param i32 i32 i32 i32 i32 i32 i32) (result i32)
+      (call $tt_glyph_geometry (local.get 0) (local.get 1) (local.get 2) (i32.const 28)
+        (local.get 3) (local.get 4) (local.get 5) (local.get 6) (i32.const 1)))
     (func (export "fixture_register") (param i32) (result i32) (call $tt_reg_add (local.get 0)))
     (func (export "fixture_glyph") (param i32 i32 i32) (result i32)
       (call $tt_glyph_ensure (local.get 0) (local.get 1) (local.get 2)))
@@ -213,6 +216,40 @@ const {bootRenderHarness} = require('./render-helper');
     }
     console.log(`PASS optional UMing TW face 2: ${reference.length} bitmap glyphs exactly match fontTools`);
   }
+  // Original CC0 outline fixture: H has 1200 points/edges, I composes two H
+  // outlines, and J has 300 points plus a real glyph program/phantom points.
+  const complexPath='c:\\windows\\fonts\\complex.ttf';
+  hostCtx.vfs.files.set(complexPath,{data:new Uint8Array(fixture('complex.ttf')),attrs:0x20});
+  assert.strictEqual(w.fixture_register(str(complexPath)),1);
+  const complexFace=w.test_tt_face_for_logfont(wa(str('Fixture Complex')),400,0);
+  assert(complexFace>=0);
+  const cd=w.fixture_data(complexFace)>>>0, cs=w.test_tt_face_size(complexFace)>>>0;
+  for(const ppem of [12,28,64]){
+    let simple=null;
+    for(const code of [72,73,74]){
+      const gid=code?w.test_tt_glyph_index(cd,cs,code):0;
+      const entry=w.fixture_glyph(complexFace,gid,ppem)>>>0;assert(entry);
+      const width=w.test_tt_entry_width(entry),height=w.test_tt_entry_height(entry);
+      const pixels=[];
+      for(let y=0;y<height;y++)for(let x=0;x<width;x++)pixels.push(w.test_tt_entry_pixel(entry,x,y));
+      assert(pixels.some(Boolean),`complex glyph ${code} at ${ppem} draws ink`);
+      if(code===72)simple=pixels;
+      if(code===73)assert.deepStrictEqual(pixels,simple,`simple/composite winding at ${ppem}`);
+    }
+  }
+  const points=alloc(2404*6), edges=alloc(2400*32);
+  const hintedGid=w.test_tt_glyph_index(cd,cs,74);
+  assert.strictEqual(w.test_tt_glyph_load_outline(cd,cs,hintedGid,wa(points),2404),300);
+  assert(w.test_tth_hint_outline(cd,cs,hintedGid,28,wa(points),300),
+    '300 real points plus four phantom points execute the hint program');
+  const complexGid=w.test_tt_glyph_index(cd,cs,72);
+  assert.strictEqual(w.fixture_geometry(cd,cs,complexGid,wa(points),2404,wa(edges),2400),1200,
+    'regression fixture actually emits more than 1024 raster edges');
+  assert.throws(()=>w.fixture_geometry(cd,cs,complexGid,wa(points),16,wa(edges),2400),
+    WebAssembly.RuntimeError,'insufficient outline points fail fast');
+  assert.throws(()=>w.fixture_geometry(cd,cs,complexGid,wa(points),2404,wa(edges),16),
+    WebAssembly.RuntimeError,'insufficient raster edges fail fast');
+  console.log('PASS 1200-point/1200-edge simple, 2400-point composite, 300-point hinted outlines at 12/28/64px');
   assert.strictEqual(w.fixture_remove(str(ttcPath)),1);
   const remaining=[];for(let i=0;i<100;i++){const p=w.fixture_enum(i)>>>0;if(!p)break;remaining.push(readString(p));}
   assert(!remaining.includes('Fixture Other'),'collection removal removes every member');

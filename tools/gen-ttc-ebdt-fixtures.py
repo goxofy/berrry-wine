@@ -101,6 +101,47 @@ def face(family, localized, advance, strikes=False):
         embedded(fb.font)
     return fb.font
 
+def complex_face():
+    # One contour retraces the same triangle 400 times: 1200 explicit points
+    # and 1200 non-horizontal edges, with 800 simultaneous scan crossings.
+    # Repeated winding keeps expected pixels simple and the compressed font tiny.
+    fb = FontBuilder(1000, isTTF=True)
+    order = ['.notdef', 'space', 'H', 'I', 'J']
+    fb.setupGlyphOrder(order)
+    fb.setupCharacterMap({32: 'space', 72: 'H', 73: 'I', 74: 'J'})
+    glyphs = {}
+    for name in ['.notdef', 'space', 'H', 'J']:
+        pen = TTGlyphPen(None)
+        if name != 'space':
+            pen.moveTo((100, 0))
+            for n in range(400 if name == 'H' else 100 if name == 'J' else 1):
+                if n:
+                    pen.lineTo((100, 0))
+                pen.lineTo((400, 700)); pen.lineTo((700, 200))
+            pen.closePath()
+        glyphs[name] = pen.glyph()
+    pen = TTGlyphPen(glyphs)
+    pen.addComponent('H', (1, 0, 0, 1, 0, 0))
+    pen.addComponent('H', (1, 0, 0, 1, 0, 0))
+    glyphs['I'] = pen.glyph()
+    # Exercise a 300-point hinted outline including its four phantom points.
+    from fontTools.ttLib.tables.ttProgram import Program
+    glyphs['J'].program = Program()
+    glyphs['J'].program.fromBytecode([0x00])  # SVTCA[y]
+    fb.setupGlyf(glyphs)
+    fb.setupHorizontalMetrics({g: (800, 100) for g in order})
+    fb.setupHorizontalHeader(ascent=800, descent=-200)
+    fb.setupNameTable({'familyName': 'Fixture Complex', 'styleName': 'Regular',
+                       'uniqueFontIdentifier': 'FixtureComplex-1',
+                       'fullName': 'Fixture Complex', 'psName': 'FixtureComplex',
+                       'copyright': 'Original CC0-1.0 test geometry.'})
+    fb.setupOS2(sTypoAscender=800, sTypoDescender=-200,
+                usWinAscent=800, usWinDescent=200)
+    fb.setupPost(); fb.setupMaxp()
+    fb.font['head'].created = fb.font['head'].modified = STAMP
+    fb.font.recalcTimestamp = False
+    return fb.font
+
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
     first = face('Fixture Bitmap', '測試甲', 600, True)
@@ -108,3 +149,4 @@ if __name__ == '__main__':
     first.save(OUT / 'bitmap.ttf')
     collection = TTCollection(); collection.fonts = [first, second]
     collection.save(OUT / 'faces.ttc')
+    complex_face().save(OUT / 'complex.ttf')

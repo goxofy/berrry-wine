@@ -12,3 +12,9 @@ sparse E..G strike range; E/G extend above the normal font ascent; space is an e
 `faces.ttc` contains this face and Fixture Other (different outline advances),
 with English and Traditional Chinese family names. Tables are shared by the TTC
 writer, exercising file-relative offsets and payloads before face directories.
+
+`complex.ttf` contains original triangle geometry: H retraces a triangle 400
+times in one contour (1200 points, 1200 non-horizontal edges and up to 800
+simultaneous crossings); I composes two H glyphs (2400 points/edges); J uses
+300 points with SVTCA[y] bytecode and four hinting phantom points. All three
+must draw ink at 12/28/64px; the large simple and composite pixels must match.

@@ -634,6 +634,8 @@
   (region.declare $GDI_BITMAP_FONT_TABLE (size 0x00000C00) (align 0x00000100)
     (stride $GDI_BITMAP_FONT_STRIDE (count $GDI_BITMAP_FONT_COUNT))
     (owner "10b-gdi-font.wat:$GDI_BITMAP_FONT_TABLE"))
+  (region.declare $TT_RASTER_ERROR (size 0x00000080) (align 0x00000010)
+    (owner "10c-truetype.wat:$TT_RASTER_ERROR"))
   (region.declare $TT_SUBST_TABLE (size 0x00000800) (align 0x00000100)
     (owner "10c-truetype.wat:$TT_SUBST_TABLE"))
   (region.declare $TT_SUBST_ALIAS_TABLE (size 0x00000300) (align 0x00000100)
