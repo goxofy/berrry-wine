@@ -75,7 +75,9 @@ def embedded(font):
 def face(family, localized, advance, strikes=False):
     fb = FontBuilder(1000, isTTF=True)
     fb.setupGlyphOrder(GLYPHS)
-    fb.setupCharacterMap({32: 'space', **{ord(g): g for g in GLYPHS[2:]}})
+    # Above U+00FF, with a low byte pointing at F: catches byte truncation
+    # and exercises both the Unicode cmap and embedded image selection.
+    fb.setupCharacterMap({32: 'space', 0x4E46: 'A', **{ord(g): g for g in GLYPHS[2:]}})
     glyphs = {}
     for name in GLYPHS:
         pen = TTGlyphPen(None)

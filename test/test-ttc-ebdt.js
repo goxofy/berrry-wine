@@ -5,7 +5,11 @@ const fs = require('fs');
 const path = require('path');
 const {bootRenderHarness} = require('./render-helper');
 (async () => {
-  const {exports:w, memory, hostCtx} = await bootRenderHarness({extraWat: `
+  const {exports:w, memory, hostCtx, module:compiledModule} = await bootRenderHarness({extraWat: `
+    (func (export "fixture_reserve") (param i32 i32) (result i32)
+      (call $tt_raster_scratch (local.get 0) (local.get 1)))
+    (func (export "fixture_scratch_bytes") (result i32) (global.get $tt_scratch_allocated))
+    (func (export "fixture_scratch_pointer") (result i32) (global.get $tt_scratch))
     (func (export "test_call_GetCharWidth32A") (param i32 i32 i32 i32) (result i32)
       (call $handle_GetCharWidth32A (local.get 0) (local.get 1) (local.get 2) (local.get 3)
         (i32.const 0) (i32.const 0)) (i32.load (global.get $reg_base)))
@@ -105,7 +109,7 @@ const {bootRenderHarness} = require('./render-helper');
   for(let n=0;n<ttf.length;n+=13)
     assert.strictEqual(w.fixture_lookup(data,n,2,12,wa(lookup)),0,`truncated font ${n}`);
   const font=makeFont('Fixture Bitmap');w.test_call_SelectObject(dc,font);
-  const out=alloc(64), gm=alloc(20), bitmap=alloc(64);
+  const out=alloc(64), gm=alloc(20), bitmap=alloc(256);
   assert.strictEqual(w.test_call_GetTextExtentExPointA(dc,text,8,0x7fffffff,0,0,out),1);
   assert.strictEqual(w.guest_read32(out),total);
   assert.strictEqual(w.test_call_GetCharWidth32A(dc,65,71,out),1);
@@ -135,6 +139,13 @@ const {bootRenderHarness} = require('./render-helper');
     // Opaque white background makes the canonical DIB easy to inspect.
     b.fill(255,wa(bits),wa(bits)+128*40*4);
     if(route==='text')assert.strictEqual(w.test_call_TextOutA(hdc,8,4,str(char),1),1);
+    if(route==='textW')assert.strictEqual(w.test_call_TextOutW(hdc,8,4,wide(char),char.length),1);
+    if(route==='extW')assert.strictEqual(w.test_call_ExtTextOutW(hdc,8,4,0,0,wide(char),char.length,0),1);
+    if(route==='index')assert.strictEqual(w.test_call_ExtTextOutW(hdc,8,4,16,0,wide('\u0002'),1,0),1);
+    if(route==='drawW'){
+      const rect=alloc(16);[8,4,120,36].forEach((v,i)=>w.guest_write32(rect+i*4,v));
+      assert(w.test_call_DrawTextW(hdc,wide(char),char.length,rect,0x100)>0);
+    }
     if(route==='ext')assert.strictEqual(w.test_call_ExtTextOutA(hdc,8,4,0,0,str(char),1,0),1);
     if(route==='draw'){
       const rect=alloc(16);[8,4,120,36].forEach((v,i)=>w.guest_write32(rect+i*4,v));
@@ -173,6 +184,59 @@ const {bootRenderHarness} = require('./render-helper');
   assert.strictEqual(w.guest_read32(out),w.guest_read32(out+8));
   assert.strictEqual(black(mapped).length,15,'mapped draw preserves exact bitmap ink');
   console.log('PASS TextOut/ExtTextOut/DrawText pixels and mapped DC strike/advance selection');
+  // U+4E46 maps to A; its low byte F has no embedded image. Exercise both
+  // the strike and outline fallback with identical public W/indexed pixels.
+  for(const ppem of [12,13,28]){
+    const unicode='\u4e46', render=draw(ppem,'textW',false,unicode);
+    assert.deepStrictEqual(draw(ppem,'extW',false,unicode).pixels,render.pixels);
+    assert.deepStrictEqual(draw(ppem,'drawW',false,unicode).pixels,render.pixels);
+    assert.deepStrictEqual(draw(ppem,'index').pixels,render.pixels);
+    if(ppem===12)assert.notDeepStrictEqual(draw(ppem,'text',false,'F').pixels,render.pixels);
+    const hdc=render.hdc, text=wide(unicode+unicode), widths=alloc(8), fit=alloc(4);
+    assert.strictEqual(w.test_call_GetCharWidth32W(hdc,0x4e46,0x4e46,out),1);
+    const advance=w.guest_read32(out);
+    assert.strictEqual(w.test_call_GetTextExtentPoint32W(hdc,text,2,out),1);
+    assert.strictEqual(w.guest_read32(out),advance*2);
+    const calc=alloc(16);[8,4,120,36].forEach((v,i)=>w.guest_write32(calc+i*4,v));
+    assert(w.test_call_DrawTextW(hdc,text,2,calc,0xD00)>0);
+    assert.strictEqual(w.guest_read32(calc+8)-w.guest_read32(calc),advance*2,'DrawTextW CALCRECT agrees');
+    assert.strictEqual(w.test_call_GetTextExtentExPointW(hdc,text,2,advance,fit,widths,out),1);
+    assert.strictEqual(w.guest_read32(out),advance*2);
+    assert.strictEqual(w.guest_read32(fit),1);
+    assert.deepStrictEqual([w.guest_read32(widths),w.guest_read32(widths+4)],[advance,advance*2]);
+    assert.strictEqual(w.test_call_GetCharABCWidthsW(hdc,0x4e46,0x4e46,out),1);
+    assert.strictEqual((w.guest_read32(out)+w.guest_read32(out+4)+w.guest_read32(out+8))|0,advance);
+    const count=w.test_call_GetGlyphOutlineW(hdc,0x4e46,1,gm,256,bitmap,0)>>>0;
+    assert(count>0 && count<=256,`UCS-2 bitmap at ${ppem}: ${count}`);
+    assert.strictEqual(w.guest_read32(gm+16)&65535,advance);
+    const saved=Buffer.from(b.slice(wa(bitmap),wa(bitmap)+count));
+    assert.strictEqual(w.test_call_GetGlyphOutlineA(hdc,2,129,gm,256,bitmap,0)>>>0,count);
+    assert.deepStrictEqual(Buffer.from(b.slice(wa(bitmap),wa(bitmap)+count)),saved);
+    for(const format of [0,2,4,5,6]){
+      const unicodeSize=w.test_call_GetGlyphOutlineW(hdc,0x4e46,format,gm,0,0,0)>>>0;
+      const unicodeMetrics=Buffer.from(b.slice(wa(gm),wa(gm)+20));
+      assert.notStrictEqual(unicodeSize,0xffffffff,`W outline format ${format}`);
+      assert.strictEqual(w.test_call_GetGlyphOutlineA(hdc,2,format|128,gm,0,0,0)>>>0,unicodeSize);
+      assert.deepStrictEqual(Buffer.from(b.slice(wa(gm),wa(gm)+20)),unicodeMetrics);
+    }
+    // lpDx consumes exactly one advance per WCHAR, independent of its value.
+    const dx=alloc(8);w.guest_write32(dx,20);w.guest_write32(dx+4,27);
+    const spaced=draw(ppem,'textW',false,'');
+    assert.strictEqual(w.test_call_ExtTextOutW(spaced.hdc,8,4,0,0,text,2,dx),1);
+    const indexed=draw(ppem,'textW',false,'');
+    assert.strictEqual(w.test_call_ExtTextOutW(indexed.hdc,8,4,16,0,wide('\u0002\u0002'),2,dx),1);
+    assert.deepStrictEqual(Buffer.from(b.slice(wa(spaced.bits),wa(spaced.bits)+128*40*4)),
+      Buffer.from(b.slice(wa(indexed.bits),wa(indexed.bits)+128*40*4)));
+  }
+  const bitmapDc=w.test_call_CreateCompatibleDC(0)>>>0;
+  w.test_call_SelectObject(bitmapDc,makeFont('MS Sans Serif',16));
+  assert.strictEqual(w.test_call_GetTextExtentPoint32W(bitmapDc,wide('\u0141'),1,out),1);
+  assert.strictEqual(w.test_call_GetCharWidth32W(bitmapDc,0x141,0x141,out+8),1);
+  assert.strictEqual(w.guest_read32(out),w.guest_read32(out+8),'FON default-char width agrees');
+  assert.strictEqual(w.test_call_GetTextExtentPoint32W(bitmapDc,wide('\u4e46'),1,out+16),1);
+  assert.strictEqual(w.guest_read32(out),w.guest_read32(out+16),'out-of-charset UCS-2 uses default char');
+  assert(w.fixture_scratch_bytes()<100000,'small glyphs never reserve maxp*256 edges');
+  console.log('PASS UCS-2 W drawing, lpDx, extents, widths, ABC, outlines and FON default character');
   if(process.env.TTC_EBDT_EVIDENCE_DIR){
     const {createCanvas}=require('../lib/canvas-compat');
     const dir=process.env.TTC_EBDT_EVIDENCE_DIR;fs.mkdirSync(dir,{recursive:true});
@@ -250,6 +314,17 @@ const {bootRenderHarness} = require('./render-helper');
   assert.throws(()=>w.fixture_geometry(cd,cs,complexGid,wa(points),2404,wa(edges),16),
     WebAssembly.RuntimeError,'insufficient raster edges fail fast');
   console.log('PASS 1200-point/1200-edge simple, 2400-point composite, 300-point hinted outlines at 12/28/64px');
+  assert(w.fixture_scratch_bytes()<220000,'2400-edge fixture grows geometrically, below 220KB');
+  const ownerPointer=w.fixture_scratch_pointer(),ownerBytes=w.fixture_scratch_bytes();
+  const worker=await bootRenderHarness({memory,prebuiltModule:compiledModule});
+  assert.strictEqual(worker.exports.fixture_scratch_pointer(),0,'new shared-memory instance has no scratch owner');
+  assert.strictEqual(worker.exports.fixture_scratch_bytes(),0,'spawn does not inherit another instance capacity');
+  worker.exports.set_current_thread_id(2);
+  worker.exports.fixture_reserve(cd,cs);
+  assert.notStrictEqual(worker.exports.fixture_scratch_pointer(),ownerPointer,'instances allocate distinct work buffers');
+  assert.strictEqual(w.fixture_scratch_pointer(),ownerPointer);
+  assert.strictEqual(w.fixture_scratch_bytes(),ownerBytes);
+  console.log('PASS shared-memory thread instance starts fresh and owns independent raster scratch');
   assert.strictEqual(w.fixture_remove(str(ttcPath)),1);
   const remaining=[];for(let i=0;i<100;i++){const p=w.fixture_enum(i)>>>0;if(!p)break;remaining.push(readString(p));}
   assert(!remaining.includes('Fixture Other'),'collection removal removes every member');

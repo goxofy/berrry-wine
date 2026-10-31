@@ -1849,14 +1849,51 @@
       (br $write_rows)))
     (local.get $required))
 
+  ;; The bundled Western FONs have an ANSI charset, not a Unicode cmap.
+  ;; UCS-2 outside that charset selects dfDefaultChar, never its low byte.
+  (func $gdi_bitmap_unicode_code (param $code i32) (result i32)
+    (local $byte i32)
+    (if (i32.lt_u (local.get $code) (i32.const 128)) (then (return (local.get $code))))
+    (local.set $byte (i32.const 128))
+    (block $done (loop $scan
+      (br_if $done (i32.ge_u (local.get $byte) (i32.const 256)))
+      (if (i32.eq (call $tt_cp1252_to_unicode (local.get $byte)) (local.get $code))
+        (then (return (local.get $byte))))
+      (local.set $byte (i32.add (local.get $byte) (i32.const 1))) (br $scan)))
+    (i32.const 65536))
+
+  (func $gdi_text_character_code (param $code i32) (param $wide i32)
+        (param $indexed i32) (result i32)
+    (if (local.get $indexed) (then (return (local.get $code))))
+    (if (i32.eq (local.get $wide) (i32.const 1))
+      (then (return (call $gdi_bitmap_unicode_code (local.get $code)))))
+    (i32.and (local.get $code) (i32.const 255)))
+
   (func $gdi_font_character_width (param $hdc i32) (param $character i32)
         (param $wide i32) (result i32)
-    (local $strike i32) (local $glyph i32) (local $height i32)
+    (local $strike i32) (local $glyph i32) (local $height i32) (local $packed i32)
     (local.set $strike (call $gdi_bitmap_font_selected (local.get $hdc)))
     (if (local.get $strike)
       (then
+        (if (i32.eq (local.get $wide) (i32.const 1))
+          (then
+            (if (i32.eq (i32.load (local.get $strike)) (i32.const 2))
+              (then
+                (local.set $packed (call $tt_gdi_index_face (local.get $hdc)))
+                (return (call $gdi_bitmap_font_scaled_ink_value
+                  (local.get $hdc) (local.get $strike)
+                  (call $tt_gdi_index_width
+                    (i32.sub (i32.and (local.get $packed) (i32.const 65535)) (i32.const 1))
+                    (i32.shr_u (local.get $packed) (i32.const 16))
+                    (call $tt_face_wide_glyph
+                      (i32.sub (i32.and (local.get $packed) (i32.const 65535)) (i32.const 1))
+                      (local.get $character)))
+                  (call $gdi_bitmap_font_height (local.get $hdc) (local.get $strike)))))
+              (else (local.set $character (call $gdi_bitmap_unicode_code (local.get $character)))))))
         (local.set $glyph (call $gdi_bitmap_font_glyph
-          (local.get $strike) (i32.and (local.get $character) (i32.const 0xFF))))
+          (local.get $strike) (select (local.get $character)
+            (i32.and (local.get $character) (i32.const 0xFF))
+            (i32.eq (local.get $wide) (i32.const 1)))))
         (local.set $height (call $gdi_bitmap_font_height
           (local.get $hdc) (local.get $strike)))
         (return (call $gdi_bitmap_font_scaled_width
@@ -1870,6 +1907,49 @@
         (i32.store8 offset=1 (global.get $TEXT_SCRATCH) (i32.const 0))))
     (call $host_measure_text (local.get $hdc) (global.get $TEXT_SCRATCH)
       (i32.const 1) (local.get $wide)))
+
+  (func $gdi_char_abc_widths (param $hdc i32) (param $first i32)
+        (param $last i32) (param $out i32) (param $wide i32) (result i32)
+    (if (result i32) (local.get $wide)
+      (then (call $gdi_char_abc_widths_w (local.get $hdc) (local.get $first) (local.get $last) (local.get $out)))
+      (else (call $gdi_char_abc_widths_a (local.get $hdc) (local.get $first) (local.get $last) (local.get $out)))))
+
+  (func $gdi_char_abc_widths_w (param $hdc i32) (param $first i32)
+        (param $last i32) (param $out i32) (result i32)
+    (local $i i32) (local $ch i32) (local $advance i32)
+    (local $a i32) (local $b i32) (local $entry i32) (local $packed i32)
+    (local $strike i32) (local $height i32) (local $dest i32)
+    (if (i32.or (i32.eqz (local.get $out))
+          (i32.or (i32.gt_u (local.get $first) (local.get $last))
+            (i32.gt_u (local.get $last) (i32.const 65535))))
+      (then (return (i32.const 0))))
+    (local.set $strike (call $gdi_bitmap_font_selected (local.get $hdc)))
+    (if (i32.eqz (local.get $strike)) (then (return (i32.const 0))))
+    (local.set $height (call $gdi_bitmap_font_height (local.get $hdc) (local.get $strike)))
+    (if (i32.eq (i32.load (local.get $strike)) (i32.const 2))
+      (then (local.set $packed (call $tt_gdi_index_face (local.get $hdc)))))
+    (block $done (loop $characters
+      (local.set $ch (i32.add (local.get $first) (local.get $i)))
+      (br_if $done (i32.gt_u (local.get $ch) (local.get $last)))
+      (local.set $advance (call $gdi_font_character_width (local.get $hdc) (local.get $ch) (i32.const 1)))
+      (local.set $a (i32.const 0)) (local.set $b (local.get $advance))
+      (if (local.get $packed)
+        (then
+          (local.set $entry (call $tt_glyph_ensure
+            (i32.sub (i32.and (local.get $packed) (i32.const 65535)) (i32.const 1))
+            (call $tt_face_wide_glyph
+              (i32.sub (i32.and (local.get $packed) (i32.const 65535)) (i32.const 1)) (local.get $ch))
+            (i32.shr_u (local.get $packed) (i32.const 16))))
+          (local.set $a (call $gdi_bitmap_font_scaled_ink_value (local.get $hdc) (local.get $strike)
+            (call $tt_entry_left (local.get $entry)) (local.get $height)))
+          (local.set $b (call $gdi_bitmap_font_scaled_ink_value (local.get $hdc) (local.get $strike)
+            (call $tt_entry_width (local.get $entry)) (local.get $height)))))
+      (local.set $dest (i32.add (local.get $out) (i32.mul (local.get $i) (i32.const 12))))
+      (i32.store (local.get $dest) (local.get $a))
+      (i32.store offset=4 (local.get $dest) (local.get $b))
+      (i32.store offset=8 (local.get $dest) (i32.sub (i32.sub (local.get $advance) (local.get $a)) (local.get $b)))
+      (local.set $i (i32.add (local.get $i) (i32.const 1))) (br $characters)))
+    (i32.const 1))
 
   ;; GetCharWidth/GetCharWidth32 share the same selected-font semantics. FNT
   ;; and synthesized scalable-strike advances never cross the host boundary;
@@ -2039,11 +2119,10 @@
       (br_if $done (i32.ge_u (local.get $i) (local.get $count)))
       (local.set $code (select
         (i32.load8_u (i32.add (local.get $text) (local.get $i)))
-        (i32.and (i32.load16_u (i32.add (local.get $text) (i32.shl (local.get $i) (i32.const 1)))) (i32.const 0xFF))
+        (i32.load16_u (i32.add (local.get $text) (i32.shl (local.get $i) (i32.const 1))))
         (i32.eqz (local.get $wide))))
       (local.set $width (i32.add (local.get $width)
-        (call $gdi_bitmap_font_scaled_width (local.get $hdc) (local.get $strike)
-          (call $gdi_bitmap_font_glyph (local.get $strike) (local.get $code)) (local.get $height))))
+        (call $gdi_font_character_width (local.get $hdc) (local.get $code) (local.get $wide))))
       (local.set $i (i32.add (local.get $i) (i32.const 1)))
       (br $scan)))
     (local.get $width))
@@ -2424,14 +2503,14 @@
   ;; final slash and tail; end/word ellipsis shortens the visible end.
   (func $gdi_bitmap_text_ellipsify (param $hdc i32) (param $text i32)
         (param $count i32) (param $max_width i32) (param $format i32)
-        (param $tab_width i32) (result i32)
+        (param $tab_width i32) (param $wide i32) (result i32)
     (local $slash i32) (local $i i32) (local $ch i32) (local $tail i32)
     (local $keep i32) (local $measured i32) (local $prefix i32)
     (local.set $prefix (call $gdi_bitmap_text_prefix_address
       (local.get $text) (i32.const 0)))
     (local.set $measured (call $gdi_bitmap_text_layout_measure
       (local.get $hdc) (local.get $text) (local.get $count)
-      (i32.const 1) (local.get $tab_width)))
+      (local.get $wide) (local.get $tab_width)))
     (if (i32.le_s (local.get $measured) (local.get $max_width))
       (then (return (local.get $count))))
     (if (i32.ne (i32.and (local.get $format) (i32.const 0x4000)) (i32.const 0))
@@ -2440,8 +2519,8 @@
         (local.set $i (i32.const 0))
         (block $slashes_done (loop $slashes
           (br_if $slashes_done (i32.ge_u (local.get $i) (local.get $count)))
-          (local.set $ch (i32.and (i32.load16_u (i32.add (local.get $text)
-            (i32.shl (local.get $i) (i32.const 1)))) (i32.const 0xFF)))
+          (local.set $ch (i32.load16_u (i32.add (local.get $text)
+            (i32.shl (local.get $i) (i32.const 1)))))
           (if (i32.or (i32.eq (local.get $ch) (i32.const 47))
                 (i32.eq (local.get $ch) (i32.const 92)))
             (then (local.set $slash (local.get $i))))
@@ -2477,7 +2556,7 @@
           (br_if $path_done (i32.eqz (local.get $slash)))
           (br_if $path_done (i32.le_s
             (call $gdi_bitmap_text_layout_measure (local.get $hdc)
-              (local.get $text) (local.get $count) (i32.const 1) (local.get $tab_width))
+              (local.get $text) (local.get $count) (local.get $wide) (local.get $tab_width))
             (local.get $max_width)))
           (memory.copy
             (i32.add (local.get $text)
@@ -2494,7 +2573,7 @@
           (br $path_shrink)))))
     (local.set $measured (call $gdi_bitmap_text_layout_measure
       (local.get $hdc) (local.get $text) (local.get $count)
-      (i32.const 1) (local.get $tab_width)))
+      (local.get $wide) (local.get $tab_width)))
     (if (i32.and (i32.gt_s (local.get $measured) (local.get $max_width))
           (i32.ne (i32.and (local.get $format) (i32.const 0x48000)) (i32.const 0)))
       (then
@@ -2517,7 +2596,7 @@
           (br_if $fit_done (i32.le_s
             (call $gdi_bitmap_text_layout_measure (local.get $hdc)
               (local.get $text) (i32.add (local.get $keep) (i32.const 3))
-              (i32.const 1) (local.get $tab_width))
+              (local.get $wide) (local.get $tab_width))
             (local.get $max_width)))
           (local.set $keep (i32.sub (local.get $keep) (i32.const 1)))
           (br $fit)))
@@ -2813,6 +2892,10 @@
     (call $gdi_bitmap_font_glyph_ink_width (local.get $strike) (local.get $glyph)))
 
   (func $gdi_text_index_glyph (param $strike i32) (param $code i32) (param $indexed i32) (param $face i32) (param $ppem i32) (result i32)
+    ;; Mode 3 is UCS-2 through the selected face's Unicode cmap.
+    (if (i32.eq (local.get $indexed) (i32.const 3))
+      (then (return (call $tt_glyph_ensure (local.get $face)
+        (call $tt_face_wide_glyph (local.get $face) (local.get $code)) (local.get $ppem)))))
     ;; Mode 2 retains the existing ANSI cmap semantics but draws directly from
     ;; the glyph cache, so embedded images can overhang vertically as well.
     (if (i32.eq (local.get $indexed) (i32.const 2))
@@ -2908,7 +2991,11 @@
       (then (local.set $embedded (i32.ne
         (i32.load offset=140 (i32.load offset=8 (local.get $strike))) (i32.const 0)))))
     (local.set $cached (select (local.get $indexed) (i32.mul (local.get $embedded) (i32.const 2)) (local.get $indexed)))
-    (if (i32.and (local.get $embedded) (i32.eqz (local.get $indexed)))
+    (if (i32.and (i32.eqz (local.get $indexed))
+          (i32.and (i32.eq (local.get $wide) (i32.const 1))
+            (i32.eq (i32.load (local.get $strike)) (i32.const 2))))
+      (then (local.set $cached (i32.const 3))))
+    (if (i32.and (i32.ne (local.get $cached) (i32.const 0)) (i32.eqz (local.get $indexed)))
       (then
         (local.set $tmp (call $tt_gdi_index_face (local.get $hdc)))
         (if (i32.eqz (local.get $tmp)) (then (return (i32.const 0))))
@@ -2993,7 +3080,7 @@
             (i32.load8_u (i32.add (local.get $text) (local.get $i)))
             (i32.load16_u (i32.add (local.get $text) (i32.shl (local.get $i) (i32.const 1))))
             (i32.eqz (local.get $wide))))
-          (local.set $code (i32.and (local.get $raw_code) (select (i32.const 65535) (i32.const 255) (local.get $indexed))))
+          (local.set $code (call $gdi_text_character_code (local.get $raw_code) (local.get $wide) (local.get $cached)))
           (local.set $is_tab (i32.and
             (i32.ne (global.get $gdi_bitmap_text_active_tab_width) (i32.const 0))
             (i32.eq (local.get $code) (i32.const 9))))
@@ -3055,7 +3142,7 @@
         (i32.load8_u (i32.add (local.get $text) (local.get $i)))
         (i32.load16_u (i32.add (local.get $text) (i32.shl (local.get $i) (i32.const 1))))
         (i32.eqz (local.get $wide))))
-      (local.set $code (i32.and (local.get $raw_code) (select (i32.const 65535) (i32.const 255) (local.get $indexed))))
+      (local.set $code (call $gdi_text_character_code (local.get $raw_code) (local.get $wide) (local.get $cached)))
       (local.set $is_tab (i32.and
         (i32.ne (global.get $gdi_bitmap_text_active_tab_width) (i32.const 0))
         (i32.eq (local.get $code) (i32.const 9))))
@@ -3327,7 +3414,9 @@
       (then (return (i32.const -1))))
     (local.set $text (global.get $GDI_BITMAP_TEXT_LAYOUT))
     (local.set $count (local.get $prepared))
-    (local.set $wide (i32.const 1))
+    ;; Mode 2 is the ANSI DrawText presentation buffer widened to WORDs.
+    ;; Its bytes must still resolve through the ANSI cmap.
+    (local.set $wide (select (i32.const 1) (i32.const 2) (local.get $original_wide)))
     (local.set $step (i32.const 2))
     (local.set $desc (global.get $GDI_BITMAP_FONT_DESC))
     (if (i32.eqz (call $gdi_surface_descriptor (local.get $hdc) (local.get $desc)))
@@ -3405,7 +3494,7 @@
       (then
         (local.set $shortened (call $gdi_bitmap_text_ellipsify
           (local.get $hdc) (local.get $text) (local.get $count)
-          (local.get $rect_width) (local.get $format) (local.get $tab_width)))
+          (local.get $rect_width) (local.get $format) (local.get $tab_width) (local.get $wide)))
         (if (i32.ne (local.get $shortened) (local.get $count))
           (then
             (local.set $count (local.get $shortened))
@@ -3450,7 +3539,7 @@
                 (local.get $hdc)
                 (i32.add (local.get $text) (i32.shl (local.get $pos) (i32.const 1)))
                 (i32.add (i32.sub (local.get $end) (local.get $pos)) (i32.const 3))
-                (local.get $rect_width) (local.get $format) (local.get $tab_width)))
+                (local.get $rect_width) (local.get $format) (local.get $tab_width) (local.get $wide)))
               (local.set $count (i32.add (local.get $pos) (local.get $shortened)))
               (local.set $end (local.get $count))
               (local.set $next (local.get $count))

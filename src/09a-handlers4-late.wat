@@ -441,38 +441,6 @@
       (local.get $arg3) (local.get $arg4) (local.get $name_ptr))
   )
 
-ctl32 can route an ANSI status-bar string through ExtTextOutW
-  ;; as packed byte pairs. Recognize only a printable byte string terminated
-  ;; within the supplied UTF-16 span; ordinary UTF-16 ASCII has zero high
-  ;; bytes and cannot match. The count can extend past the ANSI terminator
-  ;; because the control obtained it by running lstrlenW over the byte buffer.
-  (func $gdi_ext_text_out_w_packed_ansi_len (param $text i32) (param $count i32) (result i32)
-    (local $i i32) (local $limit i32) (local $ch i32)
-    (if (i32.or (i32.eqz (local.get $text))
-          (i32.or (i32.le_s (local.get $count) (i32.const 0))
-            (i32.gt_u (local.get $count) (i32.const 0x7FFF))))
-      (then (return (i32.const 0))))
-    (if (i32.eqz (i32.load8_u offset=1 (local.get $text)))
-      (then (return (i32.const 0))))
-    (local.set $limit (i32.shl (local.get $count) (i32.const 1)))
-    (block $done (loop $scan
-      (br_if $done (i32.ge_u (local.get $i) (local.get $limit)))
-      (local.set $ch (i32.load8_u (i32.add (local.get $text) (local.get $i))))
-      (if (i32.eqz (local.get $ch))
-        (then (return (local.get $i))))
-      (if (i32.and
-            (i32.or (i32.lt_u (local.get $ch) (i32.const 0x20))
-              (i32.gt_u (local.get $ch) (i32.const 0x7E)))
-            (i32.and (i32.ne (local.get $ch) (i32.const 9))
-              (i32.and (i32.ne (local.get $ch) (i32.const 10))
-                (i32.ne (local.get $ch) (i32.const 13)))))
-        (then (return (i32.const 0))))
-      (local.set $i (i32.add (local.get $i) (i32.const 1)))
-      (br $scan)))
-    (if (i32.eqz (i32.load8_u (i32.add (local.get $text) (local.get $limit))))
-      (then (return (local.get $limit))))
-    (i32.const 0))
-
 rushOrgEx(hdc, x, y, lppt) — canonical WAT-owned brush origin.
   (func $handle_SetBrushOrgEx (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
     (local $wa i32) (local $old_x i32) (local $old_y i32) (local $aux i32)

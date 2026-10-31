@@ -1702,11 +1702,38 @@
       (i32.const 1)))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 32))))
 
-  (func $handle_GetCharABCWidthsA (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
-    (i32.store offset=0 (global.get $reg_base) (call $gdi_char_abc_widths_a
+  (func $handle_GetCharABCWidthsW (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (i32.store offset=0 (global.get $reg_base) (call $gdi_char_abc_widths
       (local.get $arg0) (local.get $arg1) (local.get $arg2)
       (if (result i32) (local.get $arg3)
-        (then (call $g2w (local.get $arg3))) (else (i32.const 0)))))
+        (then (call $g2w (local.get $arg3))) (else (i32.const 0))) (i32.const 1)))
+    (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20))))
+
+  (func $handle_GetGlyphOutlineW (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (local $strike i32) (local $packed i32) (local $face i32)
+    (local.set $strike (call $gdi_bitmap_font_selected (local.get $arg0)))
+    (if (local.get $strike)
+      (then
+        (if (i32.eq (i32.load (local.get $strike)) (i32.const 2))
+          (then
+            (if (i32.eqz (i32.and (local.get $arg2) (i32.const 128)))
+              (then
+                (local.set $packed (call $tt_gdi_index_face (local.get $arg0)))
+                (local.set $face (i32.sub (i32.and (local.get $packed) (i32.const 65535)) (i32.const 1)))
+                (local.set $arg1 (call $tt_face_wide_glyph (local.get $face) (local.get $arg1)))
+                (local.set $arg2 (i32.or (local.get $arg2) (i32.const 128))))))
+          (else
+            (local.set $arg1 (call $gdi_bitmap_unicode_code (local.get $arg1)))
+            (if (i32.gt_u (local.get $arg1) (i32.const 255))
+              (then (local.set $arg1 (i32.load offset=44 (local.get $strike)))))))))
+    (call $handle_GetGlyphOutlineA (local.get $arg0) (local.get $arg1)
+      (local.get $arg2) (local.get $arg3) (local.get $arg4) (local.get $name_ptr)))
+
+  (func $handle_GetCharABCWidthsA (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
+    (i32.store offset=0 (global.get $reg_base) (call $gdi_char_abc_widths
+      (local.get $arg0) (local.get $arg1) (local.get $arg2)
+      (if (result i32) (local.get $arg3)
+        (then (call $g2w (local.get $arg3))) (else (i32.const 0))) (i32.const 0)))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 20))))
 
   (func $handle_GetGlyphOutlineA (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
@@ -2508,7 +2535,7 @@
   ;; Selected FNT strikes consume lpDx in WAT; the generic host path ignores it.
   (func $handle_ExtTextOutW (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
     (local $lpString i32) (local $count i32) (local $rect_wa i32) (local $text_wa i32)
-    (local $packed_ansi_len i32) (local $wide i32) (local $dx_wa i32) (local $lpDx i32)
+    (local $dx_wa i32) (local $lpDx i32)
     (local.set $lpString (call $gl32 (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 24)))) ;; arg5
     (local.set $count    (call $gl32 (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 28)))) ;; arg6 (wchar count)
     (if (local.get $arg4)
@@ -2518,18 +2545,12 @@
     (local.set $lpDx (call $gl32 (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 32))))
     (if (local.get $lpDx)
       (then (local.set $dx_wa (call $g2w (local.get $lpDx)))))
-    (local.set $wide (i32.const 1))
-    (if (i32.eqz (i32.and (local.get $arg3) (i32.const 16)))
-      (then (local.set $packed_ansi_len
-        (call $gdi_ext_text_out_w_packed_ansi_len (local.get $text_wa) (local.get $count)))))
-    (if (local.get $packed_ansi_len)
-      (then
-        (local.set $count (local.get $packed_ansi_len))
-        (local.set $wide (i32.const 0))))
+    ;; Printable low/high bytes are also valid UCS-2 (e.g. U+4E46).
+    ;; Never infer an ANSI stream from the contents of a W API buffer.
     (i32.store offset=0 (global.get $reg_base) (call $gdi_native_ext_text_out
       (local.get $arg0) (local.get $arg1) (local.get $arg2)
       (local.get $arg3) (local.get $rect_wa)
-      (local.get $text_wa) (local.get $count) (local.get $dx_wa) (local.get $wide)))
+      (local.get $text_wa) (local.get $count) (local.get $dx_wa) (i32.const 1)))
     (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 36)))
   )
 

@@ -49,8 +49,16 @@ PY
 )
 
 subset() {
-  local src="$1" charset="$2"
+  local src="$1" charset="$2" strikes="${3:-drop}"
   local name unicodes
+  local strike_tables=--drop-tables+=EBDT,EBLC
+  # Opt in explicitly for a future CJK subset: subset "$uming" ansi keep.
+  # Western subsets must retain their established outline-only rendering.
+  case "$strikes" in
+    drop) ;;
+    keep) strike_tables=--drop-tables-=EBDT,EBLC ;;
+    *) echo "Unknown embedded-strike policy: $strikes" >&2; exit 1 ;;
+  esac
   name=$(basename "$src")
 
   local dest="$OUT/$name"
@@ -85,7 +93,7 @@ subset() {
     --layout-features='' \
     --legacy-kern \
     --drop-tables+=BDF,VDMX,FFTM,GDEF,GPOS,GSUB \
-    --drop-tables-=EBDT,EBLC \
+    "$strike_tables" \
     --name-IDs='*' \
     --recalc-bounds \
     --output-file="$tmp"

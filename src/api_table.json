@@ -3045,6 +3045,7 @@
   {
     "id": 331,
     "name": "GetTextExtentPoint32W",
+    "test_call": true,
     "nargs": 4,
     "convention": "stdcall",
     "hash": 3188522704
@@ -6336,6 +6337,7 @@
   {
     "id": 696,
     "name": "TextOutW",
+    "test_call": true,
     "nargs": 5,
     "convention": "stdcall",
     "hash": 4290921231,
@@ -19667,6 +19669,7 @@
   {
     "id": 2354,
     "name": "GetCharWidth32W",
+    "test_call": true,
     "nargs": 4,
     "convention": "stdcall",
     "hash": 4118495873
@@ -39069,5 +39072,21 @@
     "nargs": 1,
     "convention": "cdecl",
     "hash": 709362235
+  },
+  {
+    "id": 4597,
+    "name": "GetCharABCWidthsW",
+    "nargs": 4,
+    "test_call": true,
+    "convention": "stdcall",
+    "hash": 1607048589
+  },
+  {
+    "id": 4598,
+    "name": "GetGlyphOutlineW",
+    "nargs": 7,
+    "test_call": true,
+    "convention": "stdcall",
+    "hash": 2865508172
   }
 ]

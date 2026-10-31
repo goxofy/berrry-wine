@@ -945,6 +945,9 @@
       (then (return (i32.const -1))))
     (if (i32.eq (local.get $y0) (local.get $y1))
       (then (return (local.get $count))))
+    ;; A null output counts the identical geometry before reserving storage.
+    (if (i32.eqz (local.get $edges))
+      (then (return (i32.add (local.get $count) (i32.const 1)))))
     (if (i32.ge_u (local.get $count) (local.get $capacity))
       (then (return (i32.const -1))))
     (local.set $slot
@@ -969,6 +972,8 @@
     (if (i32.and (i32.eq (local.get $y0) (local.get $y1))
           (i32.eq (local.get $y0) (local.get $cy)))
       (then (return (local.get $count))))
+    (if (i32.eqz (local.get $edges))
+      (then (return (i32.add (local.get $count) (i32.const 1)))))
     (if (i32.ge_u (local.get $count) (local.get $capacity))
       (then (return (i32.const -1))))
     (local.set $slot
@@ -1814,6 +1819,24 @@
     (if (i32.lt_u (local.get $scratch_size)
           (call $tt_raster_scratch_bytes (local.get $width)))
       (then (return (i32.const 0))))
+    ;; Count with the same hinted geometry and monotone splitting as the write
+    ;; pass. Only the internally owned buffer can grow; public raster tests
+    ;; may supply their own explicitly sized scratch block.
+    (if (i32.and (i32.ne (global.get $tt_scratch) (i32.const 0))
+          (i32.eq (local.get $scratch) (call $g2w (global.get $tt_scratch))))
+      (then
+        (local.set $edge_count (call $tt_glyph_geometry
+          (local.get $data) (local.get $size) (local.get $gid) (local.get $ppem)
+          (local.get $scratch) (global.get $TT_RASTER_POINTS)
+          (i32.const 0) (i32.const 0) (i32.const 1)))
+        (block $reserved (loop $grow
+          (br_if $reserved (i32.le_u (local.get $edge_count) (global.get $TT_RASTER_EDGES)))
+          ;; Prevent overflow in the 48-byte edge/crossing reservation.
+          (if (i32.ge_u (global.get $TT_RASTER_EDGES) (i32.const 0x1000000))
+            (then (call $tt_raster_fail (i32.const 4))))
+          (global.set $TT_RASTER_EDGES (i32.shl (global.get $TT_RASTER_EDGES) (i32.const 1)))
+          (br $grow)))
+        (local.set $scratch (call $tt_raster_scratch (local.get $data) (local.get $size)))))
     (local.set $points (local.get $scratch))
     (local.set $edges (i32.add (local.get $points)
       (i32.mul (global.get $TT_RASTER_POINTS) (i32.const 6))))
@@ -3271,18 +3294,15 @@
       (br $probe_loop)))
     (i32.const 0))
 
-  ;; The only backing is a heap allocation, translated by g2w, not a fixed
-  ;; region. Keep a high-water mark across faces: every consumer (including
-  ;; hinted bounds, advances and GGO_NATIVE) shares these capacities/partition.
-  ;; maxp fields are uint16. Reserve four extra compact slots for phantom-point
-  ;; headroom; the hinter itself stores its four phantoms in its own arena.
-  ;; Each point/contour can emit a segment; a preserved quadratic's depth-8
-  ;; subdivision can emit at most 256 records. A scan crosses each monotone
-  ;; record at most once, so crossings need the SAME capacity as edges.
-  ;; Bytes = 6*points + 48*edges + 4*width. This intentionally conservative
-  ;; bound costs 11,925,988 bytes for UMing TW (930 points, 40 contours,
-  ;; width 256), allocated once and reused. Allocation exhaustion traps rather
-  ;; than caching a blank glyph. No movable region base is embedded here.
+  ;; Retain the heap allocator for variable-sized, reclaimable backing instead
+  ;; of permanently reserving a worst-case private region for all 16 threads.
+  ;; This is guest heap consumption, but now only actual emitted geometry grows
+  ;; it (powers of two), not maxp*256. Each wasm instance starts with a null
+  ;; pointer, zero allocation and the same initial capacities: spawn must NOT
+  ;; copy these globals, since concurrent threads need separate work buffers.
+  ;; maxp reserves compact points (+4 phantom headroom); the count pass sizes
+  ;; edges and crossings together. Bytes = 6*points + 48*edges + 4*width.
+  ;; Allocation exhaustion and impossible outlines still trap.
   (global $tt_scratch_allocated (mut i32) (i32.const 0))
   (global $TT_RASTER_ERROR i32 (region.addr $TT_RASTER_ERROR 0))
   (global $TT_RASTER_ERROR_SIZE i32 (region.size $TT_RASTER_ERROR))
@@ -3310,23 +3330,15 @@
       (i32.add (local.get $table) (local.get $field))))
 
   (func $tt_raster_scratch (param $data i32) (param $size i32) (result i32)
-    (local $guest i32) (local $points i32) (local $contours i32)
-    (local $other i32) (local $edges i32) (local $bytes i32)
+    (local $guest i32) (local $points i32)
+    (local $other i32) (local $bytes i32)
     (local.set $points (call $tt_raster_maxp (local.get $data) (local.get $size) (i32.const 6)))
     (local.set $other (call $tt_raster_maxp (local.get $data) (local.get $size) (i32.const 10)))
     (if (i32.gt_u (local.get $other) (local.get $points))
       (then (local.set $points (local.get $other))))
-    (local.set $contours (call $tt_raster_maxp (local.get $data) (local.get $size) (i32.const 8)))
-    (local.set $other (call $tt_raster_maxp (local.get $data) (local.get $size) (i32.const 12)))
-    (if (i32.gt_u (local.get $other) (local.get $contours))
-      (then (local.set $contours (local.get $other))))
-    (local.set $edges (i32.mul
-      (i32.add (local.get $points) (local.get $contours)) (i32.const 256)))
     (local.set $points (i32.add (local.get $points) (i32.const 4)))
     (if (i32.gt_u (local.get $points) (global.get $TT_RASTER_POINTS))
       (then (global.set $TT_RASTER_POINTS (local.get $points))))
-    (if (i32.gt_u (local.get $edges) (global.get $TT_RASTER_EDGES))
-      (then (global.set $TT_RASTER_EDGES (local.get $edges))))
     (global.set $TT_RASTER_CROSSINGS (global.get $TT_RASTER_EDGES))
     (local.set $bytes (call $tt_raster_scratch_bytes (global.get $TT_SCRATCH_WIDTH)))
     (if (i32.ge_u (global.get $tt_scratch_allocated) (local.get $bytes))
@@ -3459,6 +3471,11 @@
   (func $tt_face_ansi_glyph (param $face i32) (param $byte i32) (result i32)
     (call $tt_ansi_glyph_index (call $tt_face_data (local.get $face))
       (call $tt_face_size (local.get $face)) (local.get $byte)))
+
+  (func $tt_face_wide_glyph (param $face i32) (param $code i32) (result i32)
+    (call $tt_glyph_index (call $tt_face_data (local.get $face))
+      (call $tt_face_size (local.get $face))
+      (i32.and (local.get $code) (i32.const 65535))))
 
   (func $tt_face_text_width (param $face i32) (param $text i32) (param $count i32)
         (param $ppem i32) (result i32)
@@ -4977,8 +4994,9 @@
         (if (i32.ne (local.get $sbit) (i32.const -2)) (then (return (local.get $sbit))))))
     ;; Identity monochrome output keeps using the synthesized strike's exact
     ;; cached pixels. A transformed bitmap must use the affine edge path here.
-    (if (i32.and (i32.eq (local.get $base) (i32.const 1))
-          (call $tt_ggo_matrix_identity (local.get $mat)))
+    (if (i32.and (i32.eqz (i32.and (local.get $format) (i32.const 128)))
+          (i32.and (i32.eq (local.get $base) (i32.const 1))
+            (call $tt_ggo_matrix_identity (local.get $mat))))
       (then (return (i32.const -2))))
     (if (i32.and
           (i32.and (i32.ne (local.get $base) (i32.const 0))
