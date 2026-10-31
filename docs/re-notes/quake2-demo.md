@@ -1071,3 +1071,53 @@ controller was stopped with targeted SIGTERM. Both owned PIDs are absent,
 all three ports closed and profile removed. No Boat or assigned test box was
 used (ID/state/expiry N/A); ownership is handed back. Next: continue down the
 cleared passage from the five-kill save and seek health before further combat.
+
+## 2026-10-31: health 21, sixth guard and open courtyard
+
+Run `scratch/runs/20261031T0046Z-quake2-next/result.json` resumes the native
+five-kill/health-11 checkpoint. Personally inspected captures confirm F1
+**kills 5/18**, passage exploration, and return to the adjoining room. A live
+guard approached through the opposite doorway. Native blaster fire while
+retreating collected Health, raising the HUD to **21** (`sixth-fight.png`).
+Further fire defeated the guard; `sixth-kills.png` confirms **6/18**, health
+21. Native F6 saved this result, and eight unchanged native current/quick
+files were exported to `sixth-save-manifest.json`.
+
+The player then crossed that doorway into the open red-sky courtyard with
+crates, ramps and a lower water channel. Exploration reached the channel;
+health subsequently read 18, with the damage source unqualified. F9 restored
+the six-kill/health-21 checkpoint. A second courtyard entry and F6 export
+preserve `courtyard-save-manifest.json` at health 21, with another live guard
+visible below the entrance. No seventh kill or level transition is claimed.
+The safer recommended recovery is the **sixth** save, before courtyard entry;
+the courtyard save is a separate, more exposed position.
+
+The browser received SIGKILL during an in-page stop/relaunch remount check;
+its sender is unknown. A fresh browser mounted the exported sixth save as
+ordinary files. Native F9 and personally inspected
+`recovery/external-six-kills.png` / `recovery/external-resume.png` confirm six
+kills and health 21. All eight recovered file hashes match the export.
+`recovery.txt`, `recovery-driver.cjs` and the manifests preserve recovery.
+Gameplay and recovery occupied approximately 00:45:30Z–00:50:27Z, below the
+20-minute limit. No guest-memory write, console command, cheat, original-asset
+edit or emulator repair supplied progress.
+
+Both sessions loaded exact retained module SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown. Fresh recovery probes report original ref_gl,
+WebGL 1, ANGLE Intel Mesa UHD 620, software flag 0, threads/render Worker off.
+This does not certify a current-main module. All 67 prior registered inputs,
+including 65 original assets, and all recorded served bytes pass hash checks.
+Recovery input events are trusted and native attack is clear; the initial
+session's full trust/held-state snapshot was lost with Chrome, so complete
+initial-event verification is unavailable. The native action log remains.
+No page exception, guest trap or FreeLibrary failure was recorded; static
+harness HTTP 404s remain. The original installer remains unavailable.
+
+Focused module/assets/served-byte/native-save/recovery/cleanup checks pass.
+No runtime source changed. The recovery browser exited code 0; both
+controllers were stopped with targeted SIGTERM. All four owned PIDs are
+absent, four known ports closed and both profiles removed, with over 7 GB
+free. No Boat or assigned test box was used (ID/state/expiry N/A); ownership
+is handed back. Next: recover the six-kill/health-21 save, enter the courtyard
+and engage its next guard from the doorway before exploring the ramps.
