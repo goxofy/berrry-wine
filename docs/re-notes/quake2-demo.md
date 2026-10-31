@@ -858,3 +858,51 @@ before teardown; no Boat was used and /home remained above 2 GB free. There
 was no observed page exception, guest trap or `FreeLibrary failed`; static
 harness HTTP 404s remain. The task's defeat/progression acceptance is **not
 met**, rather than recast as a successful gameplay or emulator repair result.
+
+## 2026-10-31: first guard defeated and next room entered
+
+Run `scratch/runs/20261030T2355Z-quake2-ranged/result.json` verifies the
+requested combat milestone. Personally inspected captures show the live guard
+in the narrow corridor, sustained native mouse-one fire with S retreat and
+S+D/A strafe, hit reactions, and a new fallen body beside the player. This is
+distinguished from the corpse already lying farther down the corridor.
+The game's ordinary **F1 help/status screen reads kills 1/18** after loading
+the unchanged native post-combat quicksave. Native W then crosses the corridor
+into the larger room beyond it: `next-room-entry.png` shows the new room's
+metal walls and pickup crate, with the player alive at health 42.
+
+The broader room view reveals a second attacking guard. Health falls to 20,
+then 12 during another native quicksave, and finally 0 before the final menu
+capture. The safer **post-combat save at health 42** is retained separately
+from the dangerous later room save, along with a pre-guard save. Save bytes
+were read from the browser VFS without modification, exported with hashes,
+mounted as ordinary files on recovery, and loaded using native F9. The run
+directory contains save manifests and recovery instructions. No console
+commands, guest-memory writes, cheats, asset patches or forced game handlers
+were used.
+
+The attempt and recoveries occupied approximately 12 minutes of controller
+gameplay, below the 20-minute limit. The first Chrome disappeared during
+navigation; the second Chrome's process exit explicitly reports **SIGKILL**
+at 00:00:06Z, before room-entry capture. Its sender and cause are unknown.
+A third browser recovered the exported native save, confirmed kills 1/18,
+and completed room entry. No emulator defect or runtime repair is established.
+
+Actual backend probes identify original **ref_gl / emulator WebGL 1 / ANGLE
+Intel Mesa UHD Graphics 620**, with `gl_sw_enabled() = 0`, guest threads and
+render Worker disabled. SwiftShader command-line flags do not override this
+observed renderer. Every downloaded module matches retained SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`;
+its compiled source commit remains unknown. This does not certify a fresh
+current-main build. All 67 registered inputs, including 65 original assets
+and the documented pak hash, remain unchanged; all 472 recorded served
+responses match their retained input hashes. The installer remains absent.
+
+Focused module/assets/save-byte/backend/trusted-input/cleanup checks pass.
+No source was changed. Static-harness HTTP 404 messages remain; no page
+exception, guest trap or `FreeLibrary failed` was recorded. The final quit
+request was followed by a controller `ERR_STREAM_WRITE_AFTER_END`, so clean
+controller exit is not claimed. All three browser PIDs and five known ports
+were independently checked absent/closed, the profile was removed, and held
+gameplay keys and attack were released. No Boat or test box was used.
+Audio, FPS, networking, further combat and level completion remain unqualified.
