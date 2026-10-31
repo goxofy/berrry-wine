@@ -405,3 +405,22 @@ the guest has had its chance to handle each one. It does not destroy the
 dialog from the host renderer. The browser regression clicks X and checks
 the dialog disappears, both animation handles clear, and Winamp stays alive.
 Evidence: scratch/runs/20261014-winamp-about-close-before and -after.
+
+## Original MilkDrop launch attempt, 2026-10-31
+
+Run `scratch/runs/20261031T0005Z-winamp-milkdrop/` used the registered
+Winamp 2.91 and original plug-ins through the normal browser loader. Playback
+started, Preferences opened, and the Input plug-in pane showed the MPEG decoder.
+Two visits to Plug-ins → Visualization left its right pane blank; both frames
+were inspected. This attempt did not reach MilkDrop Start or the earlier
+illegal-operation dialog, so it supplies no new exception address or cause.
+
+The loaded retained canonical module was SHA-256
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`
+(source-fix reference `de2e338c4`, complete compiled source identity unavailable),
+with browser threads disabled and software-rendering flag zero. Served-file
+hashes were checked in `served-verification.json`. The browser later detached
+before further diagnostics; its termination cause is unknown. Controller/server
+closure, process absence and profile removal are recorded separately. No source
+repair or visualizer rendering is claimed. Next: trace the native visualization
+page creation/enumeration and visibility calls, comparing the working Input page.
