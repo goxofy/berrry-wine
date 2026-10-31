@@ -1,5 +1,20 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 31: bounded registered Flip3D startup sweep
+
+Run `20261031T0347Z-flip3dtl-startup` executes registered `dx_flip3dtl`
+with the cooperative CLI scheduler, no build, and a 20-second guard.
+It exits normally after 30,368 batches (20.002 seconds). The personally
+inspected final capture shows a colored Windows-textured cube and the
+on-screen counter **Frame 04211 (HAL)**. No startup trap was observed;
+this does not establish interactive acceptance or backend parity.
+
+The local module is `7f9da4e9da5183e9f7f061d2356cd34626fe74bdbaf7da0345f6693dd81152be`,
+with unknown compiled source identity. Input hashing initially failed on
+object-valued manifest entries, so the retained hashes are post-execution
+only; no before/after integrity claim is made. No browser, server, or Boat
+was created.
+
 ## October 31: separate archive Globe baseline and viewport stretch repair
 
 Run `20261031T0122Z-globe-original-scene` launches a separately named
