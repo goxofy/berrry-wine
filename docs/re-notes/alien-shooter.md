@@ -5,6 +5,38 @@ The complete companion assets are required (`--vfs-include='**/*'`). Original
 installer/provenance and SHA-256 are recorded in `reflexive.md` and the local
 candidate manifest. No guest executable or asset patches were made.
 
+## Doorway approach blocked by courtyard replay drift (2026-10-31)
+
+Run `20261031T0252Z-alien-door` does not reach building entry or a live enemy.
+The prior courtyard capture was inspected, but the timed native replay diverges:
+its firing capture places the soldier outside the fence facing grass rather
+than reproducing the crate-destruction checkpoint. The replay tool returns 143
+with unknown signal source before its final right-button release. A trusted
+native CDP release clears the held button before further movement.
+
+The separate Puppeteer mouse helper attaches with its default viewport, changing
+page layout to 800×600 while the controller retains its 1024×768 viewport setting.
+Observed input bounds are `460×336@(10,226)`; explicitly restoring the viewport
+produces `684×544@(10,186)`. A run-local helper preserves the viewport and records
+geometry around short 500–1,500 ms native right-button moves. Inspected captures
+then show the soldier outside the front fence and the metal building door inside.
+Door-directed moves remain on the outside: the fence is the immediate access
+blocker. Door contact, opening, an interior transition and combat remain
+unverified; HP is 110 and score 0. No causal emulator defect is established.
+This timed replay must not be treated as a recovered inner-yard checkpoint.
+
+All 432 original pins, 1,149 source pins against `2606d617…`, 141 retained frozen
+host paths, 576 served responses and loaded module `573e235d…` verify. All 132
+recorded input events are trusted, with 55 releases and no final held keys or
+buttons. Final runtime state is running WebGL with no bridge error. Explicit
+quit leaves the owned browser/controller absent, three ports closed and private
+profile removed. Controller/replay tool statuses are 143 with unknown signal
+source; normal controller exit is not claimed. No Boat/test box was assigned
+(ID/state/expiry N/A). No source fix, guest patch, cheat or synthetic asset was
+used. Evidence and replay recovery remain under the run directory. Next recover
+the inner-yard scene using stable geometry and capture checkpoints before
+attempting door contact.
+
 ## Browser Mission 01 destructible obstacles (2026-10-31)
 
 Follow-up `20261031T0232Z-alien-entry` reproduces original crate destruction
