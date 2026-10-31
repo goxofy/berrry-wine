@@ -104,3 +104,39 @@ no Boat was used. `driver.cjs`, `native-input.jsonl`, `started.json`,
 `snapshots.json` and the content-addressed `served-snapshots/` preserve the
 route and loaded bytes. Replay must serve those retained bytes together,
 including their region map, while verifying the original manifest entries.
+
+## Native Ion Blaster pickup and firing; route still blocked (2026-10-31)
+
+Bounded continuation `20261031T0318Z-daikatana-combat` reused all 106 retained
+host/module snapshots from the preceding browser run and the unchanged 458
+original input entries. Both attempts kept a 1024x768 viewport, explicit
+WebGL and the default guestWorker. Chrome 151.0.7922.108 used ANGLE SwiftShader;
+the live endpoint again reported `api: gl, backend: webgl`. Module `8333a35b...`
+above remains **compiled-source unknown**, independent of the recorded HEAD.
+
+The first controller failed when it parsed a partially written command JSON;
+its browser exited normally during cleanup. The retry uses atomic command
+rename (`command.py`) and reached the original swamp. Inspected
+`retry/forward-1.png` shows **"You acquired the Ion Blaster."** after native
+ArrowUp held three seconds. Selecting native `2` equipped it with 40 rounds
+(`retry/path-forward-2.png`). This is a verified original weapon pickup,
+not a map transition or an enemy encounter.
+
+Subsequent inspected turns and movement remained among the starting coffins,
+green waterfalls and enclosing rock. Later backward/strafe attempts did not
+recover an open route; short turns produced uneven amounts of rotation.
+Native repeat did not resolve this. No production input/physics cause was
+established. The final native Ctrl attack visibly fired against nearby rock:
+`retry/attack-control-final.png` shows a bright impact, ammo 40 -> 39 and
+health 100 -> 86; `retry/final-settled.png` retains 39/86. This is consistent
+with close-range self-damage, **not verified enemy combat**. No enemy, kill,
+exit, map change or level completion was observed.
+
+`RECOVER.md`, both `driver.cjs` files, `commands.jsonl`, trusted native input
+records, endpoint captures, verification and cleanup records preserve the
+attempt. Next: recover a visually confirmed open route from the pickup,
+using short movement/capture checkpoints; do not replay all later turns
+blindly or claim an emulator fix from this navigation failure. No assets,
+guest state or production source were patched. Both owned browsers,
+controllers, profiles and local servers were closed; no test box/Boat was
+allocated. See the run's `verification.json` for final checks and timing.
