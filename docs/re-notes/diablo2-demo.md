@@ -1535,3 +1535,42 @@ cleanup was checked separately. No Boat/test box was used (ID/state/expiry
 not applicable). `recovery.txt` records fresh-launch replay and native route;
 there is no exported save checkpoint. Next gameplay work can continue past
 this first fight toward the Den of Evil.
+
+## Den search and bridge encounter, 2026-10-31 (entry unverified)
+
+Run `20261031T0342Z-diablo2-den` reuses the retained repaired module
+`7f9da4e9da5183e9f7f061d2356cd34626fe74bdbaf7da0345f6693dd81152be`
+and frozen host from the first-fight run. Compiled source remains unknown;
+this is not a current-main build retest. All 144 frozen entries and 148 served
+host/module responses match; the 25 original runtime files match before and
+after, with only the unused installer archive absent as previously recorded.
+Explicit WebGL/default guestWorker, trusted native controls and a stable
+1024x768 viewport were retained. Backend errors and page exceptions are zero.
+No cheats, guest-state patches, asset modifications or production repair occurred.
+
+No prior save checkpoint exists, so recovery starts with fresh Barbarian DEN.
+Inspected `14-blood-moor.png` verifies the Gheed-side palisade exit into Blood
+Moor. The north/east stone boundary search did not identify the cave. A dark
+ground/gold-map-marker candidate was not confirmed as an entrance. Moving
+west reached a riverbank (`25-interior-west.png`) and stone bridge, where
+`26-west-search.png` shows two armed red enemies. Native Shift plus held left
+attack produces a visible swing beside an enemy in `27-riverbank-south.png`.
+After releasing Shift, a targeted held left attack runs onward to the stone
+wall in `28-bridge-attack.png`; no hit or kill is verified. The final capture
+`29-final-bridge.png` also shows that wall, despite its planned filename.
+
+Den entry and combat inside remain unverified. The concrete limit is locating
+and navigating to the entrance within the bounded run, compounded by delayed
+controller responses; no emulator failure at the cave is established. One
+redundant mouse release reported an input-helper error, and capture24 exceeded
+the controller's 55-second timeout but eventually saved a readable screenshot.
+All 29 capture geometry records are stable. Audio/FPS remain unqualified.
+
+Runtime was 03:40:31–03:59:03 UTC (18m32s). Browser1468391 exited zero; its
+controller is absent, all three loopback ports are closed and its profile was
+removed. The controller shell session returned143 after explicit quit and the
+successful browser finalizer; the cause is unknown, and independent cleanup
+checks confirm closure. No Boat/test box was used (ID/state/expiry N/A).
+`recovery.txt`, native action logs and `replay-server.cjs` preserve the exact
+fresh-launch route; there is no exported save. Next work should use the
+river/bridge landmark to search unexplored Blood Moor interior for the cave.
