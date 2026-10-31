@@ -1738,3 +1738,66 @@ introduced, so no new runtime build is claimed. `result.json` links the inspecte
 captures, exact inputs, verification and save manifest. Browser/controller are
 absent, all three ports closed, private profile removed and inherited board
 watcher stopped. No Boat or assigned box was used (ID/state/expiry N/A).
+
+### 2026-10-31: exported Ocean's Edge reloaded; native championship won
+
+Run `scratch/runs/20261031T0155Z-simgolf-reload/` performed a fresh native
+reload and new scored gameplay at 01:54–02:07 UTC, within 20 minutes. The
+previous export was mounted through the ordinary launcher at its recorded
+`c:\themes\championship\ocean's edge mc.cse` path. Its 86,831 bytes retain
+SHA-256 `facfa36306f4194d7249576ee484254ea4a51741cac903b351ba939caf295821`.
+No course bytes, guest code, skills, or scores were patched.
+
+There is an important recovery prerequisite missing from the earlier recipe.
+Original `golf.exe:0040d99e` passes `saved games\AS1.sve` to FindFirstFileA;
+on failure, `0040d9b8` skips the startup menu and generates a new course.
+The extracted original zero-byte marker is instead mounted under
+`Saved_Games` with an underscore. The first two launches therefore generated
+Ravenwood Farms and Christmas Pines. Native retirement exited through the
+demo splash screens. For the third launch, an ordinary additional file mapping
+mounted the **unchanged original** `installed/Saved_Games/AS1.sve` at
+`c:\saved games\AS1.sve`. This is the original empty marker, not a fabricated
+career save. Its SHA-256 is
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+No production source or manifest was edited. `startup-disasm.txt`,
+`save-string-xrefs.txt`, `alias-mappings.json`, and `actions.jsonl` preserve
+the reason and exact launch/input sequence.
+
+The native startup menu then offered **Play a Championship** (`alias-now.png`).
+`back.png` shows its course loader recognizing Ocean's Edge MC as one hole,
+75 yards, par 3, Fun Rating 57, with Twyla's course record of 2. Selecting it
+and original **Sid Golf.pro** loaded the course. `native-course.png` and
+`people.png` show its clubhouse, waterways, coastal tee, and island green;
+`reference-export-layout.png` preserves the prior export view for comparison.
+The later hole inspection in `sid-card.png` confirms 75 yards/par 3, stroke
+average 2.00 and one recorded two-stroke score. This verifies retained course
+layout and native loading, not recovery of Gary's career or the Trudy round.
+
+The championship loader starts a **Professional Tournament**, the 2001 San
+Diego Open, rather than a Practice Round. Native People/Straight Shot controls
+and a green target produced a new inspected shot: `first-stroke.png` explicitly
+reports Sid Golf's **70-yard Lob Wedge to within 10 feet of hole 1**, with Luck
+improving to 30%. `stroke-score.png` shows Sid at one stroke and Juice Pro at
+zero. The game subsequently resolved play. Most decisively,
+`score-control.png` displays **Tournament Results: Sid Golf −1, 2 strokes,
+wins 20,000 dollars; Juice Pro +4, 7 strokes**. This is a new native tournament
+hole completion and win. A new practice round was not verified; use this
+championship route when recovering the CSE, and do not call it a career or
+practice checkpoint. No tournament save/resume is claimed.
+
+`verify.py` passes the retained module identity `7e8d3194…` (1,892,586 bytes;
+compiled source provenance still unknown), all 1,763 unchanged original assets
+(65,166,518 bytes), all 3,337 served-original hash checks and 77 trusted input
+events with all keys/buttons released. `input-hashes.json` pins the export,
+marker and reused driver helpers. `served.jsonl` pins the executing module,
+export, original assets, host.js `5a8fd3ba…` and repaired audio `f8770324…`.
+Chrome 151.0.7922.108 used cooperative threads, a 1024×768 viewport and native
+800×600 GDI canvas, without a window GPU layer. AudioContext was running;
+audible quality was not assessed. The game was running with both tracked JGL
+words `0x00adf938` at close. The explicit quit completed browser/server cleanup;
+the controller process later reported exit 143, with signal sender unknown.
+Browser PID and all three ports are verified absent/closed, private profile
+removed, and own board watcher stopped. No Boat/test box was used; ID, state
+and expiry are N/A. No emulator defect was established, no source changed,
+and no new runtime build is claimed. Recovery commands and evidence remain
+in `recovery.txt` and `result.json` in the run directory.
