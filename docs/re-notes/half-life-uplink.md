@@ -1790,3 +1790,55 @@ This documentation-only continuation requires no new build.
 The installed-payload regression also passes against the available main build,
 rendering all seven launcher menu labels; this is separate from the retained
 WASM used for gameplay.
+
+## Fresh office recovery and Danger checkpoint (2026-10-31)
+
+Run `20261031T0114Z-uplink-mine` verifies the earlier office export in a fresh
+browser: all nine unchanged files are mounted through the ordinary launcher
+VFS mechanism, and native Load Game/F7 reaches **health70 / pistol17**
+(`retry/load-settled.png`, `retry/office-level.png`). A local copy remains in
+`office-pistol-save/`, matching all nine prior save pins. `recovery.txt` and
+the reused driver preserve the tested recipe. The safer office save remains
+the recommended recovery point.
+
+Native Controls remapping visibly sets Use to G. After leveling the view and
+holding forward+G at the centered door, the player exits the office and
+bypasses the green and wooden crates. `retry/use-hold.png` and
+`retry/danger-route.png` show that route. An initial Controls attempt also
+accidentally changes mouse bindings; subsequent attacks use native Enter.
+No configuration export is claimed. No guest-memory writes, console commands,
+cheats or original-asset changes supply progress.
+
+Headcrab attacks reduce health. Native F6 near Danger produces ten exported
+files in `retry/danger-save/`; F7 restores **health30 / pistol14**, personally
+inspected in `retry/checkpoint-ready.png`. This is an unsafe checkpoint with
+an active attacker. Downward pistol shots then appear to kill the close
+headcrab: `retry/crab-result.png` shows its flattened body. Health holds at10
+afterward, and another native F6 export in `retry/crab-save/` preserves
+**health10 / pistol9**. That later export was not reloaded or externally
+remounted. A further headcrab remains and kills the player during the next
+approach (`retry/mine-hall.png`). **Full headcrab clearance, an actual mine
+shot, detonation, survived clearance and satellite progress are unverified.**
+All named screenshots were personally inspected.
+
+Two Chrome processes disappear unexpectedly: PID1275645 at the main menu,
+then retry PID1278250 after the Danger death. CDP reports detached frames;
+the sender and cause are unknown. Final runtime and stop snapshots are
+unavailable. This is a concrete browser/controller blocker, not an isolated
+emulator-defect claim. No source repair or new build was made. The bounded
+attempt and cleanup finish within20 minutes; next use the healthier office
+export, clear both pursuing headcrabs promptly, then save before the mine
+shot and retreat.
+
+Both launches load exact retained WASM
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`;
+the inherited source-manifest/compile-delta limitations remain, and this is
+not a current-main build claim. Verification passes for all65 original files,
+38 original responses, all329 served responses and29 retained save files.
+The last successful capture records301 trusted events,124 paired key presses
+and no held keys/buttons; it is not a final snapshot after browser loss.
+Observed rendering is WebGLBackend WebGL1, software disabled, GL error zero.
+Both owned controllers and browsers are absent, all six HTTP/CDP ports are
+closed, both profiles are removed and over6GB remains free. No Boat/test box
+was used (ID/state/expiry N/A); ownership is handed back. Evidence is indexed
+by `result.json`, `verification.json` and `native-save-pins.json` in this run.
