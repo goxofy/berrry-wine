@@ -1,5 +1,38 @@
 # Original GLTron 0.70 on recovered main — 2026-10-30
 
+## Current CLI replay — 2026-10-31
+
+Evidence: `scratch/runs/20261031T0108Z-gltron-startup-trace/`.
+The pinned `runtime.wasm` SHA-256 is
+`f2911e1fcfc094d3c6d998bbdb071bdd800ede18cd0082a5eed53de15cf08bb9`.
+It was copied from the concurrent Twist worker's successful build, while main
+was `b1fd393cf`; its uncommitted D3DIM extent change is preserved as
+`concurrent-build-source.patch`. The complete build-time source manifest was
+not captured, so the main SHA alone does not identify this module's source.
+All 92 original registered input hashes were rechecked unchanged.
+
+With software GL, real ticks, cooperative scheduling and `--batch-size=200000`,
+the original main menu rendered. Native Return down/up opened GAME and then
+START GAME. `native-arena.png` shows the launch pause; native A down/up was
+followed by the moving yellow cycle and trails in `native-left.png`.
+`native-final.png` shows player-one collision and PLAYER 3 WINS. These images
+were inspected. The 50-second run ended at its configured guard, tool exit 0,
+without an unimplemented-call trap. Commands, exact input timings, logs and
+module are retained; no guest-memory or asset changes were used.
+
+A same-module 30-second software run with `--batch-size=20000` remained black,
+whereas the 200000-block run rendered the menu. This is a bounded CLI budget
+sensitivity finding, not a demonstrated guest deadlock or a performance result.
+Both the successful and black runs ended with the SDL audio thread waiting at
+`0xa3e5f0` on `0xe0005`; that final state alone does not establish the cause of
+a black frame. The earlier generic crash-sweep `exit:1` result used a different
+graphics route and must not be promoted to an original-game crash diagnosis.
+This replay does not qualify browser behavior, audio, complete visual parity,
+or every cooperative/real-thread configuration. All owned CLI processes ended;
+no Boat, browser, public service or deployment was involved.
+
+## Retained original replay — 2026-10-30
+
 Evidence: `scratch/runs/20261030T2141Z-gltron-main-gameplay/` (ignored).
 Use the existing `APPS.gltron` registration; no registration reintegration.
 
