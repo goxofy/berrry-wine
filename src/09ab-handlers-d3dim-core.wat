@@ -7777,6 +7777,61 @@
     (call $d3dim_exec_batch_push (local.get $va))
     (call $d3dim_exec_batch_push (local.get $vb)))
 
+  ;; The render owner has a different instance's Execute-scope globals.
+  ;; Publish accepted TL batch coverage here, before Execute returns, rather
+  ;; than relying on its later GPU callback to find this instance's scope.
+  ;; Like the GPU executor this is conservative pre-depth/alpha coverage with
+  ;; two pixels for line/subpixel rounding, clipped to the target and viewport.
+  (func $d3dim_exec_batch_extent (param $rt i32) (param $count i32)
+    (local $i i32) (local $v i32) (local $uncertain i32)
+    (local $x f32) (local $y f32)
+    (local $left f32) (local $top f32) (local $right f32) (local $bottom f32)
+    (local $x0 i32) (local $y0 i32) (local $x1 i32) (local $y1 i32)
+    (if (i32.eqz (global.get $d3dim_exec_extent_guest)) (then (return)))
+    (if (i32.ne (local.get $rt) (global.get $d3dim_exec_extent_rt)) (then (return)))
+    (local.set $x1 (load.field DxObject width (local.get $rt)))
+    (local.set $y1 (load.field DxObject height (local.get $rt)))
+    (if (global.get $d3dim_clip_on) (then
+      (local.set $x0 (global.get $d3dim_clip_x0))
+      (local.set $y0 (global.get $d3dim_clip_y0))
+      (local.set $x1 (global.get $d3dim_clip_x1))
+      (local.set $y1 (global.get $d3dim_clip_y1))))
+    (local.set $left (f32.const inf))
+    (local.set $top (f32.const inf))
+    (local.set $right (f32.const -inf))
+    (local.set $bottom (f32.const -inf))
+    (block $done (loop $vertices
+      (br_if $done (i32.ge_u (local.get $i) (local.get $count)))
+      (local.set $v (call $g2w (i32.add (global.get $d3dim_exec_batch)
+        (i32.shl (local.get $i) (i32.const 5)))))
+      (local.set $x (f32.load (local.get $v)))
+      (local.set $y (f32.load offset=4 (local.get $v)))
+      ;; Mixed-sign W can project clipped edges outside endpoint bounds.
+      (if (i32.eqz (i32.and
+        (i32.and (f32.lt (f32.abs (local.get $x)) (f32.const inf))
+                 (f32.lt (f32.abs (local.get $y)) (f32.const inf)))
+        (f32.gt (f32.load offset=12 (local.get $v)) (f32.const 0))))
+        (then (local.set $uncertain (i32.const 1)) (br $done)))
+      (local.set $left (f32.min (local.get $left) (local.get $x)))
+      (local.set $top (f32.min (local.get $top) (local.get $y)))
+      (local.set $right (f32.max (local.get $right) (local.get $x)))
+      (local.set $bottom (f32.max (local.get $bottom) (local.get $y)))
+      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      (br $vertices)))
+    (if (i32.eqz (local.get $uncertain)) (then
+      (local.set $x0 (i32.trunc_sat_f32_s (f32.max (f32.convert_i32_s (local.get $x0))
+        (f32.floor (f32.sub (local.get $left) (f32.const 2))))))
+      (local.set $y0 (i32.trunc_sat_f32_s (f32.max (f32.convert_i32_s (local.get $y0))
+        (f32.floor (f32.sub (local.get $top) (f32.const 2))))))
+      (local.set $x1 (i32.trunc_sat_f32_s (f32.min (f32.convert_i32_s (local.get $x1))
+        (f32.ceil (f32.add (local.get $right) (f32.const 2))))))
+      (local.set $y1 (i32.trunc_sat_f32_s (f32.min (f32.convert_i32_s (local.get $y1))
+        (f32.ceil (f32.add (local.get $bottom) (f32.const 2))))))))
+    (if (i32.and (i32.gt_s (local.get $x1) (local.get $x0))
+                 (i32.gt_s (local.get $y1) (local.get $y0))) (then
+      (call $d3dim_extent_add (global.get $d3dim_exec_extent_guest)
+        (local.get $x0) (local.get $y0) (local.get $x1) (local.get $y1)))))
+
   ;; Hand the batch to the executor; when it declines (an 8bpp target, say),
   ;; $d3dim_worker_route has fenced and the batch rasterizes here instead.
   (func $d3dim_exec_batch_flush (param $dev_this i32) (param $rt i32)
@@ -7788,7 +7843,7 @@
       (if (i32.lt_u (local.get $n) (i32.const 2)) (then (return)))
       (if (call $d3dim_worker_route (local.get $dev_this) (i32.const 2)
             (global.get $d3dim_exec_batch) (local.get $n))
-        (then (return)))
+        (then (call $d3dim_exec_batch_extent (local.get $rt) (local.get $n)) (return)))
       (local.set $wa (call $g2w (global.get $d3dim_exec_batch)))
       (block $ldone (loop $llp
         (br_if $ldone (i32.gt_u (i32.add (local.get $i) (i32.const 2)) (local.get $n)))
@@ -7802,7 +7857,7 @@
     (if (i32.lt_u (local.get $n) (i32.const 3)) (then (return)))
     (if (call $d3dim_worker_route (local.get $dev_this) (i32.const 4)
           (global.get $d3dim_exec_batch) (local.get $n))
-      (then (return)))
+      (then (call $d3dim_exec_batch_extent (local.get $rt) (local.get $n)) (return)))
     (local.set $wa (call $g2w (global.get $d3dim_exec_batch)))
     (block $done (loop $lp
       (br_if $done (i32.gt_u (i32.add (local.get $i) (i32.const 3)) (local.get $n)))

@@ -1,5 +1,54 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 31: original Twist threaded WebGL freeze repaired
+
+Run `20261031T0104Z-twist-thread-freeze` first confirms the current-build
+failure with an overlay-free scene rectangle (screen x=34..344, y=240..479).
+The coordinator's three-route captures have 0 changed scene pixels in threaded
+WebGL, 20,826 in nonthreaded WebGL and 22,457 in software. A fresh threaded
+baseline also has 0 changed scene pixels while its FPS text changes. Both
+baseline captures were personally inspected; accepted 900-vertex batches and
+GPU draw/readback counters continue advancing.
+
+The active ExecuteBuffer extent scope is stored in per-instance WASM globals.
+The process render worker owns a different WASM instance: its GPU callback
+cannot update the guest worker's active scope. Consequently GetExecuteData
+reports empty scene extents and D3DRM copies only its FPS overlay. The earlier
+GPU extent repair covered execution on the owning instance, leaving this
+threaded transport path broken.
+
+Accepted Execute triangle and wireframe batches now publish conservative TL
+coverage on the producer before Execute returns. Bounds include the existing
+GPU two-pixel rounding margin and are clipped to the target and viewport;
+uncertain homogeneous coordinates retain conservative clip coverage. Declined
+batches keep their synchronous raster path. Status collection stays with the
+active Execute owner, independently of asynchronous replay/readback.
+
+The public Execute/GetExecuteData regression fails before the fix with an
+empty rectangle and passes afterward. It covers accepted transport without
+local rasterization, moving/reset bounds, solid/wireframe batches, target and
+viewport clipping, fully clipped geometry and scope retirement. Existing
+sparse Execute/status/owner cases, GPU batching, point lowering, depthless-Z
+and second-instance worker parity pass. The locked `tools/build.sh` passes.
+
+The original registered `dx_twist` was retested with module SHA-256
+`f2911e1fcfc094d3c6d998bbdb071bdd800ede18cd0082a5eed53de15cf08bb9`.
+Personally inspected initial/later captures show visible deformation and
+rotation on threaded WebGL, nonthreaded WebGL and threaded software, with
+21,826, 13,175 and 17,558 changed scene pixels respectively. Threaded WebGL
+retains the process render worker, backend `webgl`, guest threads and lazy sync;
+its recorded GPU stats report no fallbacks or errors. Built-in DX tracing is
+retained for all three retests. No app override, guest-memory edit, synthetic
+frame or threading bypass was used in browser execution.
+
+`verification.json` pins all 38 registered inputs per execution, verifies all
+served file hashes (202 baseline, 202/179/192 retest responses), loaded module
+identity, unchanged build-source hashes and browser/profile cleanup. The run
+also retains the patch, build/focused-test logs and recovery recipe. Chrome 151
+uses ANGLE SwiftShader. These captures establish animation, not aligned pixel
+parity, native-Windows scene correctness or performance. No Boat/test box was
+used; all four owned browsers and their HTTP/CDP/control ports were closed.
+
 ## October 31: current-build original Viewer interaction on both routes
 
 Run `20261031T0058Z-sdk-viewer-current-input` uses the original recovered

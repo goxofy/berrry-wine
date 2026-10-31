@@ -42,8 +42,16 @@ const extraWat = String.raw`
 `;
 (async () => {
   const trace = [];
+  let queuedGpuDraws = null;
   const { exports: e, memory } = await bootRenderHarness({ extraWat, fonts: 'none',
-    extraHostOverrides: { dx_trace: (...args) => { if (args[0] === 7) trace.push(args.slice(1)); } } });
+    extraHostOverrides: {
+      dx_trace: (...args) => { if (args[0] === 7) trace.push(args.slice(1)); },
+      gpu_gl_call: (opcode, descriptor) => {
+        if (!queuedGpuDraws) return 0;
+        if (opcode === 0x20000) queuedGpuDraws.push(descriptor);
+        return 1; // Acceptance only: replay has a different instance's globals.
+      },
+    } });
   e.init_dx_com_thunks();
   const dev = e.device(), state = e.state(dev), sp = e.guest_alloc(128);
   const desc = e.guest_alloc(20), out = e.guest_alloc(48), data = e.guest_alloc(48);
@@ -455,6 +463,45 @@ const extraWat = String.raw`
   assertExtent(ownerB, [10, 11, 22, 23]);
   call('IDirect3DExecuteBuffer_Release', 8, ownerB.handle);
   console.log('PASS Execute extent owners: interleaved draw/Unlock, reset, XY clipping and release isolation');
+  // An asynchronous GPU transport accepts the batch without rasterizing on
+  // this instance. GetExecuteData must already contain coverage on return.
+  e.buffer(eb, regular);
+  e.d3dim_gpu_enable(1);
+  queuedGpuDraws = [];
+  e.guest_write32(state + 344, 1); // no culling
+  for (const fill of [2, 3]) for (const viewport of [false, true])
+    for (const [coords, bounds] of [
+    [[[4, 5], [13, 5], [4, 14]], [2, 3, 15, 16]],
+    [[[20, 21], [40, 21], [20, 40]], [18, 19, 32, 32]],
+    [[[-20, -20], [-10, -20], [-20, -10]], [2048, 2048, 0, 0]],
+  ]) {
+    e.guest_write32(state + 288, fill); // wireframe and solid
+    (viewport ? [8, 9, 10, 11] : [0, 0, 32, 32]).forEach((v, i) =>
+      e.guest_write32(state + 3088 + i * 4, v));
+    const expected = viewport && bounds[0] !== 2048
+      ? [Math.max(8, bounds[0]), Math.max(9, bounds[1]), Math.min(18, bounds[2]), Math.min(20, bounds[3])]
+      : bounds;
+    if (expected[2] <= expected[0] || expected[3] <= expected[1]) expected.splice(0, 4, 2048, 2048, 0, 0);
+    coords.forEach(([x, y], i) => [bits(x), bits(y), bits(0.5), bits(1), 0xffffffff, 0, 0, 0]
+      .forEach((v, j) => e.guest_write32(regular + i * 32 + j * 4, v)));
+    const program = [14 | (24 << 8) | (1 << 16), 2, 0, 2048, 2048, 0, 0,
+      3 | (8 << 8) | (1 << 16), 1 << 16, 2, 11, 0];
+    program.forEach((v, i) => e.guest_write32(regular + 512 + i * 4, v));
+    [48, 0, 3, 512, program.length * 4, 0, 3, 0, 2048, 2048, 0, 0]
+      .forEach((v, i) => e.guest_write32(data + i * 4, v));
+    call('IDirect3DExecuteBuffer_SetExecuteData', 12, eb, data);
+    call('IDirect3DExecuteBuffer_Unlock', 8, eb);
+    const before = queuedGpuDraws.length;
+    call('IDirect3DDevice_Execute', 20, dev, eb);
+    assert(queuedGpuDraws.length > before, 'real Execute submitted a GPU batch');
+    call('IDirect3DExecuteBuffer_GetExecuteData', 12, eb, out);
+    assert.deepStrictEqual(Array.from({ length: 4 }, (_, i) => e.guest_read32(out + 32 + i * 4)),
+      expected, 'queued GPU coverage belongs to the producer Execute');
+    assert.strictEqual(e.extent_scope(), 0, 'queued Execute retires its scope');
+  }
+  queuedGpuDraws = null;
+  e.d3dim_gpu_enable(0);
+  console.log('PASS queued GPU Execute extents: producer ownership, moving/reset bounds, lines/triangles, target/viewport clipping');
   for (let page = 0; page < 7; page++) for (let i = 0; i < 4096; i++)
     assert.strictEqual(e.guest_read8(base + 0x10000 + page * 4096 + i), 0xa7, 'neighbor backing');
   e.buffer(eb, ownedBuffer); // Borrowed test mappings are not heap owners.
