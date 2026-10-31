@@ -1,5 +1,27 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 31: OrganicArt rectangle reproduced on both routes
+
+Run `20261031T0034Z-organicart-rectangle` reproduces the lower-right white
+rectangle over original OrganicArt scenes on software and WebGL. Personally
+inspected WebGL frames 2/3 and software `restored.png` show different scenes,
+so this is not a same-frame parity check. WebGL records one visible 640×480
+Screen Saver window and host GPU enabled. Software point inspection places
+the rectangle inside the displayed canvas, rather than a separate HTML
+overlay. Its owning drawing operation and cause remain unresolved; no emulator
+repair is claimed.
+
+All three launches used retained module SHA-256
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`
+(source fix `de2e338c4`, full source unknown), Chrome 151 with ANGLE SwiftShader,
+registered `/s` startup and guest threads disabled. Each launch verified 85
+executable/scene input pins and 230 served-response hashes. The short software
+arm captured startup only. A secondary CDP connection temporarily resized
+the longer software arm; its inspected capture followed viewport restoration.
+Layer extraction failed when that target closed, so no backing-layer evidence
+or cause is inferred. All browsers and servers closed and profiles were removed;
+no Boat was used. `investigation.json` records these limits and exact captures.
+
 ## October 30: PTCT paired original browser rendering
 
 Run `20261030T2351Z-ptct-paired-browser` captures the original registered
