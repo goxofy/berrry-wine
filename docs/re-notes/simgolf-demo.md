@@ -1801,3 +1801,53 @@ removed, and own board watcher stopped. No Boat/test box was used; ID, state
 and expiry are N/A. No emulator defect was established, no source changed,
 and no new runtime build is claimed. Recovery commands and evidence remain
 in `recovery.txt` and `result.json` in the run directory.
+
+### 2026-10-31: second-hole attempt blocked by championship recovery route
+
+Run `scratch/runs/20261031T0215Z-simgolf-hole2/` tested the retained course
+at 02:11–02:20 UTC. **No second playable hole or new architect save was
+completed.** The input CSE remains byte-exact, SHA-256
+`facfa36306f4194d7249576ee484254ea4a51741cac903b351ba939caf295821`
+(86,831 bytes). A separate preservation export, `reloaded-original.cse`, has
+the same bytes/hash; it is not a newly saved two-hole course.
+
+The native loader again recognized Ocean's Edge MC as one hole, 75 yards,
+par 3, with Twyla's record of 2 (`loader.png`, `retry-course.png`). Selecting
+Sid starts a Professional Tournament. Once that transition finishes, Build
+Course is gray and clicking it does not open its palette (`build-palette.png`).
+Early construction clicks during the transition produced an incidental green
+and expenditure, but no verified tee/green pair, hole-2 label or opened hole;
+these unsaved changes were discarded by native retirement. Subsequent shot
+inputs produced a native water-shot complaint; no completed round is claimed.
+
+A second fresh native CSE load reached **Pick a Pro**. Escape, another Escape,
+and Enter did not leave that picker for an architect session
+(`before-pro-cancel.png`, `pro-cancel.png`, `pro-cancel2.png`, `final-picker.png`).
+The concrete blocker is the available recovery route: championship import
+starts tournament play, while no resumable career `.sve` was retained. The
+only mounted `.sve` files are the unchanged original empty marker and its
+space-path alias. This bounded attempt did not find a native import-to-editor
+route; it does not establish that every native route is impossible. Next work
+needs a verified native editing/import route or an original career checkpoint
+containing this layout. No emulator defect was established or source changed.
+
+Capture caveat: after gameplay presentation switches, `#screen` can retain the
+loader image while `#screen-present` shows the live course. After relaunch,
+the latter can itself retain the previous black frame during startup. The
+full-page captures settle which image was actually presented; do not infer
+loading stalls from either canvas alone. An initial marker-URL typo was
+corrected in the run-local driver before the successful fresh launch.
+
+`verify.py` passes all 1,763 original assets (65,166,518 bytes), 1,790 served
+original-response hashes, the retained module identity
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`
+(1,892,586 bytes; compiled source provenance unknown), and 91 trusted inputs
+with keys/buttons released. `additional-verification.json` verifies the
+unchanged input, reloaded VFS export, served host copies and first-browser
+cleanup. Chrome 151.0.7922.108 used cooperative threads, 1024×768 viewport,
+800×600 native GDI presentation and no window GPU layer. AudioContext was
+running; listening was not assessed. No guest patches, cheats, synthetic
+assets, source fixes or new build are claimed. Both browsers are absent, six
+ports closed and both private profiles removed. The first controller exited
+0; the second reported 143 after successful explicit cleanup, sender unknown.
+The board watcher is absent. No Boat/test box was used; ID/state/expiry N/A.
