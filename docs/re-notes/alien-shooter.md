@@ -5,6 +5,33 @@ The complete companion assets are required (`--vfs-include='**/*'`). Original
 installer/provenance and SHA-256 are recorded in `reflexive.md` and the local
 candidate manifest. No guest executable or asset patches were made.
 
+## Pinned browser Mission 01 movement (2026-10-31)
+
+Run `20261031T0136Z-alien-shooter-browser` launches the original registered
+`alien_shooter` with 432 verified input files. Chrome 151 with ANGLE SwiftShader
+uses the owning D3D **WebGL** bridge/device, with guest threads off. It loads
+module SHA-256 `573e235db16e351668289f49e2f279ff48bcad56e7ca533167cb94cd6f4ec3fc`
+retained from build `2606d6173`; the 1,149-entry build source manifest and exact
+browser response snapshots are separate. This does not certify that every
+concurrent host source equals that build.
+
+Inspected captures show the original setup, title/Main Menu, Select Player,
+LOADING and Mission 01's outdoor grass/path scene. Native Enter, New Game and
+held Campaign input traverse the menus. The intervening black captures later
+advance to loading and the level; they do not establish a hang. A one-second
+native ArrowRight hold visibly moves the soldier right. Native mouse aiming
+changes the weapon direction, and held left-button input is recorded; enemy
+damage, combat, a muzzle flash and mission completion are not established.
+The inspected level frames retain HP 110.
+
+All input pins and served-response snapshots pass SHA verification. The final
+state has no recorded runtime error and still uses the WebGL device. Explicit
+quit closes the controller with exit zero; browser PID absence, all three closed
+ports and removed private profile are independently checked. No Boat was used.
+The run retains trusted input, inspected captures, build/backend identity,
+recovery instructions and artifact hashes. No executable, asset or emulator
+source changed. Audio, physical GPU performance and full playability remain open.
+
 ## Pinned native startup capture (2026-10-31)
 
 Run `20261031T0119Z-alien-shooter-native-start` uses module SHA-256
