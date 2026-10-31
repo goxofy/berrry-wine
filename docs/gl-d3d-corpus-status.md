@@ -1,5 +1,54 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 31: OrganicArt rectangle isolated to native logo input
+
+Run `20261031T0046Z-organicart-logo` supersedes the startup-only native
+registry comparison in `20261031T0034Z-organicart-rectangle/logo-ab`.
+Both new WebGL arms reached original scenes by 45 seconds and ran for
+210 seconds. With native `DisableCALogo` DWORD **0**, personally inspected
+45/150-second scenes contain the lower-right white rectangle; with DWORD
+**1**, inspected 45/150/210-second scenes do not. Read-only guest observations
+confirm the native disable flag is respectively 0/1. The enabled 210-second
+scene also lacks the rectangle, consistent with the app's hide-logo path;
+this is not a permanent obstruction.
+
+The white area is present in both the 640×480 backing canvas and DirectDraw
+frame layer. In the saved enabled layer, all 3,060 pixels of
+`[550,434,640,468)` are white; the corresponding disabled sample has zero
+white pixels. A separate native trace records `DisableCALogo -> 0`, no
+`CALogo` override, and `SearchPath("CALogo.gif", path=".") -> NOT FOUND`.
+No such file is among the 84 registered scene assets or available screensaver
+files. A fourth launch keeps the logo enabled and sets the app's native
+`CALogo` REG_SZ to the unchanged, already-registered `BOLD6.GIF`: lookup and
+file reads succeed, and personally inspected scene/layer captures show an
+orange/brown texture in the former white rectangle. This deliberate image
+substitution diagnoses the missing default logo input; it does not restore
+the authentic Computer Artworks logo.
+
+No production code or default registry setting was changed, and no guest
+memory was patched. A renderer repair is not established. The remaining
+repair dependency is authentic Plus! 98 logo assets and/or installation
+registry defaults, followed by an original-input replay. The native disable
+key is a demonstrated workaround, not an accepted production repair.
+Randomized scenes differ between arms; this is not same-frame parity, and
+software was not rerun in this follow-up.
+
+All four launches use original `OASAVER.SCR /s`, the same 85 executable/scene
+input hashes, retained module SHA-256
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`
+(source fix `de2e338c4`, full source unknown), Chrome 151/ANGLE SwiftShader,
+and guest threads disabled. Exact capture hashes, native traces, byte checks,
+reproduction instructions and cleanup are retained in the run's
+`investigation.json`, `verification.json` and `recovery.txt`. Concurrent SDK
+Viewer changes to `lib/apps.js` and generated file-size metadata were handled
+by recovering byte-identical served versions from launch commit `49340601e`;
+all 920 served-response hashes verify against current or retained exact bytes.
+The first controller was later reaped with status 143 after its cleanup
+record; the signal's sender is unknown. Both later controllers exit 0. All
+three browsers are absent, six HTTP/CDP ports closed and profiles removed.
+Browser work ran approximately 00:45:50–00:56:32 UTC, within 25 minutes.
+No Boat/test box was used (ID/state/expiry not applicable).
+
 ## October 31: OrganicArt rectangle reproduced on both routes
 
 Run `20261031T0034Z-organicart-rectangle` reproduces the lower-right white
