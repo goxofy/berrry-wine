@@ -75,3 +75,32 @@ exempt). The menu route now works: Select Difficulty is up by batch ~29000
 (`--tick-ms-per-batch=5`), clicking Samurai at 295,350 is in e1m1a by ~99000,
 and the browser in Threads mode is in-world too.
 Evidence: `scratch/runs/20261011T1030Z-daikatana-getgameapi`.
+
+## Explicit browser WebGL world and movement (2026-10-31)
+
+Run `20261031T0256Z-daikatana-webgl` closes the previously unattested browser
+GL-backend detail. The registered original `daikatana_demo` ran in Chrome
+151.0.7922.108, cross-origin isolated, Threads enabled, at
+`index.html?threads&debug&no-log&gl-renderer=webgl`. A read-only inspection of
+the live render worker's endpoint map recorded `api: "gl", backend: "webgl"`
+in `backend-endpoints.json`; the generic GPU selector alone was not used as
+proof. Chrome used ANGLE SwiftShader, so this is not hardware-GPU evidence.
+
+Native mouse selection of Samurai reached the original swamp world.
+Personally inspected `current.png` shows the weapon and health-100 HUD;
+`after-forward.png`, following a two-second native ArrowUp hold/release,
+shows a changed camera position. This establishes browser world rendering
+and movement, not combat, level completion, audio correctness or full parity.
+The earlier `webgl-9.png` still showed loading; it is not a gameplay frame.
+
+The actual served module was
+`8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`.
+Its compiled source identity is unknown; the observed checkout HEAD is not
+substituted for it. `verification.json` checks all 458 original input entries
+unchanged and all 106 retained host/module snapshots against their hashes.
+The browser reported no page exceptions. Browser/controller PIDs were absent,
+the server port closed and the owned profile removed after explicit cleanup;
+no Boat was used. `driver.cjs`, `native-input.jsonl`, `started.json`,
+`snapshots.json` and the content-addressed `served-snapshots/` preserve the
+route and loaded bytes. Replay must serve those retained bytes together,
+including their region map, while verifying the original manifest entries.
