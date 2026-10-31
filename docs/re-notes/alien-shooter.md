@@ -26,6 +26,18 @@ wall time and guest batch progress when extending the original startup test.
 Exact commands, snapshots, captures, input hashes and cleanup checks are retained
 in the run directory; no guest assets or emulator source were changed.
 
+Run `20261031T0126Z-alien-shooter-menu-gameplay` extends that same pinned
+module and original input set with continuous software presentation. Inspected
+captures show the original title, Main Menu, Select Player and Mission 01
+equipment screens. Native Enter at batch 6098 skips the title; moving then
+clicking New Game `(98,296)` at batch 6230 and Campaign `(320,334)` at batch
+6570 advances through those menus. Continue `(535,445)` was delivered at batch
+7598, but the last inspected frame at batch 7649 still shows equipment during
+its transition. Mission rendering, movement and combat remain unqualified on
+this module. The launcher tool ended with status 143 before recording a runtime
+exit code or final PNG; the runtime PID was subsequently absent and its control
+port closed. The signal source is unknown, so this is not a normal-exit claim.
+
 ## DirectSound8 startup (2026-09-29)
 
 Startup originally stopped at `DSOUND.DLL#11`, IAT `0x47a01c`, caller
