@@ -38,6 +38,25 @@ this module. The launcher tool ended with status 143 before recording a runtime
 exit code or final PNG; the runtime PID was subsequently absent and its control
 port closed. The signal source is unknown, so this is not a normal-exit claim.
 
+Run `20261031T0128Z-alien-shooter-mission-native` reaches original Mission 01
+on the same exact module and unchanged inputs. The finite 240-second native
+software run uses `--live-present`, five guest milliseconds per batch and
+200,000 blocks per batch. Scheduled early clicks overlapped menu transitions;
+screen-guided native retries reach Select Player, Campaign and equipment.
+Continue at batch 8285 then loads the original outdoor level, inspected at
+batch 10065 with health 110. Right-arrow down/up at batches 10197–10380 moves
+the player; pointer motion to `(500,250)` followed by native left-button
+down/up at 10555–10779 turns the player and produces an inspected muzzle flash.
+This verifies this route's level rendering, movement, aiming and firing;
+enemy damage, kills, mission completion, audio, browser behavior and performance
+remain unqualified. No guest executable, assets or emulator source changed.
+The runtime logged its finite 240.010-second completion and wrote a final PNG,
+but the launcher tool ended with status 143 before recording a runtime exit
+code; the signal source is unknown. Its PID was absent and control port closed.
+After the later Escape probe, the final frame retains terrain and HUD icons
+but lacks the earlier player and HUD numbers; pause or normal exit is not
+qualified by that frame. All 432 original input hashes still match.
+
 ## DirectSound8 startup (2026-09-29)
 
 Startup originally stopped at `DSOUND.DLL#11`, IAT `0x47a01c`, caller
