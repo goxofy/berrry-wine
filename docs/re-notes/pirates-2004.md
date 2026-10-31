@@ -198,3 +198,68 @@ unknown. No new sailing or terrain comparison is claimed. Evidence is in
 and three ports were closed. No Boat was used. The next graphics task still
 needs a matched sailing scene and a measured rendering contract before
 attributing the white terrain to the unsupported specular path.
+
+## WebGL fixed-function specular lighting (2026-10-31)
+
+`lib/d3d9-fixed.js` now computes the fixed vertex stage's specular RGB using
+material specular times the sum of each light's specular color, half-vector
+power, attenuation and spotlight factor. It follows Microsoft's
+[D3D9 specular equation](https://learn.microsoft.com/en-us/windows/win32/direct3d9/specular-lighting),
+including the finite camera-to-vertex viewer vector and the infinite viewer's
+`(0,0,1)` vector. Material/COLOR1/COLOR2 selection uses the existing fallback
+and COLORVERTEX rules; normals use the inverse-transpose world-view transform
+and optional normalization. Back-facing lights and degenerate vectors produce
+no highlight. Power zero avoids GLSL's undefined `pow(0,0)` case.
+
+The specular sum is clamped per vertex, interpolated separately, and added
+after the texture cascade without changing its alpha. Mixed programmable pixel
+shader post-specular and software-backend specular remain unsupported and
+guarded. This rendering implementation does not establish the cause of the
+white terrain in Pirates.
+
+Focused `test/test-d3d9-specular-web.js` passes **86 actual WebGL1/2 pixel
+checks** against an independent scalar vertex-lighting/interpolation reference:
+directional, point and spot lights; attenuation/range/cones; material sources
+and missing-color fallbacks; COLORVERTEX; powers 0/1/2/4/20; finite/infinite
+viewer and translation; inverse-transpose normals and normalization; zero
+vectors/backfaces; accumulation/clamping; texture replacement and alpha.
+The mixed-stage and software-backend regressions pass. The unmodified existing
+lighting WebGL suite fails with `invalid light attenuation` on its known
+“all-zero attenuation reads as 1” fixture. A diagnostic run excluding only that
+case passes the remaining 76 pixel checks; the full suite is not a pass.
+Locked `flock /tmp/wine-build.lock bash tools/build.sh` passes and reproduces
+the canonical `573e235d…` module. Evidence is retained in
+`scratch/runs/20261031T0221Z-pirates-specular/`, including test/build logs,
+renderer source patch/hash and original-asset verification.
+
+The bounded original-asset retest **reached sailing with the new renderer**.
+The successful attempt is under `final/`: UI slice 5000, cooperative execution,
+Chrome 151 / ANGLE SwiftShader, canonical `573e235d…` module, and served
+`d3d9-fixed.js` SHA-256 `13c8e353e63ecc11f544259aee8891f9f2ecf8a9aa0f99d0d96e2805da8791a6`.
+Native Play → Crew Signups → tavern → English captain reached **St. Kitts**,
+with 600 gold and 41 crew. Escape briefly opened System Options; returning
+showed the sailing scene, then the ship entered town. Native Sail away →
+“No matter, cast off!” returned to sea. Right and Up inputs followed; inspected
+`cast-off.png`, `castoff-turn.png` and `castoff-sails.png` show changing ship
+orientation and coast position. Their individual control effects are not
+isolated, and no combat, voyage objective, audio or persistent save is qualified.
+
+White terrain **persists**. The successful run has zero specular rejection
+messages and no page exceptions; its console errors are 28 HTTP 404s. Thus
+specular support does not resolve this visible defect. This is a different
+starting port from the earlier Port Royale capture, not a frame-matched terrain
+comparison, and the terrain's cause remains unproven.
+
+The first attempt captured the title, then timed out on premature menu input
+and returned to the launcher; the reload's cause is unknown. A retry correctly
+refused a canonical-module/generated-map mismatch after another worker changed
+the shared map. The successful run therefore serves the **first** captured host
+source versions from this run, including the new renderer and canonical
+`54a33f1054df7c3f` map, with a retained URL-to-hash mapping. It does not pair
+the old module with the concurrently edited mirror. All 1374 original input
+pins match the prior canonical run; the successful route retains 466 served
+responses and 34 trusted input events, with no held keys/buttons. Own browsers,
+controllers, servers and profiles were closed; no Boat/test box was used.
+`recovery.txt` and `verification.json` retain the exact route and limits.
+Next: investigate the actual terrain texture/material draws with a matched
+scene; do not treat removing the specular rejection as a terrain fix.
