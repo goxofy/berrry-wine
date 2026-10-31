@@ -906,3 +906,48 @@ controller exit is not claimed. All three browser PIDs and five known ports
 were independently checked absent/closed, the profile was removed, and held
 gameplay keys and attack were released. No Boat or test box was used.
 Audio, FPS, networking, further combat and level completion remain unqualified.
+
+## 2026-10-31: second guard defeated; room crossed
+
+Run `scratch/runs/20261031T0010Z-quake2-second/result.json` continues the
+unchanged retained native health-42 post-combat save. Personally inspected
+captures show the second guard pursuing the player into the corridor, native
+mouse-one fire, and the guard falling. The ordinary F1 screen reads **kills
+2/18**. Native F6 saved the result at health 12; native F9 subsequently
+reloaded it, and a second F1 capture still reads **2/18**. The player then
+crossed the room and collected armor shards (HUD armor 2, then 4). A further
+guard killed the player during room exploration. Another room or level
+transition is not established; the visible health box was not collected.
+
+The run preserves separate byte-for-byte native save exports: the original
+health-42 starting save, `second-guard-save-manifest.json` (recommended new
+checkpoint, health 12 in the corridor, two kills), and
+`room-save-manifest.json` (health 12 near the health box, after reloading the
+two-kill save). Recovery instructions accompany them. Three earlier combat
+attempts ended in inspected player deaths; another was abandoned alive at
+health 2. Opening the native menu clears the guest's attack state, so resuming
+requires a fresh native fire press. The successful corridor engagement
+renewed mouse-one after closing the menu. This is a control finding, not an
+emulator repair. Gameplay occupied about nine minutes, below the 20-minute
+limit. No guest patch, console command, cheat, memory write or synthetic game
+state was used.
+
+Actual provenance remains retained module SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source commit unknown, original `ref_gl`, emulator WebGL 1, ANGLE
+Intel Mesa UHD Graphics 620, software flag 0, threads and render Worker off.
+The harness's SwiftShader flags do not describe the observed context. All 67
+registered inputs, including 65 original assets and the documented pak hash,
+are unchanged. All 164 served responses were hash-verified. Shared `host.js`
+changed after launch; its exact served bytes were recovered from launch HEAD
+`a3ab89d44` and retained with their matching hash. This does not certify a
+fresh current-main module. The installer remains unavailable.
+
+Focused module, asset, served-byte, native-save, backend, trusted-input and
+cleanup checks pass; no runtime source changed. No page exception, guest trap
+or `FreeLibrary failed` was recorded. Static-harness HTTP 404s remain. Quit
+again produced controller `ERR_STREAM_WRITE_AFTER_END`; clean controller exit
+is not claimed. Browser PID 1175593 and all three known ports were independently
+absent/closed, profile removed, attack and gameplay keys released. No Boat or
+assigned test box was used. Further combat, audio, FPS and level completion
+remain unqualified.
