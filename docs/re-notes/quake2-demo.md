@@ -1330,3 +1330,50 @@ No page exception was recorded; static-harness HTTP 404s remain. No runtime
 source changed. No Boat or assigned test box was used (ID/state/expiry N/A);
 ownership is handed back. Next: recover the dry shelf and investigate the
 remaining duct/chamber route, keeping the indoor checkpoint as health fallback.
+
+## 2026-10-31: dry duct onward sweep; navigation remains unresolved
+
+Run `scratch/runs/20261031T0145Z-quake2-onward/recovery.txt` copies the prior
+recovery driver to new ports and mounts all eight native save files byte for
+byte. Both browser restores reached the dry shelf at **health 19, kills 7/18**.
+Backward crouching first moved deeper into the duct. Native turns and crawls
+then traversed the red-lit stretch to a wall (`retry/far-end.png`); the adjacent
+dark corners and sideways movement showed openings toward the same flooded
+pillars (`retry/corner-return.png`). A short native blaster wall/fixture-direction
+probe did not visibly open a route. No onward room, health pickup, new enemy,
+eighth kill or level transition was established. The blocker is unresolved
+navigation at this duct's wall/corners; these observations do not prove that
+all possible routes are closed. No drowning, death or health loss was observed,
+and no lip calibration was repeated.
+
+The first Chrome disappeared with **SIGKILL at 01:48:45 UTC**, sender unknown.
+Its frames and action log remain, but its full trusted-input snapshot was lost.
+A fresh browser recovered successfully and repeated the deeper crawl. Final F9
+returned to the original shelf; an extra Escape opened the menu and was
+corrected before the measured **15-second unpaused world wait**, which retained
+health 19 (`retry/restored-world-wait.png`). F1 confirms seven kills
+(`retry/restored-count.png`). Read-only export
+`retry/retained-save-manifest.json` matches all eight starting files exactly;
+no new F6 checkpoint was made. The prior safer indoor health-21 save remains
+unchanged. `recovery.txt` retains the new ports, scripts and navigation limits.
+The bounded attempt ran approximately 01:45Z–01:52Z, below 20 minutes. No
+cheats, console commands, guest-memory writes, binding changes or asset edits
+supplied progress; no emulator defect was isolated.
+
+Both browsers loaded retained module SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+whose exact compiled source remains unknown. This does not certify a current-main
+build. The retry reports original ref_gl, WebGL 1, ANGLE Intel Mesa UHD 620,
+software flag 0 and threads/render Worker off. `verification.json` passes for
+65 original assets, 67 prior inputs, 324 served responses, eight exact native
+save files, all 53 retry input events trusted, no held keys and mouse mask 0.
+The initial input snapshot limitation remains explicit. No page exception was
+recorded; static-harness HTTP 404s remain. Audio, FPS and networking remain
+unqualified. No runtime source changed, so no build was run.
+
+Retry Chrome exited code 0 through CDP close; controllers were stopped with
+targeted SIGTERM. Both owned browsers/controllers are absent, six known ports
+closed and two profiles removed, with over 6 GB free. No Boat or assigned test
+box was used (ID/state/expiry N/A); ownership is handed back. Next: establish
+an onward route beyond this local wall/corner sweep, or use the unchanged
+indoor health-21 checkpoint to investigate another route.
