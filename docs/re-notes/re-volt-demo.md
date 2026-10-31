@@ -251,3 +251,58 @@ Next: reproduce this attachment failure with a known-source canonical build
 and the same default-worker route before attributing a cause or attempting
 the documented menu-to-grid driving route. Recovery commands and the retained
 runtime limitation are recorded in the run's `RECOVERY.md`.
+
+## Known-source attachment repair and native race (2026-10-31)
+
+Run `scratch/runs/20261031T0403Z-revolt-backbuffer` reproduces the dialog
+with a locked canonical build, SHA-256
+`44aa997662d60841f292b1ad00e315f5c6b757f96172739b74675ea997e71836`.
+It therefore establishes a current-source failure independently of retained
+`8333a35`. The build includes concurrent uncommitted font work: the exact
+source inventory, source bytes, dirty patch, combined WAT and served runtime
+snapshots are retained; neither build is claimed to be a clean commit build.
+The captured source inventories had no drift through their respective builds.
+
+The original call at `0x423b83` requests BACKBUFFER through Surface4. Its
+stack capability words at `0x074ffa80` are `{4, 0, 1, 31}`: only dwCaps is
+initialized by the call site. Read-only inspection finds primary slot 13,
+caps `0x6238`, owning live back buffers in slots 14/15, with first-child caps
+`0x601c`; owner slot+1 is 6 for all three. The attachment exists and satisfies
+BACKBUFFER. GetAttachedSurface instead rejected the unused extension words.
+[Wine's implementation](https://github.com/wine-mirror/wine/blob/master/dlls/ddraw/surface.c)
+ignores extension capability words for allocations created before DirectDraw 7.
+The generic repair applies that allocation-version rule, including a legacy
+allocation queried through a Surface7 view. DX7 allocation constraints and
+the live-object, requested dwCaps and reference-ownership checks remain active.
+
+The repaired locked build, SHA-256
+`8459597c8d66e098d727fb4ab53e1cf46332241dc7eef2e158f3c475a78b1676`,
+reaches the inspected main menu and starting grid using the original EXE and
+assets, explicit WebGL, default guest workers and stable 1024×768 viewport.
+The render endpoint reports backend `webgl`. Native Enter selects Single Race,
+default player, RC Bandit, Toys in the Hood 1 and the summary. Native Up drives
+the car; later Up+Right and Down produce changed position/orientation and
+speed. Reviewed frames show race times 2.942, 15.582 and 22.302 seconds and
+speeds 1, 8 and 3 mph. The car leaves the road and overturns: this demonstrates
+race execution and input response, **not a checkpoint, completed lap or win**.
+The final Escape capture still shows the race; its filename is not evidence
+that a pause menu opened.
+
+The expanded native Surface4/7 guest-COM regression fails on the saved
+pre-fix DirectDraw source and passes after repair in both tail-call and
+compatibility dispatch modes. It checks legacy extension garbage through
+Surface4/7 views, required dwCaps matching, DX7 rejection and ordinary acquired
+reference release. Explicit AddAttachedSurface lookup also passes. Two older
+synthetic tests (`test-directdraw-surface-caps.js` and
+`test-directdraw-getcaps-allocation.js`) fail identically before/after while
+creating/querying their fixtures, before exercising this repair; their logs
+are retained, and they are not reported as passing. Both locked builds pass.
+
+Both sessions verify all 443 original files plus manifest before and after.
+Browsers exit zero, recorded browser/controller PIDs are absent, all four
+HTTP/CDP ports are closed and both profiles are removed. The after controller
+session reports exit 143 after its successful finally cleanup; no cause is
+attributed. No Boat, delegated workers or test boxes were used. Recovery,
+module identity, tests and cleanup details are in the run's `RECOVERY.md`.
+Next useful gameplay work is native car recovery and a controlled lap from
+the starting grid; no further startup repair is indicated by this run.

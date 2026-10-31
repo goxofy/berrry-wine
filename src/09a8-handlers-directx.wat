@@ -6428,7 +6428,7 @@
 
   (func $handle_IDirectDrawSurface_GetAttachedSurface (param $arg0 i32) (param $arg1 i32) (param $arg2 i32) (param $arg3 i32) (param $arg4 i32) (param $name_ptr i32)
     (local $entry i32) (local $child i32) (local $child_entry i32)
-    (local $requested i32) (local $actual i32)
+    (local $requested i32) (local $actual i32) (local $creator i32) (local $extended i32)
     (local.set $entry (call $ddraw_surface_entry_checked (local.get $arg0)))
     (if (i32.eqz (local.get $entry))
       (then
@@ -6441,7 +6441,16 @@
         (i32.store offset=16 (global.get $reg_base) (i32.add (i32.load offset=16 (global.get $reg_base)) (i32.const 16)))
         (return)))
     (local.set $requested (call $gl32 (local.get $arg1)))
-    (if (i32.eq (call $dx_native_desc_size (local.get $arg0)) (i32.const 124)) (then
+    ;; Pre-DX7 allocations match dwCaps alone, including Surface4's DDSCAPS2
+    ;; ABI: older clients leave the extension words uninitialized. Follow the
+    ;; creating DirectDraw version, not a subsequently queried interface view.
+    ;; Wine's ddraw_surface7_GetAttachedSurface applies the same version rule.
+    (local.set $creator (i32.load (call $dx_surf_creator_ptr (local.get $entry))))
+    (if (local.get $creator) (then
+      (local.set $extended (i32.and
+        (i32.eq (call $gl32 (local.get $creator)) (global.get $DX_VTBL_DDRAW7))
+        (i32.eq (call $dx_native_desc_size (local.get $arg0)) (i32.const 124))))))
+    (if (local.get $extended) (then
       (if (i32.or (i32.and (call $gl32 (i32.add (local.get $arg1) (i32.const 4))) (i32.const -131229))
             (i32.or (call $gl32 (i32.add (local.get $arg1) (i32.const 8)))
                     (call $gl32 (i32.add (local.get $arg1) (i32.const 12))))) (then
@@ -6470,7 +6479,8 @@
         (local.set $actual (local.get $requested))))
     ;; Native texture-management flags participate in attachment matching too.
     (if (i32.and (i32.ne (local.get $child) (i32.const 0))
-          (i32.eq (call $dx_native_desc_size (local.get $arg0)) (i32.const 124))) (then
+          (i32.and (local.get $extended)
+            (i32.eq (call $dx_native_desc_size (local.get $arg0)) (i32.const 124)))) (then
       (if (i32.ne
             (i32.and (call $dx_surface_caps2_get (call $dx_from_this (local.get $child)))
               (call $gl32 (i32.add (local.get $arg1) (i32.const 4))))

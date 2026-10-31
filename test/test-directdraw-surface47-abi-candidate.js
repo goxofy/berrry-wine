@@ -208,6 +208,30 @@ const tailCalls = !process.argv.includes('--compat');
   assert.deepStrictEqual(displayMode(dd4, 124), initialMode, 'DD4 and DD7 report the same mode');
   ok(com(dd4, 6, desc(C.texture | C.system), out.p, 0), 'DirectDraw4 CreateSurface');
   const made4 = read(out.p); caps(made4); describe(made4);
+  // Legacy allocations ignore DDSCAPS2 extension words even through a v7
+  // view. Re-Volt's Surface4 back-buffer request leaves {0,1,31} there.
+  ok(com(dd4, 6, desc(C.texture | C.system | C.complex | C.mip, 0, 3), out.p, 0),
+    'legacy mip allocation');
+  const legacyMip = read(out.p), legacyQuery = alloc(16);
+  write(legacyQuery, C.texture | C.mip);
+  [0xdeadbeef, 1, 31].forEach((v, i) => write(legacyQuery + 4 + i * 4, v));
+  for (const iid of [iidSurface4, iidSurface7]) {
+    ok(com(legacyMip, 0, iid, out.p), 'legacy allocation interface view');
+    const view = read(out.p);
+    ok(com(view, 12, legacyQuery, out.p), 'legacy lookup ignores extension words');
+    const child = read(out.p);
+    assert(caps(child)[0] & C.mip, 'returned live attachment has requested caps');
+    com(child, 2); com(view, 2);
+  }
+  const nativeMip = create(desc(C.texture | C.system | C.complex | C.mip, 0, 3));
+  assert.strictEqual(com(nativeMip, 12, legacyQuery, out.p), 0x887600ff,
+    'DX7 allocations retain extended capability validation');
+  assert.strictEqual(read(out.p), 0, 'rejected DX7 lookup publishes no child');
+  com(nativeMip, 2);
+  write(legacyQuery, C.back);
+  assert.strictEqual(com(legacyMip, 12, legacyQuery, out.p), 0x887600ff,
+    'legacy lookup still requires every dwCaps bit');
+  com(legacyMip, 2);
   ok(com(made4, 0, iidSurface4, out.p), 'created Surface4 identity');
   assert.strictEqual(read(out.p), made4); com(made4, 2); com(made4, 2); com(dd4, 2);
   ok(com(dd, 0, iid1, out.p), 'QI DirectDraw1 control');
