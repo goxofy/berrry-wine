@@ -382,3 +382,63 @@ All six own browser/controller executions and profiles are closed; no Boat or
 assigned test box was used (ID/state/expiry N/A). Recovery instructions and
 limits are in the new run's `recovery.txt`; no before/after repair or new build
 pass is claimed for this documentation-only change.
+
+## Deferred output correlated with coastal draw meshes (2026-10-31)
+
+Run `scratch/runs/20261031T0318Z-pirates-deferred/` advances the deferred
+boundary without changing production code, original assets, flags or shader
+selection. The original white coast was inspected first at St. Kitts/Nevis
+(`capture/sea.png`), then at Port Royale (`retry/original-coast.png`, 600 gold,
+41 crew). No backend reference test was repeated and no repair is claimed.
+
+The first execution observes factory `0x4edac0` returning through `0x512ba7`
+on thread 5 with work object `0x09de1f00`, vtable `0x70fdd4`. Its later live
+snapshot has ten references at `+0x8c`, its own NiNode at `+8` (`0x09de1b70`),
+and child `0x09de2de0`. Tile `+4` is a different node. This execution's queue
+breakpoint did not fire; that limited observation does not establish that
+queue processing was skipped. The page subsequently crashed after installing
+a draw observer, leaving no usable draw export from this execution; cause is
+unestablished (`capture/crash.jsonl`).
+
+The retry supplies **97 breakpoint records**: factory entry/return plus 19
+complete generator cycles at `0x4efcf0`, `0x4efe5c`, `0x4eff53`, `0x4eff5b`
+and `0x51ceae`. Eighteen geometry returns are non-null; one is null. At
+`0x4efe5c`, EAX is the geometry factory's output. At `0x4eff53`, the geometry
+in EBP has become a child of work `+8`, after the node's virtual `+0x70`
+call at `0x4eff1d`. Virtual work `+0x38` (`0x4efcc0`) then inserts it into
+the cache through `0x524e90`; this is not itself a direct shader setter.
+The generator returns through `0x51ceae` to work setup. The first work
+object remains the tracer's `factoryOutput`/`node` snapshot across later
+cycles; use each cycle's ECX/ESI and returned EAX/EBP for other work objects.
+
+Crucially, **ten distinct non-null generated geometry pointers match actual
+coastal draw submissions** in `retry/mesh-evidence.json` (11 observations,
+plus one unmatched ship mesh). Examples are `0x09e896c0` / 4334 triangles,
+`0x09e8e010` / 5358 and `0x09e87280` / 7606, all FVF `0x112`. The pointer
+correlation closes the factory-to-draw identity gap for these meshes. The
+first generated geometry `0x09e849c0` already has four property-list entries
+at factory return, with `+0xc0` and `+0xc8` zero; those fields stay zero
+through node attachment, cache insertion and generator return.
+
+`retry/properties.json` walks each observed draw mesh's actual property list
+and resolves property RTTI through its guest vtable. The ten generated draw
+meshes carry **NiAlphaProperty, NiRendererSpecificProperty,
+NiTexturingProperty and NiVertexColorProperty**. The renderer-specific
+property has non-null data at `+0x20`; the texturing property has non-null
+storage at `+0x2c` and `+0x44`. These are attachment observations, not proof
+that their internal maps or textures are valid. The draw shader's RTTI is
+**NiD3DDefaultShader**, and all observed generated draw meshes still have
+zero `+0xc8`. Thus absence of the geometry's property list is excluded for
+these draws. The newly bounded unresolved transition is consumption of the
+attached renderer-specific/texturing properties into effective shader state
+and the shader-extra path used by `0x5c4270`. Trace that transition and its
+input payload before changing capability flags, substituting shaders or
+asserting an emulator cause.
+
+Diagnosis/runtime stopped at 03:38 UTC, within the 25-minute bound. The
+retained module remains `573e235d…` with its matching frozen host. Recovery,
+all static excerpts, original/served hash verification and local lifecycle
+checks are retained in the run directory. Both owned browsers, profiles,
+controllers and servers are closed; no Boat or assigned test box was used
+(ID/state/expiry N/A). This documentation-only result has no new production
+build or before/after repair claim.
