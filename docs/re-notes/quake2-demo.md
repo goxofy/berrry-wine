@@ -1225,3 +1225,52 @@ three profiles removed and watcher absent, with over 7 GB free. No Boat or
 assigned test box was used (ID/state/expiry N/A); ownership is handed back.
 Next: use the safer indoor save to seek the outer ledge pickups, or continue
 the flooded exploration save while holding jump and locate its dry exit.
+
+## 2026-10-31: far-side flooded duct located; entrance remains blocked
+
+Run `scratch/runs/20261031T0114Z-quake2-dry-exit/result.json` continues the
+seven-kill/health-21 checkpoint with the same retained driver and module.
+Inspected courtyard jump attempts did not reach the opposite ledge pickups.
+The prior final exploration export restores near the courtyard-side passage;
+it should not be interpreted as a deep pillar-room checkpoint. The separately
+retained `sewer-save-manifest.json` restores inside that chamber.
+
+One sewer recovery attempt ended in drowning before swim-up took effect.
+Native F9 recovered it. Closing the native load menu and issuing a fresh jump
+press, then holding jump, surfaced the player at health 21. Input held across
+loading/menu changes alone was insufficient in this attempt. Native movement
+then traversed the far side of the red-lit flooded chamber and located a low,
+red-lit duct opening (`sewer/far-corridor-right.png`). Forward and crouch/swim
+attempts reached its lip but did not establish traversal. No dry exit, health
+pickup, new live enemy, eighth kill or level transition is claimed. This is
+a navigation blocker, not an isolated emulator defect.
+
+Native F6 exported eight untouched current/quick files to
+`sewer/duct-save-manifest.json`. A fresh browser mounted them as ordinary
+files; F9 and inspected `recovery/external-count.png` confirm **kills 7/18,
+health 21**. All eight recovered hashes exactly match. This save is submerged
+at the duct approach and requires prompt swim-up/retreat; it is not a safer
+replacement for the unchanged indoor checkpoint. `recovery.txt` retains the
+recipes and that limitation. Gameplay and external recovery ran approximately
+01:13Z–01:27Z, within 20 minutes. No cheats, console commands, guest-memory
+writes or original-asset edits supplied progress.
+
+All four browsers loaded retained module SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown; this does not certify a current-main build. Actual
+rendering remains original ref_gl, WebGL 1, ANGLE Intel Mesa UHD 620,
+software flag 0, threads/render Worker off despite requested SwiftShader
+flags. Verification passes for 67 prior registered inputs (65 originals),
+648 served responses, all 232 recorded trusted input events, and eight
+byte-exact recovered save files. Final mouse masks and native attack bits are
+clear. No page exception, guest trap or FreeLibrary failure was recorded;
+static-harness HTTP 404s remain. The installer remains unavailable; audio,
+FPS and networking remain unqualified. No runtime source changed.
+
+All four owned browsers exited code 0 through CDP close; their controllers
+were stopped with targeted SIGTERM. All eight owned PIDs are absent, twelve
+known ports closed, four profiles removed and the watcher stopped, with over
+7 GB free. No Boat or assigned test box was used (ID/state/expiry N/A);
+ownership is handed back. Next: recover the duct approach only with immediate
+swim-up input and solve the low entrance alignment, or return to the safer
+indoor checkpoint to investigate another courtyard route.
