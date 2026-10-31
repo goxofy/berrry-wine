@@ -474,3 +474,26 @@ Windows parity and level completion remain unqualified. Explicit shutdown
 returned controller exit zero; the browser was absent, all three ports closed
 and its private profile removed. No Boat or test box was used. `recovery.txt`
 records the replay route; no resumable game save was exported.
+
+
+## 2026-10-31 bounded Darn Ratz finish attempt
+
+Run `scratch/runs/20261031T0225Z-jazz2-level-finish/` replayed the same
+original Medium/Jazz route with the retained module above. Native Space
+fires and Control jumps. After losing one life, the next attempt climbed
+the upper ledge (`upper-ledge.png`, score 650), collected **two coins**
+(`bridge-approach.png`, score 1,450), and reached the spike pit below the
+rope bridge (`bridge-jump.png`, **score 1,650**). A second death returned Jazz
+to the opening area. The inspected final capture shows score 1,650, one
+remaining life and five hearts. **The level was not completed**; no resumable
+save was exported and no emulator defect was established. The nearby spring
+was not successfully tested before that death.
+
+Verification passed 44 original file pins, 165 served-response snapshots,
+the actual loaded module hash and all 117 trusted input events, with no keys
+held and no recorded page errors. No source or asset changed and no new build
+was made. GDI/DDraw presentation and the prior source-identity limitations
+still apply. The browser PID disappeared before explicit shutdown for an
+unknown reason; the subsequent explicit quit returned controller exit zero.
+Cleanup verified the browser absent, three ports closed and private profile
+removed. No Boat was used. `recovery.txt` and `actions.jsonl` retain the route.
