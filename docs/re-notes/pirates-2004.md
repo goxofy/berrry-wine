@@ -263,3 +263,64 @@ controllers, servers and profiles were closed; no Boat/test box was used.
 `recovery.txt` and `verification.json` retain the exact route and limits.
 Next: investigate the actual terrain texture/material draws with a matched
 scene; do not treat removing the specular rejection as a terrain fix.
+
+## White-coast draw boundary investigation (2026-10-31)
+
+The white coast is reproduced using the previous run's **matched** `573e235d…`
+module, `54a33f1054df7c3f` map and specular renderer `13c8e353…`. There is no
+terrain repair in this change: the measured renderer behavior agrees with the
+submitted state, and the upstream reason for that state remains unresolved.
+Evidence and a self-contained source/module recovery recipe are in
+`scratch/runs/20261031T0240Z-pirates-terrain/recovery.txt`.
+
+A bounded original sailing trace identifies a **4,936-triangle coastal draw**
+that writes the pale pixels. It has stride 32, FVF `0x112` (position, normal,
+one UV), no vertex colors, **no bound textures**, and null vertex/pixel shaders.
+Stage 0 selects DIFFUSE; diffuse/ambient material is `(0.5,0.5,0.5,1)`, with
+lighting enabled and specular disabled. The directional light's diffuse RGB is
+`1.78559768`. This is not a texture decoder producing white texels: this draw
+has no texture to decode. A subsequent 700-call sea trace retains neighboring
+texture pixels and finds the same untextured terrain, no draw errors and no
+offscreen color attachment in the bounded scene. Neither trace establishes
+that all terrain draws or all frames use this path.
+
+Read-only guest/WAT draw-state snapshots confirm null texture pointers before
+the JavaScript bridge copies the draw. Original game renderer inspection finds
+`NiD3DDefaultShader`, equal to the renderer's default at `+0x898`; the observed
+mesh has zero property-state and shader-extra pointers at `+0xc0`/`+0xc8`.
+Disassembly around `0x5c4270` shows the shader-extra lookup and default fallback;
+the draw reaches `DrawIndexedPrimitive` at `0x5c43b7`. Shader counters report
+12 creations and **zero refusals**, with zero declaration rejects. These facts
+locate the investigation before backend pixel shading; they do not prove
+whether initialization, capability handling, state emulation or original game
+logic caused the absent terrain attachment. No missing-asset or lighting-root-
+cause claim is made.
+
+The retained real geometry/state is replayed through actual WebGL 1 and 2 with
+an independent scalar lighting, projection, depth selection and interpolation
+calculation. Both sampled points match **exactly in both versions**:
+`[225,220,249,255]` and `[191,186,216,255]`. `replay-frozen.cjs` uses the exact
+retained renderer sources; its four pixel assertions pass. Changing shared
+lighting or substituting a texture would mask this evidence without addressing
+the demonstrated default-shader/material selection. The existing all-zero
+attenuation fixture failure predates this investigation; its suite was not
+rerun or claimed to pass. A fresh locked `tools/build.sh` passes, but produces
+a different module/map and was deliberately not substituted into this replay.
+
+Native St. Kitts **Sail away → No matter, cast off!** returns to sea with
+600 gold and 41 crew. Inspected `castoff-settled.png`,
+`native-turn-after-trace.png`, `native-sails-after-trace.png` and
+`sailaway-final.png` show movement past Nevis to a Port Freedom landing prompt;
+Enter on “No, sail away” returns to the sailing HUD. White coast persists.
+Simulation continued during diagnostics, so individual key effects are not
+isolated; this does not qualify combat, voyage objectives, audio or saves.
+All 50 recorded inputs are trusted and released. All 1,374 original pins and
+472 served responses match; zero specular rejects/page exceptions, 28 HTTP
+404s. Own browsers/controllers/ports/profile are closed; no Boat/testbox used.
+
+Next: instrument original terrain construction near `0x4e6bc2` and the
+`0x4ee360`/`0x4ec000` binding path, capturing capability results and the mesh
+property/shader attachment lifecycle. `TerrainShader` is enabled at runtime;
+its capability bypass flag is zero. The blocker is the unexplained absence of
+terrain texturing/shader attachment before draw submission, with a recoverable
+original sailing route and measured backend behavior, not a tested terrain fix.
