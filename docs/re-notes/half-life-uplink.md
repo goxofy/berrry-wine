@@ -1623,3 +1623,52 @@ or completed-demo claim. Browser PID 1079200 is gone, dynamic ports
 remains free. No Boat was used; box ID/state/expiry are N/A and no assigned
 runtime requires handoff. Next: safely clear the tripmine doorway and continue
 toward the satellite objective using ordinary gameplay.
+
+## Tripmine detonation and interrupted continuation (2026-10-31)
+
+Runs `20261030T2310Z-uplink-tripmine` and
+`20261030T2337Z-uplink-save-continuation` do **not** verify crossing the blue
+tripmine doorway or reaching the satellite objective. The first repeats Easy,
+aimed elevator E, crowbar pickup, crate breaking, headcrab damage/death and a
+normal reload. Its native F6 arrival save was exported read-only. The second
+mounts those nine unchanged game-generated save files, loads the arrival
+quicksave with native F7, collects the crowbar, reaches the guard, uses the
+office door with E, and collects the pistol and health (45 health, 17 loaded
+rounds). Native F6 office saves and F7 reloads work during this session.
+
+An aimed pistol shot detonates an original mine at the blue-beam doorway:
+`mine-target-shot.png` shows the explosion with health 15. The following
+`mine-chain-settled.png` shows health zero; the chain reaction was not survived.
+Further office-save retries die to headcrabs. This proves mine detonation,
+not safe clearance. `tripmine-distance-run.png`, `mine-aim-up.png`,
+`mine-death-reload.png` and their full-browser companions retain the approach,
+aim, death and normal recovery. All named screenshots were personally inspected.
+
+The final execution blocker is an unexpected runtime stop after a native
+Escape pause/resume sequence. `last-settled-pause-page.png` shows Resume game;
+`execution-blocker-page.png` subsequently shows the idle shell. At
+00:18:00 UTC two page exceptions report `Cannot resume a context that has been
+closed`; final runtime inspection finds `running=false`, with no memory or
+instance. Causality is not isolated and this is not a reproduced emulator
+source-defect claim. No repair was made. The newer office VFS save could not be
+exported after the stop; the earlier arrival save remains externally retained.
+
+Both launches load exact retained WASM
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`,
+with the prior base/compile-delta provenance above, not a current-main build.
+Launch manifests and actual served hashes are retained separately. Observed
+hw.dll/WebGLBackend WebGL 1 uses ANGLE/Mesa Intel UHD 620, software disabled,
+zero software triangles and GL error zero. The continuation has 126 GPU proof
+captures, frame sequence 10731–39797, 192 trusted paired key presses, and two
+extra trusted Enter keyups from native select controls; all physical keys are
+released. All 65 original files, 22 fetched originals and nine mounted normal
+save files match their pins. Read-only angle checks guide native arrow turns;
+no guest-memory writes, original-asset edits or console commands supply progress.
+
+Each run's `result.json` and `verification.json` index evidence and limitations.
+The installed-payload seven-label menu regression passes. This docs-only
+closeout requires no full build. Both owned browsers are gone, all six ports
+are closed, profiles and watchers are removed, and over 7.9 GB remains free.
+No Boat was used (box ID/state/expiry N/A). Next: reproduce the pause/resume
+stop separately, then continue the retained arrival save, preserve an exported
+office checkpoint, and trigger the mine chain from farther back while retreating.
