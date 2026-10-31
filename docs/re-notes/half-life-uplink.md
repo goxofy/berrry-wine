@@ -2139,3 +2139,50 @@ losses. Other agents are preserved. No Boat/test box was used (ID/state/expiry
 N/A); ownership is handed back. Next: recover the original44/9 floor export,
 establish a firing position before the west-wall gap, and investigate browser
 exit signals if native loading or export is interrupted again.
+
+## Native recovery interrupted by recorded SIGKILL (2026-10-31)
+
+Run `20261031T0250Z-uplink-covered-attempt` makes one bounded continuation
+attempt using the same ten unchanged `floor-cover-save/` files, retained
+module and prior captured host snapshot. Before native play, its controller
+attaches browser-disconnect, process-exit/close, page-error and stderr
+listeners. Native input events also stream to disk as they arrive, preserving
+the input tail independently of later screenshots.
+
+The inspected `load-ready.png` shows the expected native20:36 quicksave
+selected. A native click on Load Game at02:49:21 UTC begins loading, but the
+browser exits before a settled gameplay HUD or fresh44/9 confirmation.
+`lifecycle-events.jsonl` records **process-exit SIGKILL** at
+02:49:44.460 UTC, browser-disconnected at02:49:44.479, and process-close with
+the same signal. The controller remains reachable and later exits0 after
+explicit cleanup. This identifies the termination signal for this run;
+the sender and cause remain unknown. Browser stderr contains two deprecated
+registration-endpoint errors without a causal crash diagnosis. Kernel logs
+are inaccessible and cgroup memory-event files are unavailable in the
+inspected mount (`system-diagnostics.json`), so an OOM cause is unproven.
+
+This runtime interruption ends the attempt below its15-minute ceiling.
+There is no new gameplay milestone, shot, observed player death, soldier
+defeat, safe onward passage or save export. No exposed west-gap burst is
+repeated. The preserved44/9 checkpoint remains the recommended recovery
+source; this run does not freshly verify its playable restoration.
+
+Verification passes65 unchanged original assets, ten unchanged mounted save
+files,171 served response hashes and22 original responses. All15 recorded
+native events are trusted; both key presses have releases, and no keys or
+buttons remain held. No cheats, console commands, guest-memory writes,
+save edits or original-asset changes are used. The exact loaded module is
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`.
+Inherited `source-identity.json` and `compile-source-delta.patch` preserve
+the incomplete compiled-source identity. The pinned prior host avoids the
+documented module54a33f/current-mirrorb77d layout mismatch; no current-main
+build, proven production defect or source repair is claimed. This is a
+documentation-only change; no new build is required.
+
+The owned browser PID is absent, all three owned ports are closed and the
+private profile and board watcher are removed/stopped. Other agents are
+preserved. No Boat/test box is used (ID/state/expiry N/A); ownership is handed
+back. Evidence, unchanged recovery recipe and limits are retained in this
+run's `verification.json`, `lifecycle.json`, `recovery.txt` and `result.json`.
+Next: diagnose the SIGKILL sender or external browser lifecycle before another
+native floor recovery; covered-route gameplay remains pending.
