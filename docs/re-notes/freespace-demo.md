@@ -75,3 +75,57 @@ Evidence:
 - `scratch/runs/20261011T1240Z-freespace_demo-flight-w5` (fixed).
 
 Note for timing: `--watch` without `--watch-js-only` arms a per-block WAT watchpoint, and that moved this crash away. Sample in JS when timing matters.
+
+## Original browser DirectX startup blocker (2026-10-31)
+
+The current original software/threaded browser stops at **DirectX required**,
+not Choose Pilot. A fresh CLI startup reproduces the same failure at batch 27;
+this is not a browser-only DirectDraw problem. No menu/flight claim applies to
+this retest.
+
+The original `fs.exe` (SHA256
+`4f3601f058b7eba75a35d092414d1edcc95d82e24dff5f3090bc6639beea2f2a`)
+opens `HKLM\Software\Microsoft\DirectX` at `0x413d78`. It queries `Version`
+into a 32-byte buffer, finds the first dot and parses the following integer.
+If that query fails it tries `InstalledVersion` into a four-byte buffer.
+At `0x413e0d` it requires the resulting signed integer to be at least 3.
+A failed key open jumps straight to that comparison with zero; the message
+call returns to `0x413e26`, then startup returns failure. The CLI trace records
+`RegOpenKeyExA` returning `ERROR_FILE_NOT_FOUND` (2). The browser trace and
+reads of the original guest strings confirm the same key/caller/message.
+There are no file-version calls before this rejection.
+
+The October 6/11 CLI flight observations above predate `58e90870a` (October
+22), which intentionally removed the fabricated global DirectX 7 registry
+stamp, as well as synthetic DirectX DLL version resources. Those historical
+routes therefore do not demonstrate that an actual runtime was installed.
+`lib/storage.js` now correctly leaves the key absent unless an installer or
+import supplies it. `lib/process-boot.js` correctly supplies no fabricated
+DirectX file versions. Neither policy was changed here.
+
+The retained installed fixture has the game, data, launcher and uninstall
+files, but no DirectX runtime/installer or installer-produced registry export.
+The source SFX path in the historical installation recipe is also absent in
+this checkout. **Unresolved prerequisite:** recover and run a genuine DirectX
+installer, preserving its actual files and exported registry state, or recover
+an existing installation with that provenance. Then replay the original
+startup toward Choose Pilot/main hall/flight. Setting a version merely to pass
+this comparison would conceal the missing prerequisite and is not a fix.
+
+Evidence: `scratch/runs/20261031T0252Z-freespace-directx/` contains the reused
+`driver.cjs`, two inspected browser PNGs, API console, CLI trace, original
+startup disassembly, removal diff, input hashes, complete captured host/module
+snapshots, replay verification and `REPORT.md`. It reuses
+`20261031T0250Z-freespace-browser` rather than restaging assets: all eight
+original pins match; all 103 host/module snapshots match; 113 recorded host
+responses match those snapshots. Actual module SHA256:
+`8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`;
+full compiled-source identity remains unknown. Chrome 151.0.7922.108,
+1024x768, cross-origin-isolated, software renderer, guest Worker enabled.
+
+Focused checks passed: `test/test-directx-registry-metadata.js`,
+`test/test-static-dx-version.js` (12 assertions using that pinned module), and
+`test/test-directx-system-files.js` (current source compilation). No production
+source changed, so no canonical build was required. The own browser/controller
+exited, profile was removed and server port was verified closed. No Boat or
+assigned test box was used (ID/state/expiry: N/A).
