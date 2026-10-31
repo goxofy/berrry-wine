@@ -7,6 +7,46 @@ candidate manifest. No guest executable or asset patches were made.
 
 ## Browser Mission 01 destructible obstacles (2026-10-31)
 
+Follow-up `20261031T0232Z-alien-entry` reproduces original crate destruction
+and extends the inspected route to the inner yard beside the building, but
+does **not** verify a live enemy or interior transition. `gap-crate-fire.png`
+shows wooden fragments; `gap-cross-native.png` places the soldier beside the
+barrels on the yard side, and `courtyard-entry.png` shows traversal away from
+the fence beside a building with a closed door. Subsequent native right-button
+and arrow approaches do not establish contact with, opening of, or passage
+through that door. The final inspected view returns to the locked front gate;
+HP remains 110 and score 0. The concrete remaining blocker is locating and
+reliably approaching the usable building access from this yard. A prone body
+outside the container fence is not qualified as a live enemy. No causal
+emulator defect, enemy damage, kill or mission completion is established.
+
+The first launch encountered the explicit region-layout mismatch because the
+shared checkout's generated map had changed. After closing it, the replay
+serves 141 exact host/resource snapshots copied from the preceding run, along
+with the retained `573e235d…` module and unchanged originals. These snapshots
+are isolated under this run's `frozen-host/`; no shared source was edited.
+All 432 original input pins, the original EXE, 1,149 source pins against
+`2606d61735906c02ed66024b5925757a07ea73e0`, 718 served responses and the loaded
+module verify. Host hashes and each original response remain in the run.
+This is a retained-runtime replay, not current-main build acceptance.
+
+Read-only geometry captures show the input canvas initially at `(10,186)`
+with `684×544` CSS pixels, later `(10,226)` with `460×336` CSS pixels over a
+`657×480` backing canvas. The larger composited game image is not a safe
+absolute-input coordinate reference. At the smaller geometry, native pointer
+`(333,317)` reports guest mouse `(452,130)` and produces the positive crate
+destruction. Native right holds include a 500 ms pointer-settling delay.
+All 123 recorded input events are trusted, with paired releases and no final
+held keys/buttons. The running WebGL bridge reports no error at final state;
+presentation/input lag limits precise wall-time-to-position claims.
+
+Both owned browsers, six ports and the private profile are independently
+confirmed closed/absent after explicit quits. Initial controller exit is 0;
+replay controller status is 143 after quit, signal source unknown. No Boat or
+test box was assigned (ID/state/expiry N/A). Recovery, frozen host mapping,
+original/module/host hashes and paired screenshots remain in the new run.
+No guest patches, cheats, synthetic assets, source fixes or build were used.
+
 Run `20261031T0215Z-alien-combat` reuses the original installation and the
 retained browser driver/module from `20261031T0136Z-alien-shooter-browser`.
 All 432 prior manifest/companion-file pins match; the separately verified EXE is
