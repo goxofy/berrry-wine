@@ -120,3 +120,32 @@ older, so the screenshots alone are not a controlled version A/B. No gameplay
 input, affected Safari validation, merge or deployment is claimed. Blocking
 nested initialization and synchronous exit-detach remain existing boundaries;
 see `docs/pirates-attach-candidate-20261014.txt` for exact test scope.
+
+
+## Original browser main menu (2026-10-31)
+
+The registered original `pirates_2004` reached an inspected Main Menu in
+Chrome 151 using the WebGL selection and retained module
+`573e235db16e351668289f49e2f279ff48bcad56e7ca533167cb94cd6f4ec3fc`.
+This was a retained-module run; its full source identity was not reconstructed,
+so it is not a fresh current-main build or a controlled comparison with the
+October 14 callback candidate. Original assets and host sources were unchanged.
+
+The title splash preceded the menu. Escape, Enter and one canvas click were
+recorded as trusted input; keys and buttons were released. The UI slice changed
+from Auto (logged as 100000) to 5000, then 50000. The menu capture shows Play,
+Load, Options, credits and Quit over the original Caribbean map. Its late
+metadata records a visible 800×600 game window at GPU sequence 3. Subsequent
+Play-selection/control requests failed or stopped completing while browser
+target discovery still responded. There is no verified Play consumption,
+character creation, sailing or gameplay result, and no established cause for
+the control failure. Resource lookup 404s occurred; no fatal API trap was
+observed. No production fix is claimed.
+
+Evidence: `scratch/runs/20261031T0200Z-pirates-original-browser/`, especially
+`loading-3min.png`, `loading-3min.json`, `actions.jsonl`, `verification.json`
+and `recovery.txt`. Verification covers 1374 original input pins, 266 served
+responses and 141 unique host paths. The controller exited 0 after explicit
+quit; its browser, profile and three ports were closed. No Boat was used.
+The next runtime check should start with a small UI slice and test original
+menu selection; this capture establishes rendering only.
