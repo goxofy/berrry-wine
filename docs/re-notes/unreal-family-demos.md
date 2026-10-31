@@ -1025,7 +1025,19 @@ GPU-window errors or a crash signature. Both runs used `--no-build
 --no-threads --quiet-api --quiet-blocks --max-seconds=45
 --max-batches=1000000 --stuck-after=1000000 --no-close`; their result records
 retain the exact commands. All 998 original-input hashes and four module/host
-file hashes remained unchanged across both runs. Module `8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`
+file hashes remained unchanged across both runs. Module `7f9da4e9da5183e9f7f061d2356cd34626fe74bdbaf7da0345f6693dd81152be`
 has unknown compiled-source identity. Both runner sessions ended; no browser,
 server or Boat was created. These startup observations do not qualify menu,
 input, gameplay or software/WebGL parity. No production source changed.
+
+The live-control follow-up `20261031T0337Z-ut2004-live-input` delivered
+Escape down/up at batches 29,431/29,432 rather than relying on an unreachable
+batch schedule. At its 120-second guard (432,213 batches, 119.980 seconds),
+the inspected final frame showed the original animated title background with
+a scrolling game-mode strip. Earlier captures showed a blank startup window.
+A second Escape was also delivered; this evidence does not isolate which
+input caused the transition or establish menu interaction or gameplay. All
+998 original inputs and four module/host hashes remained unchanged, using the
+same `7f9da4e9` module with unknown compiled-source identity. The runner exited
+zero and loopback control port 18127 closed; no Boat was used. Exact command,
+snapshots, input replies and validation remain in the run folder.
