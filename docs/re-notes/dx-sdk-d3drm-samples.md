@@ -1,5 +1,33 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 31: current-build original Viewer interaction on both routes
+
+Run `20261031T0058Z-sdk-viewer-current-input` uses the original recovered
+SDK meshes through the normal registry and the canonical module built from
+source tree `1baffb405`, SHA-256
+`d10f581fe8b925ed8add6df7b4aad65e10363d23e4d091adccfc0c4ffcbaa9e5`.
+`build-identity.json` pins the tracked source hashes; only unrelated
+`ops/terminals.json` was dirty at capture setup. This closes the earlier
+retained-module limitation for this scoped interaction.
+
+On both software and WebGL, native browser clicks select the Microsoft logo,
+open Edit → Change Color, choose red, and confirm. Personally inspected
+`color-dialog.png` and `red-applied.png` in each route show the dialog and
+red logo; the other camera shape stays gray. No guest-memory write, synthetic
+command delivery, fixture replacement or app-specific runtime patch was used.
+All 17 captured browser input events per route are trusted and end with the
+mouse button released.
+
+Each route verifies 38 registered executable/asset pins, all 182 served
+response hashes, and its loaded module against the retained canonical bytes.
+Owning-host GPU state is true only on WebGL; guest threads are disabled.
+Chrome 151 uses ANGLE SwiftShader. Both browsers are absent, all six HTTP/CDP/
+control ports are closed and both private profiles removed. No Boat was used.
+This proves original scene selection and material-color change on the two
+routes, not native-Windows visual correctness, aligned pixel equivalence,
+hardware performance or full 27-app completion. Existing locked build and
+focused selection test pass in the preceding recovery run.
+
 ## October 31: original Viewer Mesh assets recovered
 
 The three local names `camera.x`, `mslogo.x`, and `sphere2.x` were renamed
