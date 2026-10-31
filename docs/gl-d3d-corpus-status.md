@@ -1,5 +1,26 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 31: bounded Twist and Boids cooperative startup crash sweep
+
+Run `20261031T0237Z-dx-launch-sweep` launched the registered `dx_twist`
+and `dx_boids` executables with `test/run.js --no-build --no-threads`,
+without injected input. Twist completed 6,641 batches in 15 seconds;
+Boids reached the 100,000-batch limit in 5.892 seconds. Both runners exited
+zero, with no `CRASH`, `RuntimeError`, `unreachable` or unimplemented-API
+signature in the preserved logs. Personally inspected final PNGs show the
+textured Twist object and colored Boids flock triangles with cyan boundaries.
+
+The loaded local module hash is `8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`.
+Module, region-map mirror, runner and registry bytes stayed unchanged across
+both executions; their hashes and exact commands are retained in `inputs.json`,
+`executions.json` and `summary.json`. Compiled-source identity is unknown;
+the launch-time HEAD is not proof of that identity. These are cooperative
+CLI software startup observations, not new WebGL, threaded, scene-parity,
+gameplay, audio or performance acceptance. No matching candidate manifest ID
+was found, so the bundle remains investigation evidence without a dashboard
+`result.json`. Both child processes ended; no browser, server or Boat was
+created. No source changed or emulator defect was established.
+
 
 ## October 31: bounded OrganicArt original-input recovery found missing source
 
