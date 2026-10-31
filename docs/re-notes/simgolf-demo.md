@@ -1642,3 +1642,52 @@ asset hashes were checked against that census. All four owned browsers (includin
 an excluded early 404 launch), ports, and private profiles were closed or removed.
 No Boat box was used; box ID/state/expiry are not applicable. Full traces, module
 identities, original screenshots, and cleanup checks remain in the run directory.
+
+### 2026-10-31: native visitor hole completion; Gary finish unverified
+
+Run `scratch/runs/20261031T0013Z-simgolf-hole/` is one original-game browser
+attempt, 00:12:24–00:22:00 UTC, within 20 minutes. This launch generated
+**Dolphin Coast**. Native construction opened hole 1 at **79 yards, par 3**
+(`people.png`). Gary's People/pro control started a **Practice Round** against
+Bing. Straight Shot aiming is inspected in `aim-course-hole.png`; the first
+shot hit a tree (`first-shot.png`). `photo-current.png` preserves native shot
+history. `recovery-current.png` explicitly reports Gary's second shot, a 16-yard
+Lob Wedge recovery to within two feet of the pin, and a Recovery Skills award.
+
+The new completed hole result is **Bing's five-stroke double bogey**.
+`skills-assigned.png` shows Double Bogey and his first greens fee;
+`photo-current.png` preserves the fee notification. Most decisively, inspected
+`final-hole-result.png` shows hole 1, par 3, stroke average **5.00**, and **one
+recorded score in the five-stroke column**. Bing then left the green. This
+establishes a native visitor course-hole completion, not Gary's completed hole
+or a player-controlled tournament finish. Gary's last inspected practice score
+is two (`after-recovery.png`), which alone must not be interpreted as completion.
+A skill-award screen (`pause-tooltip.png`) required assigning three points;
+after that dialog, practice controls disappeared and Gary walked away. His
+final putt/result was not captured. Next: preserve Gary's explicit completion
+message/history through that intervening skill dialog. The Begin Tournament
+tooltip was inspected, but the grey control did not establish a tournament or
+its eligibility requirements. No causal emulator fault was demonstrated.
+
+The executing retained module is `7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`
+(1,892,586 bytes), with **unknown compiled source provenance**. Launch checkout
+HEAD was `03e361f0d`, not an asserted module source. Served repaired host audio
+is `f8770324…`, host.js `3f6b8405…`; full hashes/times are in `verification.json`
+and `served.jsonl`. Route: `index.html?debug&no-log&gl-renderer=webgl`, Chrome
+151.0.7922.108, 1024×768 viewport, 800×600 native drawable, cooperative threads.
+Actual presentation is CanvasRenderingContext2D/GDI, no window GPU layer, no
+D3DIM draws/targets; selected WebGL is not evidence of GPU scene rendering.
+AudioContext was running; audible quality was not independently reviewed.
+The guest remained running with both tracked JGL words `0x00adf938`.
+
+Startup full-page screenshots briefly stalled; subsequent evidence uses direct,
+unmodified native canvas PNGs. `verify.py` passes module identity, unchanged
+1,763-file/65,166,518-byte asset census, and all 1,120 served original-response
+hash checks. The retained input snapshot contains 139 trusted events, with all
+keys/buttons released. The final visitor lookup click after that snapshot used
+the same CDP input/finally-released mouse route but was not separately captured
+in the event snapshot. No guest-state writes or asset edits were used. No code
+changed, so no new runtime tests or locked build are claimed. Browser PID and
+three ports are verified absent/closed, profile removed, board watcher stopped.
+No Boat or assigned box was used (ID/state/expiry N/A). Exact identities,
+inspection evidence and cleanup are retained in the run directory.
