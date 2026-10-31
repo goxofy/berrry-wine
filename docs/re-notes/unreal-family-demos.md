@@ -1009,3 +1009,23 @@ verification, and the owned browser, profile and server closed. This does
 not strengthen the sampler-causation claim. Do not repeat this observer
 unchanged; establish that the diagnostic execution reaches the relevant draw
 before another sampler capture. No production source changed.
+
+## UT2004 explicit CLI renderer startup check (2026-10-31)
+
+Run `20261031T0327Z-ut2004-startup` reached an inspected black game window
+and logged 43,060 `D3D9 requires a GPU window` messages. This command omitted
+`--d3d9-renderer=software`: the CLI defaults to WebGL unless the registration
+opts into software, and this invocation provided no GPU context. This is a
+route prerequisite failure, not evidence of a new guest defect.
+
+The corrected original-input run `20261031T0330Z-ut2004-software` selected
+software explicitly and reached an inspected NVIDIA intro frame. It exited
+zero at the 45-second limit (405,812 batches, 45.107 seconds), without those
+GPU-window errors or a crash signature. Both runs used `--no-build
+--no-threads --quiet-api --quiet-blocks --max-seconds=45
+--max-batches=1000000 --stuck-after=1000000 --no-close`; their result records
+retain the exact commands. All 998 original-input hashes and four module/host
+file hashes remained unchanged across both runs. Module `8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`
+has unknown compiled-source identity. Both runner sessions ended; no browser,
+server or Boat was created. These startup observations do not qualify menu,
+input, gameplay or software/WebGL parity. No production source changed.
