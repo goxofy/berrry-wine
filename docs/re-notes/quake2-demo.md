@@ -1171,3 +1171,57 @@ browsers/controllers are absent, five known ports closed, both profiles
 removed and watcher stopped, with over 7 GB free. No Boat or assigned test
 box was used (ID/state/expiry N/A); ownership is handed back. Next: recover
 the seven-kill save and explore the courtyard ramps while seeking health.
+
+## 2026-10-31: courtyard channel explored; flooded pillar passage reached
+
+Run `scratch/runs/20261031T0101Z-quake2-ramps/result.json` resumes the
+seven-kill indoor checkpoint. Inspected `start-kills.png` confirms **7/18**
+and **health 21**. The first launch accidentally passed export-manifest rows
+without converting `path` to registration `vfsPath`; native F9 reported no
+save. Closing it and using the original mount format recovered the unchanged
+checkpoint. This was a harness setup error, not a game or emulator blocker.
+
+Native movement crossed the courtyard, descended into its lower channel and
+checked the sloped supports. Forward/jump did not climb those supports.
+`bank.png`, `ramp-top.png` and `climb2.png` show the accessible bank/stairs
+returning to the cleared room. Further channel exploration entered the dark
+water-level opening; `tunnel-out.png` and `sewer.png` show a new red-lit,
+flooded pillar chamber. No health pickup or new live enemy was found.
+
+The deeper chamber requires swimming: pausing there twice led to drowning
+and death. Ordinary F9 recovered each time, and trusted CDP jump held down
+kept the player at the surface at health 21. Final native F1 still shows
+**7/18**; `exploration-save-manifest.json` exports eight untouched F6
+current/quick files from the passage. A fresh browser mounted them as ordinary
+files; native F9 and inspected `recovery/external-world.png` /
+`recovery/external-count.png` confirm health 21 and seven kills. All eight
+recovered hashes match. This exploration save needs prompt jump/swim-up
+input; it is **not safer than the original indoor checkpoint**, which remains
+unchanged in `starting-save-manifest.json`. `recovery.txt` documents both
+recipes, including the `hold-space.cjs` helper and native export commands.
+No eighth kill, health gain, dry exit or level transition is established.
+
+Gameplay/setup and fresh recovery ran approximately 00:59Z–01:10Z, within the
+20-minute bound. No cheats, guest-memory writes, console commands, asset
+edits or emulator repair supplied progress. Both valid sessions loaded exact
+retained SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown. Actual probes report original ref_gl, WebGL 1,
+ANGLE Intel Mesa UHD 620, software flag 0, threads/render Worker off, despite
+requested SwiftShader flags. This does not certify a current-main module.
+All 67 prior registered inputs, including 65 original extracted assets,
+324 served responses and the eight recovered save files pass hash checks.
+All 209 gameplay and 19 recovery recorded input events are trusted; final
+mouse mask and native attack bit are clear. The installer remains unavailable;
+audio, FPS and networking remain unqualified.
+
+Focused verification passes; no runtime source changed. The malformed-mount
+browser quit hit the inherited controller `ERR_STREAM_WRITE_AFTER_END`.
+Both valid browsers closed through CDP with exit 0; their controllers were
+stopped with targeted SIGTERM. No page exception, guest trap or FreeLibrary
+failure was recorded; static-harness HTTP 404s remain. Own cleanup was
+explicitly delegated: browsers/controllers are absent, five ports closed,
+three profiles removed and watcher absent, with over 7 GB free. No Boat or
+assigned test box was used (ID/state/expiry N/A); ownership is handed back.
+Next: use the safer indoor save to seek the outer ledge pickups, or continue
+the flooded exploration save while holding jump and locate its dry exit.
