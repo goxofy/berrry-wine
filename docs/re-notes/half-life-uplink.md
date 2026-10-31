@@ -1672,3 +1672,33 @@ are closed, profiles and watchers are removed, and over 7.9 GB remains free.
 No Boat was used (box ID/state/expiry N/A). Next: reproduce the pause/resume
 stop separately, then continue the retained arrival save, preserve an exported
 office checkpoint, and trigger the mine chain from farther back while retreating.
+
+## Pause/resume input repair (2026-10-31)
+
+Run `20261031T0030Z-uplink-safe` isolates the earlier Escape stop: the
+browser intercepts a guest modeless dialog's Escape and calls
+`dialog_handle_key`, synthesizing IDCANCEL outside the game's own message
+loop. Native Resume works. The renderer now leaves modeless dialogs with a
+guest DLGPROC on their own raw-key path, while native pseudo-procedures and
+modal dialog pumps retain browser traversal. The focused regression fails
+against the retained pre-repair renderer and passes with the repair; it also
+covers Tab/Enter/Space/arrows, key release, built-in dialogs and cooperative
+and Worker modal Escape. The retained browser was refreshed by the prior
+worker to load the corrected renderer, and `fixed-pause-page.png` /
+`fixed-resume-page.png` retain the native Escape pause/resume result.
+
+The WASM remains exact retained
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`,
+not the newly built main module. The previous source/compile-delta limits
+still apply. All runtime changes for this repair are in the JavaScript input
+router. The adjacent untracked worker-menu regression fails identically on
+both pre-repair and corrected renderer at its initial owner-menu isolation
+assertion; this preexisting failure is retained separately from the focused
+modeless regression. Gameplay continuation and final lifecycle evidence are
+recorded below.
+
+Validation before publication: modeless routing, renderer modal input,
+renderer dialog-button queue and modal key-posting tests pass, and
+`flock /tmp/wine-build.lock bash tools/build.sh` passes (retry log; the first
+verification build was terminated). Current-main build validation is separate
+from the retained gameplay module.
