@@ -954,3 +954,27 @@ the candidate changes registry JS separately, with tracked WAT and renderer
 sources unchanged from the preceding `3540d8304` checkout. This does not certify
 a fresh current-main build. All owned processes/groups were confirmed absent;
 movement/reverse/idle and browser/WebGL/audio/network/FPS remain untested.
+
+## UT2003 registered browser startup retest (2026-10-31)
+
+`scratch/runs/20261031T0306Z-ut2003-webgl` mounted the registered client's
+879 original data files and launched its unchanged `-d3d -window -nosound`
+arguments in threaded Chrome. The reviewed `webgl-2.png` shows the game's own
+crash dialog: `LockRect failed: D3DERR_INVALIDCALL`, with
+`UD3DRenderDevice::ReadPixels <- Present <- UGameEngine::Draw` in its history.
+This reproduces the readback failure on a fresh browser run; it establishes
+neither a menu/world render nor gameplay progress.
+
+The URL requested WebGL, but the live renderer executor was not independently
+attested, so this is not a qualified WebGL backend result. Actual module SHA-256
+was `8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`;
+its compiled source commit is unknown. Observed checkout `016de3e789` is recorded
+separately and must not be treated as that module's source identity.
+
+`verification.json` confirms 881 unchanged original input entries (including
+the executable and manifest), 105 valid served-file snapshots, and closure of
+the owned browser, profile and server port. `result.json`, console logs and
+worker diagnostics retain the failure baseline. No Boat was used. The next
+causal step is to trace the rejected surface, rectangle and lock flags through
+the readback call; the dialog alone does not identify which validation failed.
+No API behavior or fixture was changed for this run.
