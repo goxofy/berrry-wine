@@ -1428,3 +1428,53 @@ known ports closed, two profiles removed and over 6 GB free. No Boat or test
 box was used (ID/state/expiry N/A); ownership is handed back. Next: recover
 indoor21, follow the left corridor through the mechanical door, and engage
 or lure the stair guard from doorway cover with centered aim before advancing.
+
+## 2026-10-31: centered doorway lure draws multiple guards; checkpoint retained
+
+Run `scratch/runs/20261031T0213Z-quake2-door/` makes one bounded native
+engagement from the unchanged indoor **21 HP, kills 7/18** checkpoint. The
+initial Chrome received **SIGKILL at 02:07:37Z**, sender unknown, during F9
+loading; it established no gameplay recovery. A fresh profile remounted the
+same eight save files, and inspected `retry/starting-count.png` confirms the
+actual world, 21 HP and seven kills.
+
+The verified left corridor/mechanical-door route reached the barrel/stair
+room. Native End centered the view, avoiding the earlier excessive PageDown
+pitch. A short forward firing peek and backward retreat drew **multiple live
+guards** into the room: `retry/lure-retreat.png` shows one close at the right,
+another by the barrels and another on the stairs. Health fell to 9. A further
+brief right turn and retreating burst ended in **one player death**, HUD -2
+and explicit `Player died.` (`retry/cover-retreat.png`). No eighth kill,
+pickup, onward room or new F6 checkpoint was established. The concrete blocker
+is this multi-guard encounter overwhelming the attempted retreat at low health;
+no emulator defect was isolated. Next attempt should establish cover farther
+back before firing and avoid the forward peek that exposed the player here.
+
+Native F9 restored indoor21. Inspected `retry/restore-count.png` again reads
+**7/18**, and `retry/restore-stable.png` retains **21 HP after 15 seconds
+unpaused without input**. Read-only VFS export
+`retry/retained-save-manifest.json` matches all eight original checkpoint files
+exactly. The original save remains the recommended recovery. `recovery.txt`
+and the action logs retain timings and evidence. Gameplay and recovery ran
+approximately 02:07Z–02:10Z, within 20 minutes. No cheats, game/console commands,
+memory writes, binding changes or asset changes supplied progress.
+
+Both downloaded modules match retained SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown; this does not certify current main. Actual recovery
+backend is original ref_gl / WebGL 1 / ANGLE Intel Mesa UHD 620, software flag
+0, threads/render Worker off. Original assets, served-file hashes, native save
+bytes and recorded trusted inputs pass focused checks. The initial browser's
+F9-event snapshot was lost at disconnect; its action log remains, so complete
+initial-event verification is unavailable. Final recovery keys/buttons are
+released. Installer remains unavailable; audio, FPS and networking remain
+unqualified. Static HTTP 404s remain; no page exception was recorded. No runtime
+source changed, so no build was run.
+
+Recovery Chrome exited code 0 through explicit CDP close. The initial controller
+was stopped with targeted SIGTERM; the retry controller exited 143 after browser
+close, sender unknown, before its requested SIGTERM. All four owned PIDs are absent, six ports
+closed and two profiles removed, with over 1.5 GB free. Other sessions were
+preserved. No Boat or assigned test box was used (ID/state/expiry N/A);
+ownership is handed back. The bounded attempt stops with the original safe
+checkpoint retained and the combat objective unmet.
