@@ -992,9 +992,9 @@ commit output — do not assume your hunks landed.**
   created: 2026-10-02T04:00:31.545Z
   created-by: user-request via ops-dashboard
   candidate: pirates-2004
-  Next: Captain-route stop remains independent and unmeasured. Before claiming current-main actual rectangular/filter2 transfer, reconcile missing archived implementation under PIRATES-TRANSFER-REENTRANCY; main058b82eba still explicitly traps those shapes. Preserve historical no-transfer outcome; do not rerun old-build recipe as current-main acceptance.
+  Next: Native Play/Crew/captain/cast-off now reaches Port Royale sailing with visible ship motion (run20261031T0215Z-pirates-small-slice, notes 90c0c0c48). Canonical build of main 90c0c0c48 produces the exact retained 573e235d module (run20261031T0220Z-pirates-main-sailing, notes b089a0600); its separate replay reached Main Menu before browser loss, not sailing. Pursue unsupported WebGL specular lighting and a matched sailing retest under PIRATES-TERRAIN-REVIEW. Rectangular/filter2 transfer and nested ownership remain unqualified under PIRATES-TRANSFER-REENTRANCY; route progress does not prove transfer/readback acceptance.
   Done: Identify the route failure and either validate the actual game transfer/readback with reviewed images or record a precise blocking dependency. Link unresolved terrain defects separately; a zero-transfer run is not a rendering pass.
-  Evidence: ops/handoffs/mig-pirates-stretch.md; ops/handoffs/mig-pirates-stretch-recipe.md
+  Evidence: docs/re-notes/pirates-2004.md; scratch/runs/20261031T0215Z-pirates-small-slice/result.json; scratch/runs/20261031T0220Z-pirates-main-sailing/result.json; ops/handoffs/mig-pirates-stretch.md; ops/handoffs/mig-pirates-stretch-recipe.md
 
 - [x] Verify Quake II world traversal beyond a changed frame
   id: Q2-MOVEMENT-FOLLOWUP
@@ -1062,9 +1062,9 @@ commit output — do not assume your hunks landed.**
   created-by: orchestrator-handoff-audit
   depends-on: PIRATES-ROUTE-FOLLOWUP
   candidate: pirates-2004
-  Next: Separate terrain rendering from the captain-route stop and reproduce the visible defect on an identified reachable gameplay state.
+  Next: White coast/terrain reproduced and inspected after native cast-off at Port Royale, with 270 unsupported-specular-lighting errors (run20261031T0215Z-pirates-small-slice). Canonical main 90c0c0c48 compilation matches that 573e235d module exactly. Implement and pixel-test the actual WebGL lighting contract, then repeat the original route with pinned served renderer sources. The errors are a concrete missing feature, not established cause of white terrain; preserve the prior images and avoid a terrain-fix claim without matched evidence.
   Done: Reviewed terrain evidence identifies the failing contract and focused correction or concrete dependency; no zero-transfer pass used as terrain proof.
-  Evidence: ops/handoffs/01a0f736-78f1-7822-8b37-159d6f8ed94d.md
+  Evidence: docs/re-notes/pirates-2004.md; scratch/runs/20261031T0215Z-pirates-small-slice/result.json; scratch/runs/20261031T0220Z-pirates-main-sailing/result.json; ops/handoffs/01a0f736-78f1-7822-8b37-159d6f8ed94d.md
 
 - [ ] Review nested transfer packet preservation
   id: PIRATES-TRANSFER-REENTRANCY
@@ -1188,7 +1188,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   Latest observed gameplay (2026-10-30 22:28 UTC): GLTron original browser WebGL round reached crash/winner and native restart; root inspected full-outcome.png (run20261030T2230Z-gltron-browser, module7e8d3194, notes802fc9e66 on main). Stale round overlays remain under repair. QuakeII actual WAT software lower-room encounters, player death/autosave reload and resumed fire documented094c6de2b; enemy damage/defeat unverified and compiled-source identity unknown. Four further screensaver apps have bounded software observations in20261030T2226Z-d3drm-four-scenes: Architecture/RockRoll/OrganicArt recognizable scenes, Jazz partial; retained1dbddeaf predates current main, no browser/parity/full27 claim.
   status: active (remaining texture source audit; both-backend gameplay incomplete)
   owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  worker: caesar3-population150-services-main-oct30; gltron-stale-round-overlay-repair-main-oct30; halflife-uplink-original-progression-main-oct30 (original gameplay lanes; all64 stranded chains disposed)
+  worker: pirates-d3d9-specular-rendering-main-oct31; alien-shooter-original-mission-combat-main-oct31; uplink-storage-cover-satellite-gameplay-main-oct31 (rendering repair plus two original-game gameplay lanes; all 64 stranded chains disposed)
   prev-owner: claude:1863d2b5-bc58-4c0b-9c15-00fc951f0256 (fleet stopped)
   created: 2026-10-06T02:09:48.337Z
   accepted-by: claude:80aa9e95-435b-4acb-aeea-8ae3d860613c
