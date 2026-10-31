@@ -1691,3 +1691,50 @@ changed, so no new runtime tests or locked build are claimed. Browser PID and
 three ports are verified absent/closed, profile removed, board watcher stopped.
 No Boat or assigned box was used (ID/state/expiry N/A). Exact identities,
 inspection evidence and cleanup are retained in the run directory.
+
+### 2026-10-31: Gary's native practice hole completed
+
+Run `scratch/runs/20261031T0026Z-simgolf-gary/` preserves the interrupted
+worker's original browser, continued without relaunch at 00:39 UTC and closed
+at 00:42:09 UTC. The entire browser attempt remained below 20 minutes.
+This is **Ocean's Edge MC, hole 1, 75 yards, par 3**, against Twyla.
+Native Straight Shot/Lob Wedge controls and an aimed first shot are retained
+in `target-hover.png` and `lob-result.png`. `frames/0110.png` shows Gary's
+first stroke; inspected `gary-history-now.png` shows **two strokes** on both
+his Golf Pro card and the practice scorecard. That card's history still shows
+only the first-shot commentary, so it alone did not establish completion.
+
+Inspected `frames/0239.png` and the continuation's first capture,
+`cont-initial.png`, supply the missing completion: **Gary Golf snakes a putt
+five yards into hole 1**, with Twyla witnessing it and Gary acquiring Luck.
+Together with the two-stroke native card, this establishes Gary's completed
+two-stroke practice hole. The original game resolves the putt; no separate
+manual putting input or tournament finish is claimed. The native skill dialog
+then appeared; three points were assigned to Power Hitter, with Accurate
+Putter +100% and Luck +30% visible (`cont-skills-assigned.png`).
+
+During subsequent inspection, clicking the practice control started another
+round against Trudy and reset the displayed card to zero (`cont-gary-history.png`).
+That is a new round, not a revised score for the completed Twyla round. No
+second-round completion is claimed. The native Save Course control reported
+"Ocean's Edge Municipal saved for championship play" (`cont-options-held.png`).
+`final-save-manifest.json` preserves its unmodified 86,831-byte CSE file as
+`final-course-0.cse`, SHA-256
+`facfa36306f4194d7249576ee484254ea4a51741cac903b351ba939caf295821`.
+Keep the earlier export too. This is a championship course export, not a
+verified resumable career checkpoint; no `.sve` was present. To recover the
+course, mount those bytes at the manifest's native path through the ordinary
+launcher VFS and use the game's course loader. Reload was not tested here.
+
+`verify.py` passes the retained module identity `7e8d3194…` (source provenance
+unknown), all 1,763 unchanged original assets, 1,124 served-original response
+hashes, and all 200 trusted input events with keys/buttons released. The guest
+was running with both tracked JGL words `0x00adf938` at close. Chrome
+151.0.7922.108 used cooperative threads, 1024×768 viewport, 800×600 native
+canvas and GDI presentation without a window GPU layer; the WebGL URL selection
+does not establish GPU rendering. AudioContext was running; listening was not
+tested. No guest patches, asset edits, production faults or code changes were
+introduced, so no new runtime build is claimed. `result.json` links the inspected
+captures, exact inputs, verification and save manifest. Browser/controller are
+absent, all three ports closed, private profile removed and inherited board
+watcher stopped. No Boat or assigned box was used (ID/state/expiry N/A).
