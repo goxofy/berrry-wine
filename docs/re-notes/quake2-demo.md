@@ -951,3 +951,39 @@ is not claimed. Browser PID 1175593 and all three known ports were independently
 absent/closed, profile removed, attack and gameplay keys released. No Boat or
 assigned test box was used. Further combat, audio, FPS and level completion
 remain unqualified.
+
+## 2026-10-31: health pickup and recoverable two-kill checkpoint
+
+Run `scratch/runs/20261031T0023Z-quake2-third/result.json` continues the
+unchanged native room save. Personally inspected `health.png` shows the Health
+pickup and HUD increase from 12 to **22**. Native F6 writes a quicksave; eight
+resident current/quick files were exported byte-for-byte. Ordinary remount and
+F9 restore health 22 (`recovered22-resume.png`), and the native F1 screen still
+reads **kills 2/18** (`health22-kills.png`). `health22-save-manifest.json` and
+`recovery.txt` retain this checkpoint separately from the earlier health-12 save.
+An armor-shard pickup followed. Further encounters ended in inspected deaths;
+no third kill, next-room completion or level transition is established.
+
+The harness initially tried to read two lazy save0 headers synchronously,
+raising VfsPendingError before capture; the export skips those unmaterialized
+headers. Direct CDP capture works. The mouse was also left over the host Launch
+button, so a native firing click restarted the app. Moving it inside the game
+area avoids that target error; the exported save recovered the progress. These
+are harness limitations, not demonstrated emulator defects. No guest-memory
+write, cheat, console command or original-asset edit supplied progress.
+
+The retained module is SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown. Actual rendering is original ref_gl through WebGL 1,
+ANGLE Intel Mesa UHD 620, software flag 0, threads/render Worker off. All 67
+registered inputs (65 originals), 240 served responses and eight exported save
+files pass hash checks; all 95 recorded input events are trusted. Physical
+mouse buttons were released, although the dead guest retained attack state 1.
+No further execution occurred after shutdown. No runtime source changed.
+
+Focused verification passes. Cleanup required SIGTERM followed by a targeted
+SIGKILL of the controller after its browser closed but servers remained open;
+clean controller exit is not claimed. Both owned PIDs are absent, all three
+ports closed and profile removed, with over 7 GB free. No Boat was used.
+Next: continue the health-22 native checkpoint and engage the remaining guards
+from cover, keeping the mouse inside the game area.
