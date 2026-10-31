@@ -324,3 +324,61 @@ property/shader attachment lifecycle. `TerrainShader` is enabled at runtime;
 its capability bypass flag is zero. The blocker is the unexplained absence of
 terrain texturing/shader attachment before draw submission, with a recoverable
 original sailing route and measured backend behavior, not a tested terrain fix.
+
+## Upstream terrain setup and queue boundary (2026-10-31)
+
+A further bounded investigation retains the same original `573e235d…` module,
+`54a33f1054df7c3f` map and frozen host in a new run,
+`scratch/runs/20261031T0258Z-pirates-attachment/`. White coastal terrain is
+again visible at Barbados in `attempt2/sea.png` (600 gold, 41 crew). No game
+flags, assets or production emulator code were changed. No terrain repair is
+established; the previous independent pixel replay was deliberately not repeated.
+
+The successful startup capture has **179 guest breakpoint records** in
+`capture/complete-records.json`: five setup observations followed by 58 tiles
+at each of three boundaries. `0x4e6b51` returns true from the Landscape.ini
+helper. After capability helper `0x5002f0`, `0x4e6bc7` has version results
+**11 / 14**, meaning VS 1.1 / PS 1.4. Disassembly reads the versions from
+GetDeviceCaps offsets `0xc4` / `0xcc`. The force-disable flag `0x8cad10` is
+zero and the `TerrainShader` flag at `0x7263b8` is enabled. Setup proceeds to
+stage 2 and selects the factory whose vtable is `0x70fe58`, retained at tile
+`+0xa8`. This excludes an early zero-capability rejection in this captured
+initialization; it does not qualify the full caps structure or shader execution.
+
+The two suggested attachment addresses have more limited roles:
+
+- `0x4ee360` synchronizes and inserts the tile into the terrain manager's
+  array at `+0x74` through `0x4fd880`. Every observed return at `0x4e6f07`
+  is 1. The initialized manager retains 58 entries.
+- `0x4ec000` clears and fills the tile's collection at `+0x114`, walking
+  the global texture object array at `0x8ea110`. At `0x4e6f11`, all 58
+  tiles have ten collection entries. This establishes references, not decoded
+  texture correctness or binding to a particular geometry draw.
+
+Tile `+4` is initially a **NiNode**, not the measured NiGeometry draw mesh;
+its `+0xc0` / `+0xc8` fields cannot be interpreted using the geometry layout.
+The unresolved causal boundary is now between successful factory/texture
+collection initialization and the eventual geometry property/shader attachment
+(or its later removal). The prior actual coastal geometry still supplies the
+opposite end of that boundary: null property/shader-extra and default shader.
+Static next targets are the selected factory's first virtual method
+`0x4edac0` (allocates and calls `0x51ccf0`) and deferred terrain-manager
+processing through `0x515cb0`, including queue consumption at `0x5161b0` and
+its virtual call at `0x516268`. Correlate their generated child geometry with
+the coastal draw before assigning a caps, synchronization or shader defect.
+
+A diagnostic obstacle was reproduced separately: the retained WASM debugger
+can skip the first arrival after changing a breakpoint. The focused regression
+fails on that module (`retained-debugger-regression.log`); it is not a terrain
+root-cause finding. The final run-local tracer consumes the old breakpoint's
+resume step before retargeting and handles successive breakpoint halts in a
+loop. Earlier failed or missed captures are retained as such. The complete
+JSON export is authoritative; Python readers of JSONL must split on literal
+newline, since sampled guest strings can contain Unicode line separators.
+
+Diagnosis/runtime ended within the 25-minute limit. Evidence checks cover the
+179 records, all original input pins, all served response hashes, and cleanup.
+All six own browser/controller executions and profiles are closed; no Boat or
+assigned test box was used (ID/state/expiry N/A). Recovery instructions and
+limits are in the new run's `recovery.txt`; no before/after repair or new build
+pass is claimed for this documentation-only change.
