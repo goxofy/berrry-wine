@@ -1739,3 +1739,54 @@ The browser PID1202823 and controller PID1202807 are absent, ports
 over 7.5 GB remains free. No Boat was used; box ID/state/expiry are N/A.
 Next: use the retained health100 save to navigate toward the office, preserve
 that checkpoint outside the browser, then try the mine from greater distance.
+
+## Office checkpoint and bounded mine approach (2026-10-31)
+
+Run `20261031T0052Z-uplink-office` reaches the office, collects its medkit and
+pistol, and exports a native F6 checkpoint with **health70 and 17 rounds**.
+`office-pistol-save/` holds all nine unchanged game-generated save files;
+`native-save-pins.json` pins their bytes alongside the earlier guard and office
+threshold exports. Native F7 restores the office checkpoint in-session:
+`office-reload-ready.png` visibly shows health70 / pistol17. A fresh browser
+remount of this export remains unverified. `recovery.txt` describes ordinary
+mounting without guest writes or console commands.
+
+The single browser attempt lasts 00:51:03–01:10:16 UTC (under 20 minutes).
+Initial headcrab deaths are followed by a successful health90 guard-room save,
+office entry at health55 and desk pickups. The office exit resists repeated
+native E attempts. The game's Controls menu visibly assigns Use item to E;
+remapping it to G through that menu opens the door (`native-use-g.png`,
+`g-use-test.png`). The external installed `default.cfg` says Tab, differing
+from the live menu. This is an unresolved input/configuration observation,
+not an isolated emulator defect; no source repair was made. The save export
+does not include that configuration change.
+
+The player leaves the office and bypasses storage crates, reaching a
+Danger-marked area at health65 (`storage-bypass.png`). Subsequent headcrab
+attacks cause death (`danger-approach.png`) before an aimed mine shot.
+**No distant mine shot, detonation, survived clearance or satellite progress
+is verified.** The bounded attempt ends with the office F7 recovery above.
+All named captures were personally inspected. Next: recover the office save,
+clear pursuing headcrabs promptly, save nearer the danger area, then attempt
+the mine from cover with retreat.
+
+The exact retained WASM remains
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`,
+with inherited `source-identity.json` / compile-delta provenance limits;
+this is not a current-main compilation. `launch-identity.json` records the
+launch revision, and `served-source/` plus `served.jsonl` pin the actual host
+responses, including the already-published Escape repair. All 65 original
+installed files remain unchanged, all 23 original responses match pins and
+all 171 responses have hashes. All 624 input events are trusted, with 262
+paired key presses and no held keys/buttons at cleanup. Final runtime is
+running with memory present and no stop events. The inspected backend is
+hw.dll / WebGLBackend WebGL 1, software disabled and GL error zero; detailed
+renderer identity and frame evidence are in `result.json`.
+
+Browser PID1242476 and the controller are absent, ports37189/39667/39007
+are closed, and the private profile is removed; over 7.5 GB remains free.
+No Boat or test box was used (ID/state/expiry N/A); ownership is handed back.
+This documentation-only continuation requires no new build.
+The installed-payload regression also passes against the available main build,
+rendering all seven launcher menu labels; this is separate from the retained
+WASM used for gameplay.
