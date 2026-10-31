@@ -1897,3 +1897,62 @@ and the owned watcher are removed; over6GB remains free. No Boat/test box
 was used (ID/state/expiry N/A); ownership is handed back. Next: freshly mount
 the healthier crab-clear save, identify the exact mine body and correct the
 distant aim, retreat after firing, then export a survived native save.
+
+## Mine doorway safely crossed, native recovery verified (2026-10-31)
+
+Run `20261031T0151Z-uplink-aim` freshly mounts all ten unchanged files from
+`20261031T0131Z-uplink-clear/retry/crab-clear-save/`. Native Load Game/F7 and
+pistol selection verify **health60 / pistol12** (`checkpoint.png`,
+`pistol-verified.png`); both pursuing headcrab bodies remain beside the guard.
+Two initial distant shots leave the beams visible. The first retreat survives
+at60/11; native F6 exports ten files to `retreat-save/`, and F7 restores them
+in-session (`retreat-reloaded.png`). A second fresh browser mounts this export
+unchanged and verifies60/11 in `retry/fresh-retreat-settled.png`.
+
+After a native gameplay click activates mouse aiming (and consumes one round),
+small native pointer movements center the pistol crosshair on the upper
+mine body. `retry/upper-body-crosshair.png` and `retry/precise-shot.png` show
+that aim and the10→9 shot. Immediate backward retreat preserves health60.
+`retry/precise-retreat.png`, `retry/explosion-settled.png` and
+`retry/cleared-approach.png` show the beams gone and debris. No flame frame
+was captured, so detonation is inferred from the shot, disappearance and
+subsequent safe passage, rather than directly pictured as an explosion.
+
+Native movement crosses the cleared doorway into its passage toward the
+railed area (`retry/opening-align.png`, `retry/cross-doorway.png`). Health
+remains60 with nine loaded rounds. Native F6 exports all ten unchanged files
+to `retry/beyond-mine-save/`; native F7 eventually settles at the same passage
+with **health60 / pistol9**, personally inspected in `retry/final-settled.png`.
+This verifies safe mine-doorway passage and in-session native recovery, not
+satellite-objective completion. The final export has not been freshly remounted;
+the earlier post-retreat60/11 export has. `recovery.txt` retains both recipes.
+
+There are **zero observed deaths and zero unexplained browser disappearances**.
+One runtime stop occurs during a native Video-menu attempt after the initial
+two shots: the menu selected/switched a software-renderer path while being
+backed out, and `runtime-stop.json` records `running=false`, memory absent and
+a stop from the host step loop. `main-return.png` shows the idle shell. This
+is not an isolated source-defect claim. The previously exported60/11 save
+allows the successful fresh retry. No renderer setting or configuration
+export from that menu attempt is claimed.
+
+All gameplay uses native keys, clicks and pointer movements. Read-only angle
+observations guide turns; no guest-memory writes, cheats, console commands or
+original-asset edits supply progress. The exact retained module remains
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`;
+inherited `source-identity.json` and `compile-source-delta.patch` retain the
+full-source-identity limits. This is not a current-main compilation claim.
+`verification.json` passes65 original pins,44 original responses,342 served
+response hashes,40 save-file pins and167 trusted input events, including60
+paired key presses with no held keys/buttons. `artifact-pins.json` additionally
+hashes input logs, drivers, captures and module receipts. The final observed
+backend is hw.dll / WebGLBackend WebGL1, ANGLE/Mesa Intel UHD620, software
+disabled, zero software triangles and GL error zero, frame5965. No source
+change or new build was required for this documentation-only continuation.
+
+Both owned browsers/controllers are closed, six ports are closed and private
+profiles removed; lifecycle evidence records remaining free disk. Other
+agents' processes were preserved. No Boat/test box was used (ID/state/expiry
+N/A); ownership is handed back. Next: recover `retry/beyond-mine-save/`, freshly
+verify that final export, and continue through the railed area toward the
+satellite objective.
