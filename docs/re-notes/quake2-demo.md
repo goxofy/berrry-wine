@@ -1121,3 +1121,53 @@ absent, four known ports closed and both profiles removed, with over 7 GB
 free. No Boat or assigned test box was used (ID/state/expiry N/A); ownership
 is handed back. Next: recover the six-kill/health-21 save, enter the courtyard
 and engage its next guard from the doorway before exploring the ramps.
+
+## 2026-10-31: courtyard guard defeated; safer seven-kill checkpoint
+
+Run `scratch/runs/20261031T0055Z-quake2-courtyard/result.json` resumes the
+exported six-kill/health-21 native checkpoint. Personally inspected frames
+confirm the starting F1 count **6/18** and health **21**. The first doorway
+engagement ended in player death while adjusting aim. Ordinary F9 restored
+the unchanged checkpoint. On the retry, native blaster fire and S retreat
+drew the courtyard guard through the doorway into the room. Inspected
+`guard-lured.png`, `guard-hit.png` and `guard-fall.png` show his approach and
+defeat; `seventh-kills.png` confirms **7/18**, still at **health 21**.
+
+Native F6 saved from farther inside the room, behind the courtyard doorway.
+Eight untouched current/quick files are exported in
+`seventh-save-manifest.json`. A fresh browser mounted those exports as
+ordinary files; native F9, F1 and inspected `recovery/external-seven-kills.png`
+and `recovery/external-resume.png` confirm seven kills and health 21. All eight
+recovered file hashes exactly match the export. This is the recommended new
+checkpoint; `recovery.txt` and `recovery-driver.cjs` pin the recovery recipe.
+The earlier sixth checkpoint remains unchanged. The bounded session and
+recovery took approximately four minutes, below 20 minutes. No eighth kill,
+completed courtyard traversal or level transition is established. No
+guest-memory writes, cheats, console commands or original-asset edits were used.
+
+Both sessions loaded retained module SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown. Actual probes report original ref_gl, WebGL 1,
+ANGLE Intel Mesa UHD 620, software flag 0, threads/render Worker off; requested
+SwiftShader flags do not describe the observed context. All 67 prior inputs,
+including 65 original assets, 424 served responses and eight exported save
+files pass hash checks. All 75 gameplay and 11 recovery input events are
+trusted; final physical mouse mask and native attack bit are clear. The
+installer remains unavailable; this does not certify a current-main module.
+Audio, FPS and networking remain unqualified.
+
+Focused verification passes; no runtime source changed or causal emulator
+defect was proved. The initial background controller ended before READY;
+its owned Chrome was terminated and a persistent foreground session used.
+The gameplay controller's quit produced `ERR_STREAM_WRITE_AFTER_END`, and
+the recovery controller required targeted SIGKILL after SIGTERM left HTTP
+ports open. Recovery Chrome records SIGKILL after an explicit CDP close;
+its signal sender is unqualified. The copied backend query inherited an old
+action timestamp; its DOM event times and surrounding actions retain this
+run's times. Clean controller exit is not claimed. No page exception, guest
+trap or FreeLibrary failure was recorded; static-harness HTTP 404s remain.
+The task explicitly delegated own browser/server/profile cleanup: all owned
+browsers/controllers are absent, five known ports closed, both profiles
+removed and watcher stopped, with over 7 GB free. No Boat or assigned test
+box was used (ID/state/expiry N/A); ownership is handed back. Next: recover
+the seven-kill save and explore the courtyard ramps while seeking health.
