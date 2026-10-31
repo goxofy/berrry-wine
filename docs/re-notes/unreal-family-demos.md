@@ -978,3 +978,25 @@ worker diagnostics retain the failure baseline. No Boat was used. The next
 causal step is to trace the rejected surface, rectangle and lock flags through
 the readback call; the dialog alone does not identify which validation failed.
 No API behavior or fixture was changed for this run.
+
+The follow-up `20261031T0310Z-ut2003-lock-trace` used the same module with
+current CLI host code, rather than the browser's frozen host snapshots. Its
+60-second software D3D run reached an inspected UT2003/NVIDIA splash
+(`cli-final.png`). `GetBackBuffer` and `GetDesc` succeeded. Read-only
+`LockRect` calls used flags `0x10` and identical surface/output/rectangle
+addresses on reentry. The trace's alternating raw EAX error/success values
+must not be counted as alternating guest-visible failures: the backbuffer
+handler initializes EAX to `INVALIDCALL`, parks for rendering, then re-enters
+to finish the call. The CLI recorded 23 render waits. This is not a browser
+repair, menu result, or gameplay acceptance.
+
+The original browser console also records `WebGL sampler LOD
+bias/MAXMIPLEVEL is not implemented` before the crash dialog. This is a
+separate concrete lead; causation between that error and the failed readback
+is not established. A console-only metadata observer in
+`20261031T0315Z-ut2003-sampler-observer` preserved the rejecting check but
+ended its observation before device creation, capturing no sampler metadata.
+Its reviewed final frame is a blank startup window; its browser and server
+closed. Capture the rejected texture/sampler state and completed readback
+result before choosing a production change. Both follow-ups used local
+processes, with no Boat.
