@@ -210,3 +210,44 @@ exited normally; the supervisor recorded all 16 discovered child PIDs and both
 owned groups absent at 23:32:57.113 UTC. Independent checks also found the
 supervisor and all recorded PIDs/groups absent. No further run was needed for
 packaging or analysis.
+
+## Default-worker browser attempt (2026-10-31)
+
+Run `scratch/runs/20261031T0358Z-revolt-race` stopped at an inspected startup
+dialog, **`DDERR_NOTFOUND: Can't attach back buffer!`**, before the legal
+screen, menu or race. The console records the dialog at 03:59:14.917 UTC;
+`backbuffer-error.png` and its JSON capture confirm it at 03:59:19.530.
+No steering, checkpoint or lap was reached. This is a precise execution
+blocker for this runtime, not a reproduced loading stall or an established
+current-main regression. No loading profiling or production fix was attempted.
+
+The fresh Chrome 151.0.7922.108 browser used an isolated local server, explicit WebGL
+selection, default enabled guest workers, and a stable 1024×768 viewport.
+Two guest-worker instances were observed; the error capture records
+`guestWorker: true` and renderer `webgl`. This differs from the cooperative
+thread mode used in the October 13 runs. Only the trusted launch-button click
+was sent; no guest memory/state, clock, random seed, settings, original assets
+or executable were changed.
+
+The retained module SHA-256 was
+`8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`.
+Its compilation source revision is **unknown**: the observed checkout HEAD
+is not build provenance. The run copied and verified 106 retained runtime
+snapshots from `20261031T0256Z-daikatana-webgl`, including host, worker,
+renderer, registration and region-map files. `served.jsonl` also records
+live supplementary resources, including the API table and fonts; 41 such
+responses were preserved by hash in `extra-snapshots.json`. The mixed retained
+runtime cannot establish behavior of a clean current-source build.
+
+All 443 installed original files plus the browser manifest passed SHA-256
+checks before and after execution (444 checks each). The original EXE hash
+remained `58ba4835e6607eae62be4e023ef989172cb519c78f34811acba547e9e0e3581a`.
+Evidence contains the original manifests, exact served snapshots, console,
+screenshots, recovery instructions and process checks. Browser exit was zero;
+all 13 recorded controller/browser PIDs were absent, port 37183 was closed,
+and the owned profile was removed. No Boat or test boxes were used.
+
+Next: reproduce this attachment failure with a known-source canonical build
+and the same default-worker route before attributing a cause or attempting
+the documented menu-to-grid driving route. Recovery commands and the retained
+runtime limitation are recorded in the run's `RECOVERY.md`.
