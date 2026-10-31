@@ -456,3 +456,60 @@ host-only repair served separately, threads off and software flag zero. Full
 compiled source identity remains unavailable. Before/after served hashes,
 trusted input, screenshots and cleanup records accompany `investigation.json`;
 no Boat was used.
+
+## MilkDrop illegal-operation (2): incompatible IPC contract, 2026-10-31
+
+Run `scratch/runs/20261031T0020Z-winamp-milk-fault/` reproduces the original
+error during native R-repeat/X-play demo playback, Preferences → Visualization
+→ MilkDrop → Start. The error frame was personally inspected. Two subsequent
+instrumented sessions captured the same CPU exception without modifying guest
+code or data: **0xc0000005 at EIP 0x00000001**, on plug-in thread 4.
+
+The retained registered `vis_milk.dll` is the 430592-byte MilkDrop 1.04e candidate,
+SHA-256 `c2a84595bd3b2802be341720a691ecbf0901fc9c5f6a60d01fba6213ba651901`,
+PE timestamp 2007-08-02. It is an original DLL, but this evidence does **not**
+establish it as a plug-in bundled with Winamp 2.91. The exact pairing is
+incompatible at the Winamp IPC boundary:
+
+- At original DLL RVA `0x29ab5`, MilkDrop sends
+  `SendMessageA(0x10001, WM_USER, 0, 3015)` and stores the reply at RVA
+  `0x1bc648`. In the captured mapping the DLL base is `0x014f3000`.
+- `reply/reply-trace.json` records the actual main-thread guest path
+  `0x421290 → 0x4218c4 → 0x421ab2 → 0x421c49 → 0x421d42 → 0x421d8c →
+  0x421dcc`. Original Winamp code at `0x421dcc` is `mov eax,1` followed by
+  register restoration and `ret`. The plug-in resumes at `0x0151cab7`
+  (RVA `0x29ab7`) with EAX=1 and saves it as the function pointer.
+- At RVA `0x3670`, original `call dword ptr [base+0x1bc648]` calls address 1.
+  The exception stack's first word is `0x014f6676`, precisely the instruction
+  following that call. Winamp's own exception handler then shows operation (2).
+
+The [Nullsoft SDK header](https://github.com/hugovk/winamp/blob/master/wa_ipc.h)
+identifies 3015 as `IPC_GET_RANDFUNC`, requiring Winamp 5.1+, and explicitly
+requires rejecting both null and 1 before calling the reply. The header also
+specifies that unsupported IPC requests return 1. Its downloaded bytes and
+source/hash receipt are retained in the run. The DLL checks whether its cached
+pointer is zero before requesting it, but does not reject the unsupported reply.
+Thus this fault supplies no proven emulator cause to repair. Replacing the
+reply with a host RNG or patching the guest would conceal the incompatibility.
+
+The retained emulator is still SHA-256 `d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`,
+source-fix reference `de2e338c4`; full compiled source identity remains unknown.
+The already-published enumeration fix is unchanged. Browser threads are off. The reused driver reads `.value` from the function
+export `gl_sw_enabled`, so this run did not measure the software-rendering flag;
+the earlier reported zero is not independently confirmed here. Original
+module/assets and served-file hashes
+are recorded per session. An initial diagnostic wrapper failed because
+TextDecoder rejects a shared view; that attempt is preserved and excluded from
+the causal trace. Both corrected fresh sessions reproduce the address-1 fault.
+
+No visualization render is claimed: the MilkDrop windows contain a gray client
+area before the fault. Next requires an authentic MilkDrop build compatible with
+2.91, or the matching original Winamp 5.1+ host as a separately scoped pairing;
+keep this exact pair as the incompatibility reproduction. No runtime source
+change or guest patch was made in this investigation.
+
+Validation: original-byte/IPC/reply/store/exception/hash/input/cleanup checks,
+`test-sync-send-loadlibrary`, `test-process-boot-yields`, and the locked canonical
+`tools/build.sh` pass. The build tests current main; browser diagnosis uses the
+retained module above. All three Chrome processes are absent, all nine ports
+are closed, profiles removed, and trusted input is released. No Boat was used.
