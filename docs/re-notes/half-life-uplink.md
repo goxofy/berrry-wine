@@ -1956,3 +1956,62 @@ agents' processes were preserved. No Boat/test box was used (ID/state/expiry
 N/A); ownership is handed back. Next: recover `retry/beyond-mine-save/`, freshly
 verify that final export, and continue through the railed area toward the
 satellite objective.
+
+## Fresh beyond-mine recovery and storage-room catwalk (2026-10-31)
+
+Run `20261031T0210Z-uplink-satellite` ordinarily mounts all ten unchanged files
+from `20261031T0151Z-uplink-aim/retry/beyond-mine-save/` with the retained
+original assets and module. The first native Load Game row selects an older
+60/11 state; native F7 then restores the correct cleared passage at
+**health60 / pistol9** (`f7-recovery.png`). Thus the prior final export now
+has fresh-browser recovery evidence. The initial menu lists quicksaves with
+elapsed times13:32 and20:00; selecting the first row alone is insufficient.
+
+Native movement enters the railed storage room (`room-threshold.png`) and
+follows its left catwalk toward the red crate stack (`catwalk-check.png`).
+These are new route milestones beyond the cleared doorway. Native F6 exports
+two ten-file checkpoints: `room-entry-save/` and `catwalk-save/`, both captured
+at60/9. The latter is exposed to active gunfire: F7 restores its position,
+but the first settled capture already shows57 health (`catwalk-recovery.png`).
+It is a hazardous alternative, not the recommended recovery point.
+
+A second fresh browser mounts `room-entry-save/` unchanged. Native Load Game
+selects the20:07 quicksave and restores **health60 / pistol9** in
+`retry/fresh-room-settled.png`. This is the recommended new recoverable export.
+`retry/recovered-stable.png` confirms60/9 after another eight seconds.
+The native rightward inspection finds a wall/end of the platform
+(`retry/room-right.png`), rather than an onward exit. `recovery.txt` records
+the mounts and input recipe. Satellite-objective completion is unverified.
+
+There is **one observed death** during a crossing attempt beside the left
+crate stack (`left-crate-passage.png`); native recovery and F7 return to the
+retained checkpoint. Further jump/duck/strafe attempts lose health under fire
+without establishing a cleared railing or onward exit. Shots toward the
+hanging yellow fixture do not establish an enemy kill; inspection suggests
+the crane hoist. The actual firing enemy remains unidentified. This is a
+concrete gameplay/navigation blocker, not an isolated emulator-defect claim.
+There are no observed unexplained browser disappearances. Loading can retain
+an old scene beneath its loading overlay; wait for a settled HUD before
+judging recovery. Native Escape pauses also need time to reach the menu.
+
+All progress uses native keys, clicks and pointer movement. Read-only angle
+observations guide turns. No cheats, game commands, save edits, guest-memory
+writes or original-asset changes are used. Both launches load exact module
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`.
+Inherited `source-identity.json` and `compile-source-delta.patch` preserve its
+incomplete source identity; this is not a current-main build claim. Served
+host files, native inputs, module bytes, saves and captures are separately
+pinned in this run. Verification checks all65 original files and the ten
+mounted prior save files. This documentation-only continuation changes no
+emulator code and requires no new build.
+
+Only this worker's local browsers, controllers, profiles and board watcher
+are closed; other agents are preserved. No Boat/test box is used
+(ID/state/expiry N/A), and ownership is handed back. Next: recover the safe
+room-entry60/9 export, identify the gun firing across the storage room, and
+establish cover or a route past the red crates before another exposed crossing.
+The first controller exits143 after its requested browser close (sender
+unknown); the retry exits0. Both browsers are absent, all six ports closed
+and private profiles removed. Verification passes342 served response hashes,
+44 original responses,20 exported save pins and211 trusted input events,
+including95 paired key presses with no keys or buttons held.
