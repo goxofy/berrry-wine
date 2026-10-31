@@ -1031,3 +1031,43 @@ process exit is not claimed. Both owned PIDs are absent, three ports closed,
 profile removed and over 7 GB free. No Boat or assigned test box was used.
 Next: recover the four-kill save and engage the passage guard from cover;
 health 11 remains fragile.
+
+## 2026-10-31: passage guard defeated; five-kill save recovered
+
+Run `scratch/runs/20261031T0042Z-quake2-passage/result.json` continues the
+unchanged four-kill/health-11 checkpoint. Personally inspected captures show
+entry into the slatted passage, the next guard approaching, and native blaster
+fire while retreating down the passage. The guard falls; the ordinary F1
+screen confirms **kills 5/18**, with **health 11** retained. Native F6 saves
+the result. Eight native current/quick files were exported without alteration
+to `fifth-save-manifest.json`, then mounted as ordinary files after stopping
+and restarting the app. Native F9 recovery and inspected
+`external-five-kills.png` / `external-resume.png` confirm five kills and health
+11. The recovered save hashes exactly match the exported checkpoint.
+
+The recommended successor checkpoint is that fifth-guard save; `recovery.txt`
+and `remount.cjs` describe recovery. The earlier four-kill save remains intact.
+No later room or level transition is established. Browser gameplay and recovery
+occupied approximately 00:39:30Z–00:41:38Z, below the 20-minute bound. All
+progress used native browser keyboard/mouse input; no guest-memory writes,
+console commands, cheats or original-asset changes were used. No runtime
+repair was needed.
+
+Exact retained module SHA-256 remains
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown. Actual probes report original ref_gl, WebGL 1, ANGLE
+Intel Mesa UHD 620, software flag 0, threads/render Worker off. This does not
+certify a fresh current-main build. All 67 prior registered inputs, including
+65 original assets, remain unchanged; all 158 served responses and eight
+native save files pass hash verification. All 92 recorded input events are
+trusted; final physical mouse mask and native attack bit are clear. The
+installer remains unavailable. Audio, FPS, networking and level completion
+remain unqualified.
+
+Focused evidence verification passes; this is a documentation-only change.
+No page exception, guest trap or FreeLibrary failure was recorded; static
+harness HTTP 404s remain. Browser exit reports code 0 with no signal; the
+controller was stopped with targeted SIGTERM. Both owned PIDs are absent,
+all three ports closed and profile removed. No Boat or assigned test box was
+used (ID/state/expiry N/A); ownership is handed back. Next: continue down the
+cleared passage from the five-kill save and seek health before further combat.
