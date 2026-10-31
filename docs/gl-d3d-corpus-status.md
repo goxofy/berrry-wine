@@ -1,5 +1,30 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+## October 31: Tunnel, Globe and Wormhole startup crash sweep
+
+Run `20261031T0240Z-dx-more-startups` launched registered `dx_tunnel`,
+`dx_globe` and `dx_wormhole` through the cooperative CLI software route,
+without injected input. All three exited zero with no `CRASH`, `RuntimeError`,
+`unreachable` or unimplemented-API signature in their logs. Tunnel completed
+2,905 batches in 15.064 seconds, Globe 16,834 in 15.130 seconds, and Wormhole
+reached 100,000 batches in 9.700 seconds. Personally inspected PNGs show
+textured tunnel walls, the registered textured Globe scene, and Wormhole's
+yellow-green wire grid. Globe's appearance is not a fresh scene-correctness
+finding; preserve the original-scene distinction in its investigation note.
+
+The module hash is
+`8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`;
+compiled-source identity is unknown. Module, region-map, registry and runner
+hashes stayed unchanged across execution, as did all 38 registered input
+files per app. Exact commands, process exits, hashes and observations are
+retained in `executions.json`, `inputs.json`, `after.json`, `assets.json`
+and `summary.json`. No source changed or emulator defect was established.
+These bounded software startup observations do not establish WebGL parity,
+gameplay, audio, performance or completion of the historical 27-app set.
+No matching candidate manifest entry was identified, so this remains
+investigation evidence without a dashboard `result.json`. All three child
+processes ended; no browser, server or Boat was created.
+
 ## October 31: bounded Twist and Boids cooperative startup crash sweep
 
 Run `20261031T0237Z-dx-launch-sweep` launched the registered `dx_twist`
