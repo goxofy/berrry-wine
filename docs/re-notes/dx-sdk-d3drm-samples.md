@@ -1,5 +1,70 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 31: Globe texture-band diagnosis and original-mesh limit
+
+Run `20261031T0114Z-globe-texture` captures the registered Globe scene on
+software and WebGL with retained current module
+`f2911e1fcfc094d3c6d998bbdb071bdd800ede18cd0082a5eed53de15cf08bb9`,
+including producer extent fix `0cbf8aa50`. No animation acceptance was repeated,
+guest asset replaced, or renderer code changed. The earlier descriptions of a
+known texture-band defect are observations, not an established causal diagnosis.
+
+The prominent black cross/band and yellow radiation sign are present in
+`tex1.ppm` itself. Personally inspected `tex1.png`, `live-texture.png`,
+`software/asset-band.png` and `webgl-trace/original.png` show those features.
+All 65,536 live native texels exactly match the source's RGB565 quantization;
+all decoded RGBA texels match bit-replicated RGB565 expansion. This rules out
+a texture load/row-pitch/conversion corruption in that captured texture.
+
+Built-in DX tracing records TEXTUREHANDLE=15, WRAPU=1 and a resolved 256x256,
+16-bit texture with pitch 512. Diagnostic draw observations capture 108 triangle
+list primitives (324 TL vertices), finite U/V values, WRAPU only, repeat U/V
+addressing, point min/mag filtering, no mip filtering and no color key.
+The U range is approximately 0.0413213..0.9586542; V is
+-0.0000610054..0.9999390. Fourteen triangles cross the U seam. The GPU submission
+matches the existing per-triangle wrapping rule for every UV, including 17
+shifted U values. Raw and submitted draws are at different animation times;
+only their stable UVs are compared. `sampler-analysis.json`, `uv-analysis.json`
+and the raw captures preserve the measurements. The existing
+`node test/test-d3dim-texture-wrap.js` passes software WRAPU/WRAPV/WRAP0,
+descriptor field 33 and GPU seam-fixup checks; this fixture is supporting
+regression evidence, not original-scene acceptance.
+
+Archive verification exposes a separate baseline problem. The retained
+`idx5sdk.exe` installer (SHA-256
+`6cde9ba718866e21e8b197b599fc9193a9044b8159af8baddbefec16ae531b51`)
+contains an executable and `tex1.ppm` identical to the registered copies, but
+its `SPHERE3.X` differs from the mounted mesh:
+
+| Input | Registered copy | DX5 archive copy |
+| --- | --- | --- |
+| sphere3.x | 10,373 bytes, text, 56 vertices / 108 faces | 30,996 bytes, binary, 296 vertices / 588 faces |
+| SHA-256 | `bb8bd85a4f13ef27777690295264f7f2475b3b4bb4e936e3b3394ee08c05360f` | `c1b01f8fe97280fdcad69dce085f9dd34318e0ad45e90585a7f786c4b6f5fb1e` |
+
+The archive's original `globe.c` explicitly loads `sphere3.x` and `tex1.ppm`,
+constructs a cylindrical wrap and applies it to the mesh. Both meshes and that
+source are preserved in the run; the archive mesh was **not** mounted. Thus
+these captures use the original executable and texture, but do not establish
+the original DX5 mesh scene. Earlier references to an entirely original Globe
+scene must be read with this qualification. The local mesh's provenance and
+the cause of any distortion beyond the texture's intentional band remain
+unresolved. No evidence justifies changing the sampler. Next work requires
+an explicitly authorized original-mesh baseline and a frame-aligned native
+reference before attributing any remaining seam to rendering.
+
+`verification.json` pins 38 registered inputs and verifies all 546 served
+responses across three browser launches. `current.wasm`, asset snapshots,
+served-source snapshots, archive extracts, observation scripts and
+`recovery.txt` preserve recovery. Chrome 151 uses ANGLE SwiftShader with guest
+threads disabled; owning-host GPU is enabled on the traced WebGL route and
+disabled on software. The first WebGL browser disappeared after its initial
+capture (cause unobserved); a fresh traced run supplies the complete GPU
+diagnosis. All three controllers/browsers are absent, nine HTTP/CDP/control
+ports closed and profiles removed. No Boat/test box was used. This is an
+unresolved rendering investigation, not a production repair, pixel-parity
+claim, native correctness certification or performance result. No build was
+required for this documentation-only change.
+
 ## October 31: original Twist threaded WebGL freeze repaired
 
 Run `20261031T0104Z-twist-thread-freeze` first confirms the current-build
