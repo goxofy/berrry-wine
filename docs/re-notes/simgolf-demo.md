@@ -1582,3 +1582,63 @@ entry arguments and the preceding DirectSound lock outputs without a timing-heav
 breakpoint, then verify native play-tool selection before repeating the stroke.
 All local test browsers, ports, and private profiles are cleaned up; no Boat box
 was used or shut down. See `result.json` for final module/backend/cleanup evidence.
+
+### 2026-10-31: Lock-to-converter cause captured; original practice scored
+
+Run `scratch/runs/20261030T2358Z-simgolf-lock/result.json` closes the missing
+entry-argument trace and reaches native scored practice. No additional production
+change is justified: the existing complete-PCM-frame cursor repair `6a28a08e3`
+already addresses the demonstrated cause.
+
+A diagnostic module adds observation-only host callbacks at converter entry and
+after DirectSound Lock has written its outputs. The converter callback is guarded
+by the exact entry address; observations use bounded counters and a 300-event ring,
+without breakpoints or guest memory writes. The reconstructed source closure,
+three VFS overrides, compiler script, and module hashes are retained. Identical
+module `9d183ea4…` was compared with current repaired host audio and the exact host
+audio from the parent of `6a28a08e3`; original game assets were unchanged.
+
+At `2026-10-31T00:00:58.052Z`, the old clock's Lock on the 65,536-byte ring had
+`offset=62891`, `bytes=2646`, `flags=0`. It returned spans `(19228599,2645)` and
+`(19165708,1)`. The original caller converts each span using
+`2 * floor(spanBytes / 4)`, producing converter counts **1322 and 0**. The second
+entry's stack explicitly contains destination `19165708`, source `18679608`,
+count zero, and return address `0x01162a12`. Original `sound.dll:10005890` executes
+its conversion body before decrementing ECX; zero therefore underflows and runs
+past the output buffer. This connects the prior captured negative-ECX writer at
+`100058c4` to a concrete fractional-frame DirectSound boundary. The guest then
+stopped with tracked object words `[0x00adf938,0]`. This comparison did not replay
+the exact prior `10017a39` terminal, so that particular terminal is not claimed.
+See `old-clock/causal-zero-count.json` and the surrounding retained samples.
+
+The repaired comparison observed 3,357 converter entries and 5,134 Locks with no
+recorded anomaly; both tracked JGL words remained `0x00adf938`. Aggregate statistics
+were enabled midway: those later 1,333 converter entries had minimum count two,
+and 1,277 Locks included 56 wraps with no unaligned spans. These bounded
+observations support the existing repair, rather than a new converter workaround.
+Focused cursor, ring-wrap, and frequency regressions all pass. This task changes
+only this note, so it does not claim a new locked production build; the repair's
+locked build remains documented above.
+
+A separate original-game play run used the supplied retained `7e8d3194…` module
+with repaired host audio `f8770324…`, cooperative threads, WebGL selected and
+SwiftShader, with the game drawing through GDI. That retained module's source
+provenance remains unknown; it is not represented as the freshly traced build.
+Native construction opened a 55-yard par-3 at Ravenwood Farms. Gary's People menu
+started practice; selecting the native **Straight Shot** tool and aiming at the
+green displayed the actual shot line and Lob Wedge controls. The inspected
+`play/shot-button-after-aim.png` shows Gary's first-hole score **2**, with Jimmy
+still at zero; `play/scored-practice.png` subsequently shows both at **2** and the
+hole's stroke average **2.00**. `play/aim-green.png` preserves tool selection.
+These are original UI inputs and original scoring, not synthesized gameplay.
+The Information button tried earlier opens Reports and was not the needed play
+tool. The initial black field was an off-course camera position; native panning
+revealed the course. Neither observation establishes an input or renderer defect.
+
+At closeout the game was running and both tracked object words were valid. All
+111 captured browser input events were trusted, with keys and buttons released.
+All 1,763 native asset files (65,166,518 bytes) remain identical, and served original
+asset hashes were checked against that census. All four owned browsers (including
+an excluded early 404 launch), ports, and private profiles were closed or removed.
+No Boat box was used; box ID/state/expiry are not applicable. Full traces, module
+identities, original screenshots, and cleanup checks remain in the run directory.
