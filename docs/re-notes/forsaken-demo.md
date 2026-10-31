@@ -62,3 +62,62 @@ fix gives the table its own `$DX_MAX`-sized region, and
   `readme.txt` §VI.
 
 Evidence: `scratch/runs/20261011T0420Z-forsaken_demo-gameplay-w5`.
+
+## Browser Volcano movement/combat, 2026-10-31
+
+Evidence: `scratch/runs/20261031T0401Z-forsaken-play/`, including the
+`explicit/` retry. Personally inspected actual gameplay beyond the briefing;
+readable sustained play is blocked by severe rendering corruption. No production
+repair, enemy kill, or level exit is claimed.
+
+- First execution: 03:59:39–04:02:44 UTC. The textured starting room showed
+  lives 5, SHLD/HULL 128 and PULS 2000. Ctrl produced visible green bolts and
+  PULS 1998. A thrust changed the corridor view; impacts reduced shields to
+  95, followed by death/respawn and lives 4. The native pause menu also drew.
+  See `level-wait.png`, `primary-fire.png`, `through-door.png`,
+  `combat-fire.png`, and `pause-held.png`.
+- Explicit retry: 04:03:26–04:05:54 UTC, same retained runtime bytes,
+  `/index.html?threads&debug&no-log&d3d-renderer=webgl`. Enter advanced
+  the original logos → Single Player → Start Volcano → briefing. Waiting
+  after the full loading bar and continuing reached the room. Ctrl 500 ms,
+  A 500 ms, Right 300 ms, A+Ctrl 1500/1200 ms and A 2500 ms exercised native
+  firing, rotation and thrust. PULS reached 1970; shields/hull fell under
+  incoming fire; the final death frame reads “ENEMY KILLED YOU.”
+  See `explicit/move-settled.png`, `advance-fire.png`, `forward-combat.png`,
+  `corridor-progress.png`, and `combat-final.png` within that subdirectory.
+- The first URL used `gl-renderer=webgl`, which is not the Direct3D selector;
+  live WebGL selection was verified, but the explicit retry removes that
+  ambiguity. Both used default guestWorker, Threads enabled, Chrome
+  151.0.7922.108 headless, stable 1024×768 viewport, original assets, and
+  trusted browser keyboard/mouse events. No cheats, state patches or asset
+  changes. These are functional captures, not headful performance evidence.
+- `explicit/live-backend.json` and `combat-backend.json` record the actual
+  renderer: ANGLE, Intel UHD Graphics 620 (KBL GT2), Mesa 23.2.1 / OpenGL
+  4.6 Core. Despite launch flags requesting SwiftShader, the measured driver
+  was Intel. The live legacy endpoint requested WebGL, completed GPU draws,
+  and reported zero software fallback draws and zero GPU errors.
+- Concrete visual blocker: frames alternate between the complete room and
+  retained Volcano briefing fragments with only part of the world updated;
+  combat then becomes heavily red/white and over-bright. The explicit retry
+  reproduces it, including fragments before combat. Source cause is unknown;
+  screenshot completion and zero API errors do not establish correct rendering.
+
+Both executions loaded module SHA-256
+`7f9da4e9da5183e9f7f061d2356cd34626fe74bdbaf7da0345f6693dd81152be`;
+compiled source/commit remains **unknown**. Observed checkout HEADs in
+`started.json` are not module provenance. EXE SHA-256
+`366ec5d0943daca839836296f9fb52724e94dc155630c6b0c30d7181106b5e24`,
+local manifest SHA-256
+`587ce145ab73a3fed2c7136425bb6a7bcf28def312d430c8bf7d1be802b2260b`.
+The 107 fetched runtime snapshots are retained by hash; original inputs and
+served bytes have before/after checks. Exact wall-clock inputs, launch flags,
+backend reports, verification and recovery instructions are in the bundle.
+
+Current default controls, confirmed against the original readme §VI: A/Z
+forward/reverse, arrows rotate, Ctrl primary, Space secondary, Alt strafe,
+Escape pause. This supersedes the older “A did nothing” observation as a
+control mapping. Both owned browser/controller processes exited, profiles and
+HTTP/CDP ports were removed/closed. No Boat/test box allocated (ID/state/expiry
+not applicable); ownership returned. Next investigate the WebGL transition /
+frame-clear or presentation boundary with this retained module and originals;
+those are investigation targets, not established causes.
