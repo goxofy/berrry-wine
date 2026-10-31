@@ -238,3 +238,34 @@ font-name placeholders unfilled; this repository preserves it unchanged.
 Original Microsoft `.FON`/`.FNT` resources must not be committed without a
 verified redistribution license. Users may provide their own Win98 font files
 for exact local comparisons.
+
+## TrueType collections and embedded monochrome strikes
+
+The WAT TrueType loader registers each face of a `.ttc` installed in
+`C:\WINDOWS\FONTS`, keeping a face index and sharing the collection payload.
+LOGFONT selection recognizes the face's family-name records, including Unicode
+localized names through CreateFontW/CreateFontIndirectW. Enumeration currently
+uses English names; reporting localized family names awaits process ACP 950
+support. Code-page conversion is unchanged.
+
+GetFontData with table zero starts at the selected member's original offset
+table, preserving its file-relative table offsets. The `ttcf` tag reads the
+complete collection. Single TTF data is returned verbatim.
+
+At an exact device ppem, EBLC/EBDT 1-bit images supply glyph pixels, bearings,
+and advances. Index formats 1, 2, 3, 5 and image formats 1, 2, 5, 6, 7 are
+supported. An absent glyph, unsupported image, malformed strike, or unmatched
+size uses the existing outline path. Native bitmap pixels are not scaled twice
+on mapped DCs; ink can extend beyond the font's ascent or cell height.
+
+`tools/gen-font-subsets.sh` now preserves EBLC/EBDT when intentionally generating
+new subsets. The previously committed subsets have not been regenerated as part
+of this change, so their recorded bytes/hashes above remain unchanged. Their
+historical outputs omit the embedded Tahoma tables; a future regeneration with
+the current generator will intentionally change those two outputs.
+
+`test/fixtures/ttc-ebdt/` contains tiny original CC0 test fonts and a reproducible
+fontTools generator. Headless tests need no network or third-party CJK font.
+Original MINGLIU.TTC must remain user-supplied and uncommitted. Optional AR PL
+UMing comparisons belong in scratch only. Vertical `@` face synthesis and ACP
+950 conversion/localized enumeration are separate work.

@@ -1,0 +1,14 @@
+These tiny TrueType fixtures are original test artwork, dedicated to the public
+domain under CC0-1.0. No installed or third-party font was used. The Chinese
+strings are family-name metadata, not copied glyph designs.
+
+Rebuild deterministically with `python3 tools/gen-ttc-ebdt-fixtures.py` (fontTools
+required). Tests read the committed output and need neither Python nor network.
+
+`bitmap.ttf` has a solid rectangle outline and a deliberately different 5x5
+checker/cross bitmap at 12ppem, with advance 9 instead of the outline's 7 pixels.
+It covers index formats 1/2/3/5 and image formats 1/2/5/6/7. F is absent from a
+sparse E..G strike range; E/G extend above the normal font ascent; space is an explicit empty image with advance 4.
+`faces.ttc` contains this face and Fixture Other (different outline advances),
+with English and Traditional Chinese family names. Tables are shared by the TTC
+writer, exercising file-relative offsets and payloads before face directories.

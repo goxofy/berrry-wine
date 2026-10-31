@@ -84,7 +84,8 @@ subset() {
     --notdef-outline \
     --layout-features='' \
     --legacy-kern \
-    --drop-tables+=EBDT,EBLC,BDF,VDMX,FFTM,GDEF,GPOS,GSUB \
+    --drop-tables+=BDF,VDMX,FFTM,GDEF,GPOS,GSUB \
+    --drop-tables-=EBDT,EBLC \
     --name-IDs='*' \
     --recalc-bounds \
     --output-file="$tmp"
