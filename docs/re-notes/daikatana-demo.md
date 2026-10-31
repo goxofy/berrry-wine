@@ -140,3 +140,40 @@ blindly or claim an emulator fix from this navigation failure. No assets,
 guest state or production source were patched. Both owned browsers,
 controllers, profiles and local servers were closed; no test box/Boat was
 allocated. See the run's `verification.json` for final checks and timing.
+
+## Basin navigation continuation; viewport observer hazard (2026-10-31)
+
+Run `20261031T0339Z-daikatana-route` reused the atomic command writer and
+retry driver with the same 106 retained host/module snapshots and 458
+unchanged original inputs. Chrome 151.0.7922.108 again used ANGLE SwiftShader,
+explicit WebGL and the default guestWorker. The retained module remains
+`8333a35b1efa694462033e87f62ce4a3f5497941d1423540b39a590c9d31134a`,
+compiled-source unknown; neither observed checkout HEAD identifies its source.
+
+Inspected `pickup-forward.png` confirms the Ion Blaster pickup, and
+`left-away-waterfalls.png` shows 40 rounds and health 100. Backing away,
+turning and strafing reached the tree, twin waterfalls and the green drainage
+channel beside the raised coffin platform (`ridge-settled.png`). No tunnel
+opening or traversable exit was visually confirmed. Turns varied in effect;
+the evidence does not establish a production input or physics defect.
+No attack was issued, and no enemy combat or map transition was confirmed.
+The overhead yellow-searchlight object alone is not combat acceptance.
+
+A diagnostic Puppeteer connection omitted `defaultViewport: null` and reset
+the page to 800x600. Subsequent frames showed the app stopped; the cause of
+that stop is unknown. This invalidates the attempt's later stable-viewport
+evidence. Do not attach that `inspect.cjs` observer during recovery.
+The fresh `retry/` used only the original controller and kept every recorded
+viewport at 1024x768. It reached the swamp again but did not establish another
+pickup or an open route; inspected `retry/final.png` still faces basin rock.
+
+Execution was 03:39:08–03:56:02 UTC. Both attempts passed verification of all
+original input hashes and retained snapshots; recorded native events were
+trusted with all keys/buttons released. The retry controller session exited
+143 after atomic quit without writing its final cleanup record; the signal
+cause is unknown. Separate checks verified both controller/browser PIDs
+absent, both server ports closed and both profiles removed. No Boat/test box
+was allocated. `verification.json`, `RECOVER.md` and `result.json` preserve
+the limits and recovery inputs. No production files or original assets were
+changed, and no build or emulator repair is claimed. Next: locate and visually
+confirm the far-side drainage tunnel from the pickup before further turning.
