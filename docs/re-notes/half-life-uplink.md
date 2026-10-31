@@ -2015,3 +2015,69 @@ unknown); the retry exits0. Both browsers are absent, all six ports closed
 and private profiles removed. Verification passes342 served response hashes,
 44 original responses,20 exported save pins and211 trusted input events,
 including95 paired key presses with no keys or buttons held.
+
+## Covered floor route, soldiers identified, fresh native recovery (2026-10-31)
+
+Run `20261031T0222Z-uplink-cover` freshly mounts the ten unchanged
+`20261031T0210Z-uplink-satellite/room-entry-save/` files. Native Load Game
+selects20:07 and restores **health60 / pistol9** (`room-restored-page.png`).
+An initial leftward peek identifies two armed figures on the warehouse floor;
+`attacker-inspect-page.png` shows the right-hand muzzle flash. The later
+`pinned/aimed-gap-burst-page.png` and `pinned/soldier-head-burst-page.png`
+clearly show a human soldier. Read-only extraction of the original PAK's BSP
+entities corroborates human grunts. This identifies actual attackers before
+spending ammunition; no shots target the hanging yellow crane fixture.
+
+After native F7 resets the initial peek, a different route avoids the left
+catwalk: from the room-entry view near yaw354, hold forward+Space300ms,
+then forward+Ctrl2500ms. This drops directly behind the green crates beneath
+the entry platform (`direct-floor-route-page.png`). Its immediate HUD still
+shows60; the settled HUD falls to **44**, consistent with delayed fall damage.
+Health then holds44 over another six seconds (`floor-cover-settled-page.png`).
+This is a new covered floor traversal milestone, not proof of a cleared room
+or a safe onward exit. All timings are real controller holds, not guest-time
+guarantees.
+
+Native F6 exports ten unchanged game-generated files to `floor-cover-save/`.
+A fresh browser ordinarily mounts all ten and native Load Game selects20:36,
+restoring **health44 / pistol9** (`pinned/fresh-floor-restored-page.png`).
+Native movement inspects beneath the catwalk and a gap between crates. A
+soldier moves across that gap; four pistol rounds reduce9→5 without a
+confirmed kill, while incoming fire reduces44→20. The player then restores
+the saved44/9 state with native F7 and waits six seconds
+(`pinned/final-recovered-page.png`). The verified export remains the covered
+floor state, not the later damaged combat state. There are zero observed
+deaths. Enemy defeat, room clearance and satellite completion remain unverified.
+Next: use this floor checkpoint, establish cover that blocks the crate-gap
+firing lane, and engage the mobile soldiers before advancing north.
+
+Fresh recovery also exposed an exact build limitation. The shared host mirror
+changed after the successful first launch: `fresh/startup.png` records the
+retained WASM's layout `54a33f1054df7c3f` conflicting with the current mirror's
+`b77d93777a0f7d95`. The final `pinned/driver.cjs` serves the first launch's
+unchanged captured host files from `served-source/`, together with the same
+retained WASM. This restores launch and native-save recovery; it is an evidence
+harness adjustment, not a production repair or a current-main build claim.
+An intervening retry is abandoned before native loading because its save-size
+metadata predates the final export; the successful pinned mount has exact
+final sizes and unchanged bytes. All four launches and failures are retained.
+
+The loaded module is exactly
+`7e8d3194fd189a8e0089b41ee5972b08b67fd5650d6dfbe2a2fbb9d3c323a327`.
+Inherited `source-identity.json` and `compile-source-delta.patch` preserve its
+incomplete compiled-source provenance; actual served host files are pinned
+separately. No cheats, game commands, guest-memory writes, save edits or
+original-asset changes are used. Read-only angles and a camera-region dump
+guide observation. Verification passes65 original files, ten prior mount
+pins, ten exported save pins,623 served response hashes,44 original responses
+and259 trusted input events, including112 paired key presses with no held
+keys/buttons. Input logs, drivers, captures and module receipts are hashed in
+`artifact-pins.json`. This documentation-only change requires no new build.
+
+Only owned resources are closed: all four browser PIDs are absent, twelve
+HTTP/control/CDP ports closed, and four profiles removed. Controllers exit
+143/0/0/143 after requested closes; the143 sender is unknown, so clean normal
+controller exit is not claimed. There are no unexplained browser losses.
+Other agents are preserved. No Boat/test box was used (ID/state/expiry N/A);
+ownership is handed back. Recovery instructions and evidence are retained in
+this run's `recovery.txt`, `verification.json` and `result.json`.
