@@ -1,5 +1,41 @@
 # OpenGL / Direct3D corpus status, reconciled 2026-10-20
 
+
+## October 31: bounded OrganicArt original-input recovery found missing source
+
+Run `20261031T0058Z-organicart-recovery` searched the accessible retained
+local sources without repeating the native logo-toggle or substitute-image
+controls. No authentic `CALogo.gif` or source-verified Plus! 98 installation
+registry defaults were recovered. Consequently no new scene replay or
+production change is claimed.
+
+The search inspected 538 ZIP indexes and 104 TAR/TGZ member lists, plus one
+ISO listing. Its only OrganicArt executable match was a byte-identical copy
+of the existing `OASAVER.SCR` in `/tmp/caesar3-packet.tgz`; it supplies neither
+the missing logo nor installation settings. All 47 CAB listing attempts
+failed on unrelated retained game installers' InstallShield format; their
+contents remain unverified. A UTF-8/UTF-16 settings search over 380 retained
+INF/REG/INI/THE/SCN files found no logo/default-setting evidence. The original
+executable's 57-resource inventory has no named CALogo resource and the PE
+has no GIF87a/GIF89a signature; encoded/compressed assets are not ruled out.
+
+The concrete missing input is the authorized original Plus! 98 installation
+media/metadata or a verified installed logo/settings export for this package.
+The historical source lead in `directanimation-design.md:146` is
+`/Volumes/PLUS98/PLUS98.CAB` and memory `reference_plus98_iso.md`; neither is
+present here. This lead does not establish that the CAB contains the logo.
+Native fallback values do not establish installation defaults, so an arbitrary
+logo-disable setting remains unjustified.
+
+The run preserves the search recipe, archive results and limitations,
+192-file screensaver SHA-256 manifest, original archive/member hashes and
+`verification.json`: all 85 prior registered inputs and 192 retained files
+remain unchanged. Original `OASAVER.SCR` SHA-256 is
+`470e28bcbc3cf92c514cd8e8bbf9eae399c59f79ed2adbf7bf2b91d25cfb477c`.
+No browser, server, profile or Boat/test box was created; no runtime cleanup
+is outstanding (box ID/state/expiry not applicable). This was a local source
+recovery attempt within the 25-minute bound, not a fresh rendering test.
+
 ## October 31: OrganicArt rectangle isolated to native logo input
 
 Run `20261031T0046Z-organicart-logo` supersedes the startup-only native
