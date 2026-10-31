@@ -12,6 +12,40 @@ DirectDraw and Direct3D Immediate Mode underneath it. That makes them a good
 test of the D3DIM surface: d3drm is unmodified and will simply decline to
 render if it does not like what it is given.
 
+## October 31: Sci-Fi owning WebGL motion verified
+
+Run `20261031T0150Z-scifi-webgl-motion` confirms the exact registered app is
+`scr_scifi`, launching original `SCIFI.SCR /s` with `SCIFI.SCN`, `SF_BACK.GIF`,
+`SF_BIRD.GIF` and `SF_PINCE.X`. All five input hashes match the October 30
+paired batch. No scene assets or emulator code were changed.
+
+Personally inspected `webgl/scr_scifi/frame1.png` through `frame4.png` show
+orange/yellow birdlike creatures changing position and pose, with moving
+shadows over textured dunes beneath a red sky. The four rendered captures span
+31.827 seconds, approximately ten seconds apart. Scene-only pixel comparisons
+exclude the UI and clock and find 5,079, 5,833 and 4,328 changed pixels between
+successive frames. Each state sample records the owning host's GPU enabled,
+guest threads off and WebGL selected; GPU draws increase 328 → 3,471 and async
+flips 61 → 516, with zero recorded executor errors or fallbacks.
+
+This reuses the paired batch's retained module SHA-256
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`,
+Chrome 151 and ANGLE SwiftShader. All 150 successful served-file hashes,
+including guest `d3drm.dll`/`d3dxof.dll`, were checked against retained bytes
+and the unchanged files after the run. `verification.json` pins inputs,
+module, guest DLLs, captures and counters; `recovery.txt` retains commands.
+Console output includes missing optional DLL/resource messages and repeated
+ANGLE READ-usage performance warnings; this is not a warning-free-run claim.
+
+The earlier WebGL motion gap was an inspection/budget limitation: its first
+two screenshots are byte-identical white startup, and only its third shows the
+scene. The retained original scene now demonstrably animates through WebGL;
+no emulator motion defect is established and no code fix or build was needed.
+This does not certify a current-main module, native Windows parity, physical
+GPU performance, complete scene correctness or a complete saver cycle. The
+owned controller exited 0; Chrome is absent, its HTTP port is closed and its
+private profile removed. No Boat or test box was used.
+
 ## October 30: six screensavers, consolidated paired browser captures
 
 Run `20261030T2340Z-screensaver-browser-batch` completes inspected scene
