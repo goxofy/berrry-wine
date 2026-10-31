@@ -1116,13 +1116,13 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 
 - [~] Keep two new games moving toward playable gameplay with screenshots
   id: NEW-GAMES-PIPELINE
-  worker: coordinator (remaining callback source assignments)
-  status: active (remaining source prerequisites; gameplay qualification incomplete)
+  worker: diablo2-automap-den-entry-main-oct31; revolt-default-worker-backbuffer-repair-main-oct31
+  status: active (two inherited gameplay lanes; readable sustained gameplay still incomplete)
   reclaimed: 2026-10-07T07:42:56.312Z
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   accepted: 2026-10-04T02:11:10.446Z
   accepted-by: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  Next: RichEdit edit_stream_call source3c01665c was delivered by edit-stream-owner-oct20; fullVM is pending. Remaining callback/JS/concurrency/SEH source prerequisites need coordinator assignment. Circus ICM source066436de and native fixture1bae355 await fullVM. Mad Bomber original gameplay is accepted (CLI0c0fa3eb, browserf09e09c6); its separate wave API fullVM qualification remains distinct. Army Men original CLI movement/fire/scroll is accepted on mainb88c818ba; Hock normal browser Launch and mouse scoring0/20→10/20 on main80f8278a; Hype ordinary Up/Down gameplay and its dedicated bounded logical FPS interval on mainfe49a84e. These accepted outcomes have no outstanding access/publication hold. Remaining child criteria stay open: Jedi needs recovery/verification of the missing pinned original closure and evidence of its unknown DirectX predicate before qualification. Runtime-dependent work needs coordinator allocation and authorized access; existing403 applies only to affected routes. Source work is not blanket blocked. All boxes are coordinator-reported stopped; no runtime admission or new assignment is implied.
+  Next: Fresh coordinator 01a19022 takes over October31. Diablo II native automap/Den exploration and Re-Volt known-source backbuffer repair are live at the two-worker cap. Refill terminal lanes with fresh single-task workers; serialize browsers and keep heavy benchmarks on separate boats. Forsaken598564490 verifies movement/fire/incoming damage/death but retains severe visual corruption; source/frame presentation repair is queued. Historical accepted child results remain accepted. No public deployment; Heroes II and laptop font work remain laptop-owned.
   done: Recurring user priority, not complete after two games; each child task needs a working launch route, visible player-controlled gameplay, ordinary input response and a reviewed screenshot linked to its run and source.
   notes: Known freeware/shareware/demo titles first; public NFS/Diablo/StarCraft variants do not count as new games. Serialize browser and benchmark ownership; preserve review gates. Standing policy in ops/ORCHESTRATOR.md.
 
@@ -1130,7 +1130,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: OPS-ALL-GAMEPLAY-COVERAGE
   status: blocked (saved runtime box stopped; owner resume required)
   reclaimed: 2026-10-07T07:42:56.312Z
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   created: 2026-10-03T08:30:54.631Z
   created-by: user via Telegram
   accepted: 2026-10-03T08:30:54.631Z
@@ -1187,14 +1187,15 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: GLD3D-CORPUS-27-20261006
   Observed gameplay (updated 2026-10-31): QuakeII original browser ref_gl/WebGL1 reached seven kills at health21; native F6 checkpoint exported as eight files and restored byte-for-byte in a fresh browser (run20261031T0055Z-quake2-courtyard). Root inspected seventh-kills.png and verification.json: 65 original assets, 424 served responses and external remount pass. Observed renderer is ANGLE Intel Mesa UHD620, software flag0; retained moduled69d1158 has unknown compiled-source identity. Later doorway attempt found no eighth kill and recovered the retained21HP/7-kill checkpoint (run20261031T0213Z-quake2-door); level completion remains open. Earlier GLTron original browser WebGL round reached crash/winner and native restart (run20261030T2230Z-gltron-browser, module7e8d3194, notes802fc9e66). Four screensaver apps retain bounded software observations in20261030T2226Z-d3drm-four-scenes: Architecture/RockRoll/OrganicArt recognizable scenes, Jazz partial; retained1dbddeaf predates current main. These observations do not establish current-main parity or full27 coverage.
   note: 2026-10-31T04:00Z bounded original Forsaken software route reached inspected Volcano briefing/loading scene at1129batches/60.030s; firing scheduled1180 was not reached, so no movement/combat acceptance. All876 original/runtime input hashes unchanged; retained module7f9da4e9 compiledsource unknown, run20261031T0400Z-forsaken-volcano. Fresh worker pursues actual browser gameplay past briefing. Daikatana route80b11f423 preserved without verified exit; Pirates8581ed6dd records effective-state boundary and generic page crashes without production cause/fix.
-  status: active (remaining texture source audit; both-backend gameplay incomplete)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
-  worker: diablo2-blood-moor-den-of-evil-main-oct31; revolt-original-race-lap-main-oct31; forsaken-original-volcano-browser-combat-main-oct31 (fresh original-game progression lanes; prior Pirates boundary trace preserved after browser crashes)
+  status: active (known-source Re-Volt repair; full27 software/WebGL coverage incomplete)
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
+  worker: diablo2-automap-den-entry-main-oct31; revolt-default-worker-backbuffer-repair-main-oct31 (two live production workers; Forsaken terminal)
   prev-owner: claude:1863d2b5-bc58-4c0b-9c15-00fc951f0256 (fleet stopped)
   created: 2026-10-06T02:09:48.337Z
   accepted-by: claude:80aa9e95-435b-4acb-aeea-8ae3d860613c
   Next: Surface4/7 ABI is merged. legacy-texture-rest-oct20 owns remaining noncube capability contracts. Cube advertisement correctionf856627 is off main pending fullVM, not cube storage support. Hype bounded browser logical FPS independently accepted20261021:188callbacks/10708.68ms=17.5558518884 on software ANGLE/SwiftShader WebGL; see HYPE-BROWSER-FPS-20261013 and docs/reviews/hype-fps-independent-integration-20261021.md. Historical27 membership and software/WebGL gameplay coverage remain incomplete; exact local path checks are in docs/re-notes/dashboard-actionable-reconciliation-20261020.md.
   note: 2026-10-30T21:09Z coordinator: Main1beaec304 fixes SDL GetProcAddress fallback advertising unsupported compiled-array extensions. Material Begin/End lighting/validation/display-list repair27d8413c6 is on main with locked build and focused GL tests passing. Original Frozen River real-ticks run (module9e37f0f1 matching repaired sources; run20261030T2127Z-tuxracer-closeout) verifies actual Left/Right/Up dispatch and SDL0->1->0, inspected turns and120-second checkpoint fish8/speed11/time01:46.79, exit0. Root inspected frame and delivered Telegram1650. All140 retained files SHA verified; Boat snapshot verified STOPPED before expiry. Subsequent original Frozen River native software run finished Practice RaceOver02:08.45/Herring17/Score0 and native Enter returned to matching best-result selection (run20261030T2133Z-tuxracer-finish, source27d8413c6/module69bd55de/runnerc82398cf,158 original assets verified). Root inspected finish frame and delivered Telegram1651; notesf0d0831aaa pushed, locked build/material-display-list tests passed. Successful run222.773s exited0, own processes/control port cleaned, no Boat. Earlier controller SIGTERM retained without finish claim. Original browser/WebGL FrozenRiver Practice also finished01:29.76/Herring8/Score623 with native Enter returning matching best result (run20261030T2145Z-tuxracer-browser, original module69bd55de and158 verified assets). Root inspected RaceOver frame and delivered Telegram1653. Repair8f6c7bec9 on main restores GLU power-of-two texture resizing, eliminating opaque tree billboards; focused tests, WebGL1/2 pixel checks, display-list tests and locked build passed. Extra GLU-scale suite retains a pre-existing API-table hash assertion before scale cases. Exact race/final frontend distinction retained in source manifests; cleanup verified, no Boat. Hardware GPU, full-scene parity, competitive timing/audio/performance remain unqualified. Original CaesarIII browser city gameplay subsequently built roads/housing/well/prefecture and population0->45; inspected Large tent has7occupants at September population41 (run20261030T2200Z-caesar3-city, source d4fb06b46/module1dbddeaf, documentation4ed5e6dd1 on origin/main). Root inspected occupied-tent screenshot and delivered Telegram1655. Focused gameplay and locked build passed, but later build module differs from pinned gameplay due concurrentGL edits; manifest retains distinction. Own browsers/servers stopped, no Boat. Population150 objective/services remain incomplete; this2D city does not qualify a GL/D3D backend. Fresh QuakeII browser gameplay worker1018201 takes the freed slot. Darkstone original registered demo now verifies native left-click Town-to-Land of Ardyl transition on software and WebGL, plus visible software player locomotion across a clearing (run20261030T2110Z-darkstone-locomotion; notes7066a1433). Retained sourceba96fc3ad/module6085eff5, all15 assets and1292 served files pinned; actual consumed mouse messages and owning draw progress retained. Root inspected clearing frame and delivered Telegram1649. Software clean exit0; WebGL143 cause unknown, exact owned Chrome cleanup verified. Subsequent committed-main repair328b6631a restores legacy texture-combiner diffuse alpha instead of opaque foreground trees/palisade; focused native/GPU descriptor tests, rejecting mutation, texture-wrap tests and locked build passed. Original WebGL and software Town/Ardyl runs on module4649ee5f verify translucent foreground and native movement beside birch (run20261030T2124Z-darkstone-occlusion); root inspected repaired WebGL frame and delivered Telegram1652. Notes10952264c and repair verified on origin/main; owned browsers/server cleaned, quit acknowledged but outer143 cause unknown. Original WebGL skeleton combat then showed enemy death and surviving player LIFE32/35, MANA25/25, nonzero EXP (run20261030T2158Z-darkstone-combat, documentation dc988e7cb, same committed module4649ee5f and15 unchanged assets). Root inspected inventory frame; automatic engagement preceded held-left input, so sole-click causality is not established. Fresh worker1005873 pursues software manual combat. Full-scene backend parity, software combat/audio/FPS and historical27 membership remain unproven. GLTron production repair d4fb06b46 on main fixes CRT/import corruption and missing GL calls; focused tests and locked build passed. Original92 assets verified, software module1dbddeaf ran180s with native Return/A/S/Escape through menus, light-cycle gameplay, crash/winner and menu return without guest trap (run20261030T2141Z-gltron-main-gameplay). Root inspected arena frame, Telegram1654 delivered. Software white/black trail/shadow artifacts remain; fresh worker1004734 repairs them. Browser/audio/parity unqualified; local cleanup verified, no Boat. Enigma Chrome Tutorial2 completed and automatically reached inspected Tutorial3 (run20261030T2059Z-enigma-level2, source934fd8290/moduleaa2bf6fa; Telegram1646); this2D result does not qualify a GL/D3D backend. Sole Tux/Enigma Boats snapshot-verified STOPPED; Darkstone local Chrome/server cleanup verified, outer143 teardown unexplained. Both-backend gameplay for the full27 remains open.
+  note: 2026-10-31 fresh coordinator reviewed Forsaken598564490 and explicit/combat-final.png: native movement/fire/ammo consumption and player death are observed, but retained briefing fragments/overbrightness prevent readable sustained gameplay. Module7f9da4e9 compiled source unknown; no production fix or full backend acceptance. Run20261031T0401Z-forsaken-play.
   Done: Status table for the full GL/D3D set in docs (software + WebGL per app, with run ids), and each fixed app has a reviewed in-game screenshot and commit on main.
   Evidence: memory project_gl_d3d_corpus_goal (27-app set, 2026-09-22); tools/gfx-app-census.js; tools/gl-name-census.js
 
@@ -1203,7 +1204,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   status: blocked
   note: 2026-10-06T21:25Z parked at WIND-DOWN, not started. Next: page probe on MW3 menu wrapping the D3DIM executor's readPixels/fenceSync/getBufferSubData (lib/d3dim-gpu.js asyncFlip path) to find which PBO is written again before its readback; likely reuse of one PIXEL_PACK_BUFFER across flips while an earlier read is inflight -> ring of PBOs or wait on the fence before reuse.
   note: 2026-10-06T20:25Z claude:1863d2b5 claimed: code read finds no write-before-read path; next a page probe wrapping readPixels/fenceSync/getBufferSubData on MW3's live context (browser queue).
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   prev-owner: claude:1863d2b5-bc58-4c0b-9c15-00fc951f0256 (my change, fcfa4989) (fleet stopped)
   created: 2026-10-06T20:20:00Z
   Next: Warning isolated outside emulator: Chrome151 standalone4x4 WebGL2 yields six identical warnings despite8 correct pixel readbacks/GL_NO_ERROR. Matching browser source retains readback shadow allocation in GetBufferSubDataCHROMIUM path. Emulator trace216writes215reads has zero overwrite violations; one pending at capture end. No speculative renderer fix. Browser warning remains; no user input required. Recheck after browser-side correction; performance impact unmeasured. Receipt ops/handoffs/pbo-chrome151-reproduction-20261007.json.
@@ -1228,7 +1229,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: TOYVM-DOS-NATIVE-GAMEPLAY-20261007
   status: active
   Browser input: absolute mouse position, button transitions and polling deltas wired through shared launchers; focused DOM/INT33-state fixtures only. No browser gameplay acceptance, pointer lock/relative input, wheel, guest-programmed ranges or mouse callbacks. Native gameplay and existing per-title blockers remain open.
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: /root
   created: 2026-10-07T09:08:16.475Z
   requested-by: user via Telegram, dedicated DOS VM preferred over DOSBox inside Win98
@@ -1239,7 +1240,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: NEW-GAME-BETRAYAL-ANTARA-DEMO-20261006
   status: blocked
   candidate: win98-games-a-d/Betrayl-a-Antara-DEMO-SW (16-bit Sierra SETUP.EXE installs the game; local, no download)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none (automatic security rejection; exited1)
   created: 2026-10-06T04:51:54.000Z
   accepted-by: claude:80aa9e95-435b-4acb-aeea-8ae3d860613c
@@ -1250,7 +1251,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] New-game lane: Arx Fatalis demo (original local MSI/CAB media)
   id: NEW-GAME-ARX-FATALIS-DEMO-20261007
   status: blocked
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none; arx-fault exited1
   candidate: test/binaries/win98-games-a-d/Arx_Fatalis-demo-D3D-Glide
   Next: Automated possible-cybersecurity-risk rejection stopped diagnostic; no retry/rephrase. Root cleaned remote and preserved scratch/runs/20261007-arx-diagnostic-interrupted. Prior introAV unresolved; Darkstone refills lane.
@@ -1299,7 +1300,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] New-game lane: Command & Conquer: Tiberian Sun demo
   id: NEW-GAME-TIBERIAN-SUN-DEMO-20261006
   status: blocked
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none (bad-transfer worker exited1 at2026-10-08T13:02:23.732Z after automatic cybersecurity rejection)
   candidate: test/binaries/win98-games-a-d/CnC-TiberianSun-demo-SW/extracted
   Next: Parent10002 DirectDraw repaint loop and registered COM shadow-CPU activation repaired, including AddRef ULONG edge correction; root11182 hashes and real owner/paint regressions passed. Ordinary campaign loading now reaches first OleRun, then owning trap atEIP00d88176/ESP00d88168 in heap frame data. Next capture first bad control-flow producer, including activation continuation integrity; do not assume an independent guest defect or redo cleared menu/COM causes. Final AddRef edge tested/build-only d8d4096 differs from actual browser ff3281; gameplay still unqualified.
@@ -1310,7 +1311,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [~] Diagnose original Winamp MilkDrop exception and validate visualization
   id: GLD3D-WINAMP-EXCEPTION-20261007
   status: blocked
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none (worker exited1 after automated rejection)
   Next: HELD: automated cybersecurity-risk rejection terminated Winamp diagnostic worker at23:52:06. No retry/rephrasing/delegation of rejected diagnostic. Root recovered14 existing outputs and verified driver/browser exited; no exception cause or visualization qualification.
   Done: Demonstrated generic cause repaired with regression and ordinary original visualization reviewed; FPS/audio separate.
@@ -1373,7 +1374,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   status: ready
 
   candidate: arcanum-demo
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none (coverage worker exited0; gameplay both backends and WebGL measurement reviewed)
   prev-owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5 — Codex out of credits until 2026-10-12; its uncommitted shared-tree work is preserved on archive/codex-shared-tree-20261006 (see ops/handoffs/codex-release-review-20261006.md)
   created: 2026-10-03T08:42:45.967Z
@@ -1405,7 +1406,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   status: ready
 
   candidate: deus-ex-demo
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none (queued under one-worker budget)
   prev-owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5 — Codex out of credits until 2026-10-12; its uncommitted shared-tree work is preserved on archive/codex-shared-tree-20261006 (see ops/handoffs/codex-release-review-20261006.md)
   created: 2026-10-03T08:42:45.967Z
@@ -1429,7 +1430,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] New-game lane: Dungeon Siege demo
   id: NEW-GAME-DUNGEON-SIEGE-DEMO-20261008
   status: blocked (automatic review rejected follow-up source/dataflow diagnostic)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: /root/dungeon_siege_thread_snapshot (reservedPageFaults registration and SEH control preparation)
   candidate: test/binaries/win98-games-a-d/DungeonSiege-demo-D3D.exe
   Next: Preserve recovered fault-context-2 evidence (first API-skipped outcome at EIP004178eb/address08407705, clean bounded exit). Automatic review rejected worker follow-up source/dataflow analysis as possible cybersecurity risk; narrower operation unspecified. Do not retry, rephrase or delegate that diagnostic. Original gameplay remains unqualified; Conan refills active lane.
@@ -1489,7 +1490,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] New-game lane: Disciples II demo
   id: NEW-GAME-DISCIPLES2-DEMO-20261009
   status: active
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: root; native and browser movement verified, input/FPS/audio follow-up ready; all runtimes terminal
   candidate: test/binaries/win98-games-a-d/Discipless2_demo-D3D.exe
   Next: Registered native and browser gameplay verified: ordinary leader move20/20->16/20 and camera follow, reviewed run20261009T0728Z-disciples2-browser-gameplay, photo967. Registration fd5aa4a35 on main. Browser50788/50800 clean stop07:28:27Z. Menu repeat-click issue remains despite1000ms holds and both down/up reaching renderer/input log; inspect guest consumption/activation.30.10599s presentation sample2432 events/1649 uploads is80.7813/54.7732 per second, not logical FPS. Qualify gameplay counter and audio separately. No public promotion. Alice real GL implementation is next unblocked implementation lane.
@@ -1499,14 +1500,14 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] AoWII rendering overlap and gameplay measurement
   id: AOW2-RENDERING-COVERAGE-20261009
   status: ready
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: Diagnose terrain crossing lower UI/black polygons after validated FVF fix; measure actual gameplay FPS and audio separately. Initial army movement is verified, release readiness is not. Use temporary box and serialized browser.
   Evidence: scratch/runs/20261009T0306Z-age-of-wonders2-gameplay/result.json
 
 - [ ] New-game lane: American McGee's Alice demo
   id: NEW-GAME-ALICE-DEMO-20261009
   status: blocked (original media/evidence recovery and post-merge gameplay revalidation pending)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none (evidence recovery pending)
   candidate: test/binaries/win98-games-a-d/american McGees-alice_demo-OpenGL.exe
   Next: Serialization and generation-aware unload already merged (cfe411bdc/83947f6a6 and followups); do not redo staging/lifetime fix. Original archive/extracted media and scratch/alice-preflight-20261009 absent locally. Recover hash-pinned archive and2151 captures; then current-main ordinary New Game/Easy/W and browser input. Historical native gameplay usesa2dae641/main23614c85e+candidate.patch, not later held candidates. See docs/re-notes/alice-return-fire-reconciliation-20261018.md.
@@ -1534,7 +1535,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   blocker: Original scratch/runs/20261009T2046Z-return-fire-realized-native and scratch/runs/20261009T2050Z-return-fire-realized-browser are absent locally; recovery source availability is unknown, no remote probe.
   worker: none (capture recovery needed)
   status: blocked (historical capture recovery; no new gameplay review)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   candidate: return-fire-demo
   priority: user-first
   Next: Recover original2046native/2050browser build/input/screenshots before renewed review. Registration/palette/media recovery are on main. Audio/FPS are separate from Done; exact locally absent capture directories are recorded in docs/re-notes/dashboard-actionable-reconciliation-20261020.md.
@@ -1543,7 +1544,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] Serialize shared DLL mapping and lifetime mutation
   id: DLL-CONCURRENT-MAPPING-20261009
   status: review (serialization and unload merged; CMR3/Alice gameplay revalidation pending)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: Load/publication serialization cfe411bdc/1b3c20aec/7a2953021/89524faca and real unload83947f6a6 are on main. Historical comments about stub FreeLibrary and held-branch adaptation are superseded. Current next action is fresh CMR3/Alice original gameplay validation; reproduce a current boundary before changing loader behavior.
   Done: Concurrent load/free/import tests preserve exact images and module ownership, callback execution stays live without deadlock, normal Alice gameplay/browser revalidated.
 
@@ -1565,13 +1566,13 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] Revalidate original CMR3 menu-to-Stages progression
   id: CMR3-POST-SPLASH-NULL-20261010
   status: blocked (original diagnostic replay automatic-review hold)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: 85638 exact937466 original replay reached UK Warwick loading, then invalid native free list. Diagnostic729d3fc73 passed native suites, but original replay105999 was automatically rejected for possible cybersecurity risk (exact action unspecified) and stopped clean13:08:09. Do not retry/rephrase/delegate that diagnostic; no driving or cause established. Independent ordinary conformance remains permitted.
 
 - [ ] Validate merged DLL unload and CMR3 progression
   id: FREELIBRARY-EXITTHREAD-CMR3-20261010
   status: blocked (implementation merged; original diagnostic replay under automatic-review hold)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: Main83947f6a6 plus57a148044/321e734aa integrate generation-aware unload/thread exit with recorded suites. Recovered original85638 progresses to UK Warwick loading then native free-list failure; this is not evidence of a new unload defect. CMR3 diagnostic replay105999 is held by automatic review; do not restart it. No driving qualification.
 
 
@@ -1579,7 +1580,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: NEW-GAME-CMR3-DEMO-20261010
   status: blocked (automatic-review replay hold; native diagnostic tested and merged)
   runtime-revalidated: 2026-10-15 native recovery56105 terminal0; serialized remote runtime available, no transport blocker.
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   candidate: test/binaries/win98-games-a-d/ColinMcRay-Rally3-pcdemo-D3D.exe
   Next: Preserve rejected replay105999; do not retry/rephrase/delegate around automatic possible-cybersecurity-risk rejection (exact operation unspecified). Root stopped via ordinary ctl quit13:08:09, postflight identities unchanged and runtime inventory empty13:10:11. Diagnostic729d3fc73 merged after native lifetime/backend plus intended reason-zero negativecontrol/restored PASS104186. No new driving or corruption cause established. Fresh /root/new_game_refill_20261015 selects an independent unqualified title.
   Done: Original launch, player-controlled gameplay and reviewed screenshot with tested identity.
@@ -1588,7 +1589,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [~] New-game lane: Recoil demo
   id: NEW-GAME-RECOIL-DEMO-20261011
   status: blocked (core gameplay merged; device/audio/FPS follow-ups require runtime)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   source: https://archive.org/details/RecoilDemo
   Next: Main f9376176448849d53c9cfbcfc47e330691457ac0 cherry-picks d189a725a qualification notes; ancestor and exact note content verified2026-10-15. No integration blocker remains. Historical run20261011T2056Z-recoil-main-tap-gameplay records ordinary touch route and padLeft tank/view turn on274902b02.15.10 guest presentation events/s is not logical/display FPS or controlled benchmark. Physical phone/WebKit/audio remain unverified; no new runtime or release qualification from this reconciliation.
   Done: Ordinary launch and player-controlled gameplay with reviewed screenshot/build identity, registered and pushed main; FPS/audio separately measured.
@@ -1639,7 +1640,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   blocker: Existing sandbox.resume 403 api_key_action_forbidden; requires documented authorized runtime access change and coordinator allocation, not a retry.
   worker: none (awaiting authorized runtime and verified original closure)
   status: blocked (authorized acceptance; runtime and original-media prerequisites)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: Ordinary Accept/Yes authorization persists from20261018; acceptedInGuest=false until observed. Recover/verify original installer, supporting assets and historical receipt, then use an authorized bounded runtime to observe acceptance and installed payload. Local exact-path observations and unknown remote availability are in docs/re-notes/dashboard-actionable-reconciliation-20261020.md.
   Previous checkpoint (licence-decision hold superseded): Originalchild141587 reaches actual Software License Agreement; leftunanswered peruserinstruction and stoppedclean. Rootarchive+14recoveredartifact hashes/actualscreen reviewed; Telegramphoto1404 delivered. Full matching text evidence/demo-license.txt preserved. No acceptance/bypass/install/gameplay; lane refilled while awaiting decision.
   Done: Registered original launch, ordinary player-controlled gameplay and reviewed screenshot with exact source/run identity.
@@ -1649,7 +1650,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] Improve and validate original .kkrieger control responsiveness
   id: KKRIEGER-CONTROL-LATENCY-20261015
   status: ready (local browser attempt failed before menu; failure diagnostics prepared)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: Read-only CS wait/main EIP/cooperative-owner samples merged0b95d3233,10focused testsPASS. Retained run118738 suggests audio critical-section/main-loop delay but owner/duration attribution unproved. TG90 authorizes persistent-box testing. Local attempt20261018-kkrieger-local-latency ended detached Frame before menu; no CS-owner samples. Host stderr/lifecycle diagnostics prepared; next serialized retry after AVP2 pair, inspect root cause before scheduler changes.
   Evidence: docs/kkrieger-position-capture-20261015.md; scratch/runs/20261015-kkrieger-position-capture
 
@@ -1718,7 +1719,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] AVP2 browser gameplay, audio and FPS follow-up
   id: AVP2-BROWSER-AUDIO-FPS-20261018
   status: blocked (listening/reference and runtime/device validation unavailable)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: Existing gameplay/audio and offline signal review are complete at54325b3f1; do not repeat them. Remaining audiblequality needs listening plus a reference; no listening-capable tool is available in this session. LogicalFPS/device need a new measurement-capable run, held on safe diskheadroom (current2.297GB, recent dropbelow2GiB). Retain exact evidence20261018-avp2-audio-capture and20261018-avp2-audio-signal-review; no fresh success claim.
   Evidence: scratch/runs/20261018-avp2-browser-launch; scratch/runs/20261018-avp2-paired-plan
 
@@ -1726,7 +1727,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [~] Black & White 2 draw-layout provenance follow-up
   id: BW2-DRAW-LAYOUT-PROVENANCE-20261018
   status: blocked (live Worker placement/correlation and stopped runtime box)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: Observer and capture adapters integrated through e6fd3b86f; independent review corrections201758750 and root12JS tests PASS. Live Worker logging/transport placement, matching region-map receipt and request correlation remain unverified. Savedbx_9ef2wdsw stopped; prior scopedresume403 unresolved. No producer attribution or current original draw evidence.
   Done: Identify actual producer with current evidence, then justified fix and meaningful regression; retain accepted camera controls.
 
@@ -1775,7 +1776,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: NEW-GAME-CIRCUS-LINUX-20261018
   worker: none (RichEdit source delivered; remaining prerequisites coordinator-owned)
   status: active (remaining callback source prerequisites; ICM native validation pending)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: Property-page/CRT/qsort/bsearch fixes are already main. ICM ownership066436de plus real-x86 fixture1bae355 are off main pending fullVM. edit-stream-owner-oct20 delivered RichEdit edit_stream_call source3c01665c; its fullVM remains pending and remaining callback/JS/concurrency/SEH prerequisites keep jump APIs disabled. Runtime403 blocks native/gameplay evidence, not source work.
   Done: Original working launch, ordinary player-controlled gameplay and reviewed screenshot with exact run/source identity.
 
@@ -1792,7 +1793,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: D3D-LEGACY-TEXTURE-CAPS-AUDIT-20261013
   worker: legacy-texture-rest-oct20
   status: active (noncube source audit; cube fullVM pending)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: legacy-texture-rest-oct20 owns remaining caps audit excluding cube. f856627 clears unsupported CUBEMAP only, source115checks+4mutations PASS, off main pending exact-source normalbuild/public COM and rejection tests. Surface4/7 ABI is already merged. No independent-face storage or backend/gameplay qualification claimed.
   Done: Correct advertised API and software/GPU behavior with versioned contract and tests.
 
@@ -1800,7 +1801,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: NEW-GAME-AOE3-DEMO-20261010
   blocker: Existing sandbox.resume 403 api_key_action_forbidden; requires documented authorized runtime access change and coordinator allocation, not a retry.
   status: blocked (authorized acceptance; runtime and original-media prerequisites)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none (awaiting authorized runtime and verified original closure)
   candidate: test/binaries/win98-games-a-d/Age-of-empire-3trial-Win98-SW.exe
   Next: Ordinary Accept/Yes authorization persists from20261018; acceptedInGuest=false until observed. Recover/verify original installer, supporting assets and historical receipt, then use an authorized bounded runtime to observe acceptance and installed payload. Local exact-path observations and unknown remote availability are in docs/re-notes/dashboard-actionable-reconciliation-20261020.md.
@@ -1813,7 +1814,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   id: NEW-GAME-CONAN-DEMO-20261010
   blocker: Existing sandbox.resume 403 api_key_action_forbidden; requires documented authorized runtime access change and coordinator allocation, not a retry.
   status: blocked (authorized acceptance; runtime and original-media prerequisites)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none (awaiting authorized runtime and verified original closure)
   candidate: test/binaries/win98-games-a-d/Conan cauldron-DX9-D3D/ConanPC-Demo.exe
   Next: Ordinary Accept/Yes authorization persists from20261018; acceptedInGuest=false until observed. Recover/verify original installer, supporting assets and historical receipt, then use an authorized bounded runtime to observe acceptance and installed payload. Local exact-path observations and unknown remote availability are in docs/re-notes/dashboard-actionable-reconciliation-20261020.md.
@@ -1827,7 +1828,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   blocker: Existing sandbox.resume 403 api_key_action_forbidden; requires documented authorized runtime access change and coordinator allocation, not a retry.
   worker: none (awaiting authorized runtime and verified original closure)
   status: blocked (authorized acceptance; runtime and original-media prerequisites)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   candidate: test/binaries/win98-games-a-d/DungeonSiegelegendsofaranna_demo-D3D.exe
   Next: Ordinary Accept/Yes authorization persists from20261018; acceptedInGuest=false until observed. Recover/verify original installer, supporting assets and historical receipt, then use an authorized bounded runtime to observe acceptance and installed payload. Local exact-path observations and unknown remote availability are in docs/re-notes/dashboard-actionable-reconciliation-20261020.md.
   Previous checkpoint (licence-decision hold superseded): Generic RTF fix cedee9b54 now shows readable original EULA; before1504Z/after1523Z browser evidence reviewed. No acceptance provided and no input sent. Payload /home/user/aranna-game-20261010 remains on bx_hx8msa33; no gameplay/FPS/audio qualification. Active slot refilled Invisible War.
@@ -1840,7 +1841,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
   blocker: Spielen remains disabled; Configuration OK/settings persistence and the ABANDONED synchronous callback are unqualified. No gameplay evidence; obsolete original-media/resume403 hold superseded.
   worker: none (offline acceptance complete; coordinator assigns any future runtime test)
   status: partial (original licence/install verified; launcher and one Configuration response accepted; gameplay pending)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   Next: Proposal only, no execution authorization: inspect original Configuration, press ordinary OK with existing defaults, trace callback completion and verify actual saved settings/reopen persistence; then inspect Spielen enablement and launch the original installed game only if enabled and separately authorized within the assigned bound. Stop on first precise blocker; never force-enable or spoof prerequisites.
   Accepted: acceptedInGuest=true observed2026-10-22T20:01:25.326828Z (ordinary Ja, batch1191279, destination screen follows); installer ExitProcess(0), all1959 original payload hashes match. Historical authorization JSON remains unchanged. On2026-10-23 one original launcher session/one ordinary Konfiguration1024 action opened Configuration HWND0x10006; both genuine PNGs independently reviewed. Canonical SHA256ccd5b0a8e4fcb84d06bf539c8a4af28b377472072f3422750122048e9339f553; source/main58e90870.
   Limits: Spielen disabled; no settings accepted/saved, gameplay, normal configuration/game guest exit, Windows/browser/audio/FPS qualification. ABANDONED wndproc after64rounds/yield15 remains a limitation; parent OSexit-9 is not a guest exit. bx_vufrds5w snapshot-STOPPED2026-10-23T01:26:26.642Z; coordinator owns lifecycle.
@@ -1871,7 +1872,7 @@ Current scoped ownership after reconciling the stopped fleet. The shared operati
 - [ ] Resolve original Mad Bomber SDL WinMM error-text dependency
   id: MADBOMBER-WINMM-ERROR-TEXT-20261019
   status: partial (historical exact-source fullVM public API qualification accepted; original SDL observation separate)
-  owner: codex:01a0ff91-cf9d-7f42-ba93-f9e7616b35a5
+  owner: codex:01a19022-1426-76b3-ae98-6265fb15fd66
   worker: none (independent historical API review complete)
   Evidence: Implementation7fd352855 and source reviewfe540cf2; retained native qualification01dfb0d98 independently accepted in docs/re-notes/madbomber-winmm-native-independent-review-20261024.md. Exact historicalb41a7c5 normal module8fac3993: unchanged public A/W native fixture exit0, host exit0, wrong-hash rejection exit1 before compile/memory. This does not qualify the current-main module or original SDL.
   Next: Coordinator-owned original SDL observation remains outside this API evidence; keep this checkbox open until its exact requirement is reviewed. Existing original gameplay acceptance under NEW-GAME-MADBOMBER-20261018 remains intact. No runtime allocation or retry is implied.
