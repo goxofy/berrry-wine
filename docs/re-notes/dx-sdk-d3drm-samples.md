@@ -1,5 +1,48 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 31: original Viewer Mesh assets recovered
+
+The three local names `camera.x`, `mslogo.x`, and `sphere2.x` were renamed
+ProgressiveMesh copies, not the Viewer sample's original inputs. The archived
+Microsoft DirectX 5 SDK installer supplies the missing plain Mesh files. Its
+`viewer.exe` exactly matches our existing executable (SHA-256
+`82ba1cddd85804c29f20e25b8ecea241a40037f03f54fc347976bde0593d7510`).
+
+Recovery is reproducible from
+[the archived SDK installer](https://archive.org/download/idx5sdk/idx5sdk.exe):
+verify its 33,018,416-byte size and SHA-1
+`b14370372307360a9e8de2ebd8fcd13173fd3b4a`, extract nested `DX5SDK.EXE` with
+7-Zip, then extract `/cdrom/media/CAMERA.X`, `MSLOGO.X`, and `SPHERE2.X` from
+that archive. Install those three files under lowercase names in
+`test/binaries/dx-sdk/bin/` (the `binaries` path is a symlink). Their SHA-256s are:
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| camera.x | 2820 | `1c56daf9d94fa31c3a721d69d07d223c44ebe1972914af497da40dd251295383` |
+| mslogo.x | 146596 | `bbe967bbe686d5b3bc25979b70abf2d8ce6aea4b821f4ced9ca59d7902a6727d` |
+| sphere2.x | 21092 | `804a4b79b7de03ed529bc7af7e9a904278956d6c052c9b81cc617ce703d633be` |
+
+Run `20261031T0049Z-sdk-viewer-original-assets` preserves archive metadata,
+source and extraction hashes, the original Viewer source naming these inputs,
+and a personally inspected original-scene browser capture. The gray Microsoft
+mesh and camera shape now render; the prior camera-load dialog is absent.
+The initial override retained stale synthetic fixture byte sizes and failed;
+removing those sizes produced the original scene. Direct registration then
+exposed stale generated lengths from the old ProgressiveMesh aliases. Updating
+all three entries in `lib/app-file-sizes.generated.js` restored loading without
+an override. The registered scene renders on both software and WebGL routes
+(owning host GPU false/true respectively), using retained module SHA-256
+`d83e413fbc38ca5aa5447a7be62d10010783fd5490c98ec07c076553897950e5`;
+its full compiled-source identity is unknown. These captures do not certify
+the newly built module. The locked current build passes separately.
+`test/test-d3dim-viewer-selection.js` now explicitly imports the small synthetic
+fixture before execution, as `test/test-all-exes.js` already does, and its
+selection/Change Color assertion passes.
+Software shows a readable Microsoft logo; the WebGL capture catches it nearly
+edge-on. Animation phase was not aligned, so no pixel-equivalence claim follows.
+This proves original asset loading and visible output, not full scene
+correctness, interaction, or complete 27-app acceptance.
+
 ## October 30: paired Boids motion, incomplete scene acceptance
 
 Runs `20261030T2335Z-dx-boids-webgl` and
