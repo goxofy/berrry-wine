@@ -1000,3 +1000,12 @@ Its reviewed final frame is a blank startup window; its browser and server
 closed. Capture the rejected texture/sampler state and completed readback
 result before choosing a production change. Both follow-ups used local
 processes, with no Boat.
+
+The longer observer run `20261031T0320Z-ut2003-sampler-cause` ran from
+03:18:27 to 03:22:26 UTC with nine captures. The reviewed final frame still
+shows a blank original UT2003 window; no rejected sampler metadata was
+captured. All 881 original input hashes and 105 frozen host snapshots passed
+verification, and the owned browser, profile and server closed. This does
+not strengthen the sampler-causation claim. Do not repeat this observer
+unchanged; establish that the diagnostic execution reaches the relevant draw
+before another sampler capture. No production source changed.
