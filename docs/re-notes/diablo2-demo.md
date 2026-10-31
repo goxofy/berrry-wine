@@ -1499,3 +1499,39 @@ and module over the existing verified original assets. No save checkpoint was
 exported: recovery starts from the original launch/character route. Both owned
 browsers/controllers were closed; no remote test box was used. Next work is to
 locate the real exit in this randomized town and capture the first native fight.
+
+## Blood Moor exit and first fight, 2026-10-31
+
+Run `20261031T0319Z-diablo2-first-fight` reached the real exit and captured
+the first fight through native browser mouse/keyboard input. It replays the
+**retained repaired** host/module from the preceding run, Wasm
+`7f9da4e9da5183e9f7f061d2356cd34626fe74bdbaf7da0345f6693dd81152be`;
+it is not a current-main build retest. The source manifest/archive and OPAQUE
+repair patch are retained with the run. Explicit WebGL and default guestWorker
+were active, with a stable 1024x768 viewport and reconnects using
+`defaultViewport:null`. Backend snapshots show WebGL activity and zero errors.
+
+The 25 available original runtime files match the fixture manifest before and
+after. The separate unused `DiabloIIDemo.exe` installer archive is now absent;
+the readiness tool reports that ENOENT, so this run does not claim all 26
+manifest entries are present. No original assets, saves or guest state were
+edited. No execution trace or production repair was needed.
+
+In this randomized layout, the north palisade was a dead end. Returning across
+open town ground and walking west past the Gheed side reached the palisade
+opening: inspected `21-gheed-side.png` shows **Entering The Blood Moor** and
+the Blood Moor area label. This direction is a route observation for this seed,
+not a universal exit location. `28-rat-before.png` identifies a live Quill Rat.
+After further movement, `38-stand-ground.png` shows approaching zombies;
+`39-stand-attack.png` shows the hero swinging with a zombie alongside him.
+Native left-button attack at the adjacent zombie produces its collapsed body
+in `40-zombie-hit.png`, still present in inspected `41-after-first-fight.png`.
+These are before/after fight evidence, not merely a startup or town claim.
+Audio, performance and extended play remain unqualified.
+
+Runtime investigation ran 03:18:23–03:37:39 UTC (19m16s). The browser exited
+zero, its controller and loopback servers closed, and its profile was removed;
+cleanup was checked separately. No Boat/test box was used (ID/state/expiry
+not applicable). `recovery.txt` records fresh-launch replay and native route;
+there is no exported save checkpoint. Next gameplay work can continue past
+this first fight toward the Den of Evil.
