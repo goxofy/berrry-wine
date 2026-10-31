@@ -373,8 +373,7 @@
     (local $cursor i32) (local $end i32) (local $op i32) (local $sz i32) (local $cnt i32) (local $step i32)
     (local $branch i32) (local $handled i32) (local $record_index i32)
     (local $saved_extent i32) (local $saved_extent_rt i32) (local $extent_header i32)
-    (local $state i32) (local $vp_entry i32) (local $sw i32)
-    (local $vp_x i32) (local $vp_y i32) (local $vp_w i32) (local $vp_h i32)
+    (local $state i32) (local $vp_entry i32)
     ;; Execute buffers never go to the render Worker. With the GPU executor
     ;; their triangles do go to it, in order, so the fence waits for the ops
     ;; that still rasterize into the DIB (points, lines, wireframe).
@@ -395,34 +394,10 @@
       (if (i32.and (i32.ne (local.get $state) (i32.const 0))
                    (i32.ne (local.get $vp_entry) (i32.const 0)))
         (then
-          (local.set $sw (call $g2w (local.get $state)))
-          (local.set $vp_x (i32.load (i32.add (local.get $vp_entry) (i32.const 12))))
-          (local.set $vp_y (i32.load (i32.add (local.get $vp_entry) (i32.const 16))))
-          (local.set $vp_w (i32.load (i32.add (local.get $vp_entry) (i32.const 20))))
-          (local.set $vp_h (i32.load (i32.add (local.get $vp_entry) (i32.const 24))))
-          (i32.store (i32.add (local.get $sw) (global.get $D3DIM_OFF_VP_RECT)) (local.get $vp_x))
-          (i32.store (i32.add (local.get $sw)
-            (i32.add (global.get $D3DIM_OFF_VP_RECT) (i32.const 4))) (local.get $vp_y))
-          (i32.store (i32.add (local.get $sw)
-            (i32.add (global.get $D3DIM_OFF_VP_RECT) (i32.const 8))) (local.get $vp_w))
-          (i32.store (i32.add (local.get $sw)
-            (i32.add (global.get $D3DIM_OFF_VP_RECT) (i32.const 12))) (local.get $vp_h))
-          (f32.store (i32.add (local.get $sw) (global.get $D3DIM_OFF_VP_SCALE))
-            (f32.div (f32.convert_i32_s (local.get $vp_w)) (f32.const 2.0)))
-          (f32.store (i32.add (local.get $sw)
-            (i32.add (global.get $D3DIM_OFF_VP_SCALE) (i32.const 4)))
-            (f32.div (f32.convert_i32_s (local.get $vp_h)) (f32.const 2.0)))
-          (f32.store (i32.add (local.get $sw)
-            (i32.add (global.get $D3DIM_OFF_VP_SCALE) (i32.const 8))) (f32.const 0.0))
-          (f32.store (i32.add (local.get $sw)
-            (i32.add (global.get $D3DIM_OFF_VP_SCALE) (i32.const 12))) (f32.const 1.0))
-          (f32.store (i32.add (local.get $sw) (global.get $D3DIM_OFF_VP_ORIGIN))
-            (f32.add (f32.convert_i32_s (local.get $vp_x))
-                     (f32.div (f32.convert_i32_s (local.get $vp_w)) (f32.const 2.0))))
-          (f32.store (i32.add (local.get $sw)
-            (i32.add (global.get $D3DIM_OFF_VP_ORIGIN) (i32.const 4)))
-            (f32.add (f32.convert_i32_s (local.get $vp_y))
-                     (f32.div (f32.convert_i32_s (local.get $vp_h)) (f32.const 2.0))))))))
+          ;; Apply the stored clip volume as well as the rectangle. Retained
+          ;; mode uses equal legacy scales in nonsquare windows; substituting
+          ;; width/2 and height/2 without normalization stretches the scene.
+          (call $d3dim_viewport_apply_entry (local.get $state) (local.get $vp_entry))))))
     (if (local.get $arg1) (then
       (local.set $eb_entry (call $dx_from_this (local.get $arg1)))
       (local.set $buf       (i32.load (i32.add (local.get $eb_entry) (i32.const 8))))

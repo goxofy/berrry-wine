@@ -10,6 +10,8 @@ const extraWat = String.raw`
    (call $d3ddev_init_state (local.get $s))
    (i32.store offset=16 (call $dx_from_this (local.get $p)) (local.get $s))
    (local.get $p))
+ (func (export "viewport") (result i32)
+   (call $dx_create_com_obj (i32.const 23) (global.get $DX_VTBL_D3DVP1)))
  (func (export "state") (param $p i32) (result i32) (call $d3ddev_state (local.get $p)))
  (func (export "extent_rt") (result i32) (global.get $d3dim_exec_extent_rt))
  (func (export "extent_scope") (result i32) (global.get $d3dim_exec_extent_guest))
@@ -502,6 +504,38 @@ const extraWat = String.raw`
   queuedGpuDraws = null;
   e.d3dim_gpu_enable(0);
   console.log('PASS queued GPU Execute extents: producer ownership, moving/reset bounds, lines/triangles, target/viewport clipping');
+  // DX1 Execute selects its viewport independently of Device2 current state.
+  // Globe's retained-mode DLL supplies equal X/Y scales in a nonsquare
+  // rectangle. Dropping the descriptor's clip transform makes spheres oval.
+  const vp = e.viewport(), vpDesc = e.guest_alloc(44);
+  call('IDirect3DDevice_AddViewport', 12, dev, vp);
+  const readFloat = address => new Float32Array(new Uint32Array([e.guest_read32(address)]).buffer)[0];
+  for (const [width, height, scaleX, scaleY] of [[292, 254, 146, 146], [676, 532, 338, 338], [120, 80, 30, 20], [292, 254, 146, 127]]) {
+    [44, 7, 11, width, height, bits(scaleX), bits(scaleY), bits(1), bits(1), bits(0), bits(1)]
+      .forEach((v, i) => e.guest_write32(vpDesc + i * 4, v));
+    call('IDirect3DViewport_SetViewport', 12, vp, vpDesc);
+    e.d3dim_gpu_enable(0);
+    e.buffer(eb, regular);
+    const program = [9 | (16 << 8) | (1 << 16), 1, 0, 2, 0, 11, 0];
+    program.forEach((v, i) => e.guest_write32(regular + 512 + i * 4, v));
+    [48, 0, 2, 512, program.length * 4, 0, 0, 0, 0, 0, 0, 0]
+      .forEach((v, i) => e.guest_write32(data + i * 4, v));
+    call('IDirect3DExecuteBuffer_SetExecuteData', 12, eb, data);
+    // Identity world/view/projection; two symmetric LVERTEX inputs.
+    for (let slot = 0; slot < 3; slot++) for (let i = 0; i < 16; i++)
+      e.guest_write32(state + slot * 64 + i * 4, bits(i % 5 === 0 ? 1 : 0));
+    for (const [i, x, y] of [[0, 0.25, 0], [1, 0, 0.25]])
+      [bits(x), bits(y), bits(0.5), 0, 0xffffffff, 0, 0, 0]
+        .forEach((v, j) => e.guest_write32(regular + i * 32 + j * 4, v));
+    call('IDirect3DExecuteBuffer_Unlock', 8, eb);
+    call('IDirect3DDevice_Execute', 20, dev, eb, vp);
+    const expected = [[7 + width / 2 + 0.25 * scaleX, 11 + height / 2],
+      [7 + width / 2, 11 + height / 2 - 0.25 * scaleY]];
+    for (let i = 0; i < 2; i++) for (let axis = 0; axis < 2; axis++)
+      assert(Math.abs(readFloat(regular + i * 32 + axis * 4) - expected[i][axis]) < 0.0001,
+        `DX1 Execute must honor descriptor scale ${width}x${height} vertex=${i} axis=${axis}`);
+  }
+  console.log('PASS DX1 Execute viewport transform: equal scaling in nonsquare original Globe sizes, offset, explicit unequal scales and normalization reset');
   for (let page = 0; page < 7; page++) for (let i = 0; i < 4096; i++)
     assert.strictEqual(e.guest_read8(base + 0x10000 + page * 4096 + i), 0xa7, 'neighbor backing');
   e.buffer(eb, ownedBuffer); // Borrowed test mappings are not heap owners.

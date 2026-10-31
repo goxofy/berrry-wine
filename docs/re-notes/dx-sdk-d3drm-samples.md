@@ -1,5 +1,71 @@
 # DX SDK Direct3D Retained Mode samples (globe, viewer, flip3dtl)
 
+## October 31: separate archive Globe baseline and viewport stretch repair
+
+Run `20261031T0122Z-globe-original-scene` launches a separately named
+**DX5 archive original Globe (296 vertices / 588 faces)** scene. Its executable,
+mesh and texture are copied from the previously verified SDK archive into the
+run's `original-scene/` directory. A runtime-only `dx5_archive_original_globe`
+entry mounts those three files through the ordinary launcher. The registered
+`dx_globe` entry and all 38 registered input files remain unchanged. This is
+an explicit original-scene baseline, not acceptance of the registered mesh.
+The authentic black band was not retested or changed.
+
+Personally inspected initial/later solid captures show camera motion and globe
+rotation on software and WebGL. Native maximize and Render → Wireframe clicks
+also produce enlarged solid and wireframe scenes on both routes. The original
+mesh is a closed triangular sphere: 296 vertices, 588 faces, 882 edges, Euler
+characteristic 2, with every edge used twice. Its vertex radii range from
+2.01965554 to 2.02463611. The captured triangle list contains all 1,764 TL
+vertices and all 296 unique archive vertices in original face order, with no
+nonfinite positions or inconsistent repeated vertices. A fitted homogeneous
+projection reproduces screen positions within 0.000016 pixels. These checks
+exclude missing faces and inconsistent vertex transforms at those checkpoints;
+they do not alone establish correct projection scale.
+
+The remaining oval silhouette revealed a demonstrated emulator defect. Before
+the repair, effective horizontal/vertical focal lengths are approximately
+292/254 pixels: ratio **1.1496064**, matching the initial viewport aspect.
+The enlarged viewport's live descriptor requests a clip volume of
+2 × 1.57396448 for 676 × 532 pixels, which requires equal pixel scaling.
+Nevertheless, the active device's clip normalization is disabled. DX1 Execute
+selects the passed viewport using a separate rectangle-only implementation,
+dropping its stored clip transform. The original SDK `d3drm.doc` describes
+uniform scaling as the default; the live descriptor establishes what this
+particular original guest requested, independently of that default.
+
+Execute now uses the existing `d3dim_viewport_apply_entry` helper, applying the
+stored clip volume together with its rectangle. The focused public-API
+regression fails before the fix at the original 292 × 254 size and passes
+afterward. It checks both original window sizes, nonzero viewport offsets,
+explicit unequal scales and resetting normalization. Existing sparse Execute
+instruction/vertex/data tests, viewport clipping, the registered Globe's real
+11-item Render menu and worker parity pass, as does the locked full build.
+
+The rebuilt module is
+`573e235db16e351668289f49e2f279ff48bcad56e7ca533167cb94cd6f4ec3fc`.
+Original-scene software/WebGL retests show circular solid and wireframe
+silhouettes. The post-fix projection fit yields focal lengths approximately
+292/292 pixels, ratio **1.00000007**, retaining all 588 faces. Both live routes
+now apply the descriptor's vertical normalization factor 1.27067673 at the
+enlarged size. WebGL records no fallbacks or errors. Captures use Chrome 151,
+ANGLE SwiftShader and disabled guest threads. Camera phases differ between
+routes and before/after captures; this is a scale/geometry result, not aligned
+pixel parity, native Windows visual certification or a performance measurement.
+
+The run retains both modules, archive inputs/source/reference manual, served
+asset/module hashes, source manifests, the repair patch, focused/build logs,
+read-only geometry/viewport observations and recovery instructions. The first
+browser pair and part of the retry pair disappeared unexpectedly; the cause
+and sender are unknown. The fresh post-fix runs completed capture and normal
+cleanup. `verification.json` checks 41 input pins (38 registered plus three
+archive scene files), 1,176 served hashes, all eight module loads and source
+identity. Fixed-window post-fix captures change 17,826 software and 37,693
+WebGL scene pixels; all eight browsers are absent, 24 ports closed and eight
+profiles removed. No Boat/test box was used. Further work is a frame-aligned
+native reference for lighting, camera and rasterization details; no remaining
+mesh corruption is demonstrated by this investigation.
+
 ## October 31: Globe texture-band diagnosis and original-mesh limit
 
 Run `20261031T0114Z-globe-texture` captures the registered Globe scene on
