@@ -1274,3 +1274,59 @@ known ports closed, four profiles removed and the watcher stopped, with over
 ownership is handed back. Next: recover the duct approach only with immediate
 swim-up input and solve the low entrance alignment, or return to the safer
 indoor checkpoint to investigate another courtyard route.
+
+
+## 2026-10-31: flooded lip traversed; dry duct refuge recovered
+
+Run `scratch/runs/20261031T0129Z-quake2-route/result.json` first recovered
+and explored the unchanged seven-kill indoor checkpoint. Courtyard ledge
+attempts did not collect health; the channel's left bank returned toward the
+entrance. The worker then switched to the retained submerged duct approach.
+Fresh swim-up and retreat after closing the load menu surfaced the player,
+with two health lost (**21 → 19**), but no death in this run.
+
+Long forward/crouch input submerged the player below the opening. A later
+short **W+C 400 ms, then W 700 ms**, with held swim-up released, entered the
+low red-lit duct (`duct/lip-middle.png`). Subsequent native crouch movement
+traversed its interior. Exploration returned to a **dry standing shelf inside
+the duct mouth**, looking toward the flooded pillars (`duct/stand-exit.png`).
+This establishes escape from submersion into a dry refuge, not a route to a
+new room. Fifteen seconds without movement or swim-up retained **health 19**.
+F1 confirmed **kills 7/18**. No pickup, new enemy, eighth kill, next room or
+level transition is claimed; onward navigation remains unresolved.
+
+Native F6 exported eight untouched files to `duct/dry-save-manifest.json`.
+A fresh browser mounted them as ordinary files; native F9 and inspected
+`recovery/external-dry-wait.png` / `recovery/external-count.png` confirm the
+same dry shelf, health 19 and seven kills. Another 15-second no-input wait
+caused no damage. All eight recovered file hashes exactly match the export.
+This new dry checkpoint needs no swim-up; the original indoor health-21 save
+remains intact. `recovery.txt` and `recovery-driver.cjs` retain both recipes.
+Gameplay and fresh recovery ran approximately 01:29Z–01:41Z, within 20 minutes.
+No cheats, console commands, guest-memory writes, binding changes or original
+asset edits supplied progress. No emulator defect was isolated.
+
+Read-only inspection of the mounted config and original `default.cfg` clarified
+navigation: always-run is already enabled (`cl_run 1`), so Shift slows movement;
+C/Ctrl are swim-down/crouch; End centers the view; Z looks down; PageDown looks
+up. PageUp has no default binding. These controls were not remapped.
+
+All three browsers loaded retained module SHA-256
+`d69d1158f7707c8f46d5f4c0909494913db73bfcb745ca1a3f320be9ad62db91`,
+compiled source unknown. This does not certify a current-main build. Actual
+valid-session backend probes report original ref_gl, WebGL 1, ANGLE Intel
+Mesa UHD 620, software flag 0, threads/render Worker off. Verification passes
+for 67 prior inputs including 65 original assets, 486 served responses, eight
+byte-exact recovered files, and all 123 duct / 13 recovery trusted input events.
+The initial browser's full input snapshot was lost; its action log remains.
+The installer remains unavailable; audio, FPS and networking are unqualified.
+
+The initial indoor Chrome disappeared with SIGKILL before requested close;
+its sender is unknown. The subsequent close attempt produced an unhandled
+ErrorEvent. Both valid duct/recovery browsers exited code 0 through CDP close;
+all three controllers were stopped with targeted SIGTERM. Six owned PIDs are
+absent, nine ports closed and three profiles removed, with over 6 GB free.
+No page exception was recorded; static-harness HTTP 404s remain. No runtime
+source changed. No Boat or assigned test box was used (ID/state/expiry N/A);
+ownership is handed back. Next: recover the dry shelf and investigate the
+remaining duct/chamber route, keeping the indoor checkpoint as health fallback.
