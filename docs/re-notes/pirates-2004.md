@@ -442,3 +442,59 @@ checks are retained in the run directory. Both owned browsers, profiles,
 controllers and servers are closed; no Boat or assigned test box was used
 (ID/state/expiry N/A). This documentation-only result has no new production
 build or before/after repair claim.
+
+### 2026-10-31 effective-property boundary (03:41Z, no fix)
+
+Evidence: `scratch/runs/20261031T0341Z-pirates-effective/`. This bounded
+follow-up reuses the retained `573e235d…` module and its 140 matching frozen
+host files; **source identity remains unknown**. It does not repeat
+capability, backend or factory discovery. No production code or original
+assets changed.
+
+Static original-EXE tracing narrows the boundary:
+
+- `0x534270` assembles the linked property list into a `0x38`-byte state,
+  indexing `state + 8 + 4 * propertyType` using property virtual `+0x34`.
+  `0x53e800` retains this at **geometry `+0xb4`**. `0x53e870` handles the
+  separate **effect state at `+0xb8`**. Diagnostic helpers must not label
+  `+0xb8` as the assembled property state.
+- `0x5c4270` selects a shader using geometry `+0xc8` and RTTI helper
+  `0x449390`; a null result selects renderer `+0x898` at `0x5c4298`.
+  At `0x5c42bf`, shader virtual `+0x14` receives renderer `+0x10`
+  (property state) and `+0x14` (effect state) separately as arguments four
+  and five. Thus attached properties and shader-extra are distinct inputs.
+- Default-shader setup `0x5d4520` takes property state as its **fourth**
+  argument (entry ESP `+0x10`, loaded into EBX at `0x5d452b`). It reads
+  state `+0x28` at `0x5d458a`, the texturing-property slot, and then
+  texturing map storage at property `+0x2c`. The unresolved live comparison
+  is attached properties versus renderer effective-state slots, followed
+  by actual map consumption.
+- Renderer-specific property `+0x20` is an eight-byte wrapper (vtable
+  `0x712848`). Construction at `0x51c70d` assigns wrapper `+4` an object
+  produced by `0x5c9680`, before attachment at `0x51c776`. Wrapper clone
+  `0x51c3f0` retains that same reference; destructor `0x51c390` releases it.
+  The object has per-entry `0x18`-byte storage and data-copy routine
+  `0x5c96f0`. This does **not** establish that the payload is a shader or
+  should be installed at geometry `+0xc8`.
+
+The live boundary remains unobserved in this run: three owned Chrome pages
+crashed during native progression. The retry reached a rendered tavern
+(`retry/no-quit.png`) and crashed before any diagnostic helper was installed;
+the final attempt stopped at the Play menu while loading `openpc.wav`.
+The generic page-crash events do not establish a runtime cause. The prior
+run's original Port Royale white-coast screenshot was personally inspected;
+there is no new gameplay coast capture or before/after repair claim.
+
+`recovery.txt` preserves static excerpts, replay drivers and the **unexecuted**
+`final/boundary-trace.js`. Next, recover native coast progression and capture
+`0x5c429e`, `0x5c42c2` and `0x5c4375`: compare attached renderer-specific
+and texturing pointers with effective property-state slots `+0x18` and
+`+0x28`, retain payload wrapper/object words, and trace map consumption.
+Record the prepass return before assuming later breakpoints are reachable.
+No shader substitution is justified by the current evidence.
+
+`verify.py` passed all 1,374 original input hashes, 140 frozen mappings,
+876 served responses and all three loaded-module hashes. All owned browser
+PIDs, profiles, controllers and static/control/CDP ports are closed; no Boat
+or test box was used (ID/state/expiry N/A). Disk remained above 2 GB. This
+is documentation-only; no new production build or focused code-test claim.
