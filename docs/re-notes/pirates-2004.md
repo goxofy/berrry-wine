@@ -179,3 +179,22 @@ controller (exit 0), three ports and profile; no Boat was used.
 `recovery.txt` records the exact native route. A next graphics investigation
 should first reproduce the white terrain with a source-identified build and
 compare a matched scene, rather than infer a cause from the specular warning.
+
+## Current-main build identity check (2026-10-31)
+
+A locked canonical `tools/build.sh` passed at main `90c0c0c48`. Tracked
+source hashes remained unchanged across compilation. Its 1,896,705-byte module
+has SHA-256 `573e235db16e351668289f49e2f279ff48bcad56e7ca533167cb94cd6f4ec3fc`,
+exactly matching the retained module used for the successful sailing run above.
+This supplies a reproducible current-main source identity for those module
+bytes; it does not turn the earlier execution into a fresh runtime replay.
+
+The new browser run rendered Main Menu, but its browser PID disappeared and
+CDP refused connections before the new-game route completed. The cause is
+unknown. No new sailing or terrain comparison is claimed. Evidence is in
+`scratch/runs/20261031T0220Z-pirates-main-sailing/`: `build.log`,
+`source-before.json`, `build-identity.json`, inspected `captains.png`, and
+`verification.json`. Explicit controller quit completed; its browser, profile
+and three ports were closed. No Boat was used. The next graphics task still
+needs a matched sailing scene and a measured rendering contract before
+attributing the white terrain to the unsupported specular path.
